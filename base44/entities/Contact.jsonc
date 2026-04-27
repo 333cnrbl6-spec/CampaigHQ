@@ -19,6 +19,11 @@
     "email": {
       "type": "string"
     },
+    "registered_voter": {
+      "type": "boolean",
+      "default": false,
+      "description": "Whether this person is on the electoral roll"
+    },
     "support_level": {
       "type": "string",
       "enum": [

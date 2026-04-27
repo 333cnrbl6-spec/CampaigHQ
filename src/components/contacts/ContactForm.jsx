@@ -4,7 +4,7 @@ import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Textarea } from '@/components/ui/textarea';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
-import { X } from 'lucide-react';
+import { X, CheckCircle2 } from 'lucide-react';
 
 const SUPPORT_LEVELS = [
   { value: 'strong_supporter', label: 'Strong Supporter' },
@@ -17,7 +17,7 @@ const SUPPORT_LEVELS = [
 export default function ContactForm({ contact, onSubmit, onCancel }) {
   const [form, setForm] = useState(contact || {
     name: '', address: '', postcode: '', phone: '', email: '',
-    support_level: 'unknown', notes: '', canvassed: false, volunteer: false,
+    support_level: 'unknown', notes: '', canvassed: false, volunteer: false, registered_voter: false,
   });
 
   const handleSubmit = (e) => {
@@ -100,26 +100,35 @@ export default function ContactForm({ contact, onSubmit, onCancel }) {
             rows={3}
           />
         </div>
-        <div className="flex items-center gap-6">
-          <label className="flex items-center gap-2 text-sm cursor-pointer">
-            <input
-              type="checkbox"
-              checked={form.canvassed}
-              onChange={(e) => setForm({ ...form, canvassed: e.target.checked, canvass_date: e.target.checked ? new Date().toISOString().split('T')[0] : '' })}
-              className="rounded border-border"
-            />
-            Canvassed
-          </label>
-          <label className="flex items-center gap-2 text-sm cursor-pointer">
-            <input
-              type="checkbox"
-              checked={form.volunteer}
-              onChange={(e) => setForm({ ...form, volunteer: e.target.checked })}
-              className="rounded border-border"
-            />
-            Willing to volunteer
-          </label>
-        </div>
+        <div className="flex items-center gap-6 flex-wrap">
+           <label className="flex items-center gap-2 text-sm cursor-pointer">
+             <input
+               type="checkbox"
+               checked={form.registered_voter}
+               onChange={(e) => setForm({ ...form, registered_voter: e.target.checked })}
+               className="rounded border-border"
+             />
+             Registered Voter
+           </label>
+           <label className="flex items-center gap-2 text-sm cursor-pointer">
+             <input
+               type="checkbox"
+               checked={form.canvassed}
+               onChange={(e) => setForm({ ...form, canvassed: e.target.checked, canvass_date: e.target.checked ? new Date().toISOString().split('T')[0] : '' })}
+               className="rounded border-border"
+             />
+             Canvassed
+           </label>
+           <label className="flex items-center gap-2 text-sm cursor-pointer">
+             <input
+               type="checkbox"
+               checked={form.volunteer}
+               onChange={(e) => setForm({ ...form, volunteer: e.target.checked })}
+               className="rounded border-border"
+             />
+             Willing to volunteer
+           </label>
+         </div>
         <div className="flex justify-end gap-3 pt-2">
           <Button type="button" variant="outline" onClick={onCancel}>Cancel</Button>
           <Button type="submit">{contact ? 'Update' : 'Add Contact'}</Button>

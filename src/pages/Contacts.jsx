@@ -5,7 +5,7 @@ import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Badge } from '@/components/ui/badge';
-import { Plus, Search, Pencil, Trash2, Phone, Mail, MapPin } from 'lucide-react';
+import { Plus, Search, Pencil, Trash2, Phone, Mail, MapPin, CheckCircle2 } from 'lucide-react';
 import { AnimatePresence, motion } from 'framer-motion';
 import ContactForm from '../components/contacts/ContactForm';
 
@@ -48,7 +48,10 @@ export default function Contacts() {
     const matchesSearch = c.name?.toLowerCase().includes(search.toLowerCase()) ||
       c.address?.toLowerCase().includes(search.toLowerCase()) ||
       c.postcode?.toLowerCase().includes(search.toLowerCase());
-    const matchesFilter = filter === 'all' || c.support_level === filter;
+    const matchesFilter = filter === 'all' ? true : 
+      filter === 'voters' ? c.registered_voter :
+      filter === 'non-voters' ? !c.registered_voter :
+      c.support_level === filter;
     return matchesSearch && matchesFilter;
   });
 
@@ -97,10 +100,12 @@ export default function Contacts() {
         </div>
         <Select value={filter} onValueChange={setFilter}>
           <SelectTrigger className="w-[180px]">
-            <SelectValue placeholder="All support levels" />
+            <SelectValue placeholder="Filter..." />
           </SelectTrigger>
           <SelectContent>
-            <SelectItem value="all">All Levels</SelectItem>
+            <SelectItem value="all">All Contacts</SelectItem>
+            <SelectItem value="voters">Registered Voters</SelectItem>
+            <SelectItem value="non-voters">Non-Voters</SelectItem>
             <SelectItem value="strong_supporter">Strong Supporter</SelectItem>
             <SelectItem value="leaning">Leaning</SelectItem>
             <SelectItem value="undecided">Undecided</SelectItem>
@@ -131,6 +136,11 @@ export default function Contacts() {
               <div className="flex-1 min-w-0">
                 <div className="flex items-center gap-2 flex-wrap">
                   <p className="font-medium text-sm">{contact.name}</p>
+                  {contact.registered_voter && (
+                    <Badge variant="secondary" className="text-xs bg-green-100 text-green-700 border-green-200 flex items-center gap-1">
+                      <CheckCircle2 className="w-3 h-3" /> Registered Voter
+                    </Badge>
+                  )}
                   <Badge variant="secondary" className={`text-xs border ${supportBadge[contact.support_level] || supportBadge.unknown}`}>
                     {contact.support_level?.replace(/_/g, ' ')}
                   </Badge>
