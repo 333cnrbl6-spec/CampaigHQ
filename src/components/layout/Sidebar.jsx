@@ -3,7 +3,7 @@ import { Link, useLocation } from 'react-router-dom';
 import { 
   LayoutDashboard, Users, Calendar, Leaf, ClipboardList, 
   MapPin, ChevronLeft, ChevronRight, LogOut, BarChart3, MessageSquare,
-  History, Zap
+  History, Zap, Printer
 } from 'lucide-react';
 import { base44 } from '@/api/base44Client';
 import { cn } from '@/lib/utils';
@@ -20,6 +20,7 @@ const navItems = [
   { path: '/election-day', label: 'Election Day', icon: ClipboardList },
   { path: '/reports', label: 'Reports', icon: BarChart3 },
   { path: '/chat', label: 'Team Chat', icon: MessageSquare },
+  { path: '/materials', label: 'Campaign Materials', icon: Printer },
   { path: '/map', label: 'Ward Map', icon: MapPin },
 ];
 

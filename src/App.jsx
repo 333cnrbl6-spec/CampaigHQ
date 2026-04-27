@@ -18,6 +18,7 @@ import FieldMode from './pages/FieldMode';
 import ElectionDay from './pages/ElectionDay';
 import Reports from './pages/Reports';
 import TeamChat from './pages/TeamChat';
+import CampaignMaterials from './pages/CampaignMaterials';
 
 const AuthenticatedApp = () => {
   const { isLoadingAuth, isLoadingPublicSettings, authError, navigateToLogin } = useAuth();
@@ -57,6 +58,7 @@ const AuthenticatedApp = () => {
         <Route path="/election-day" element={<ElectionDay />} />
         <Route path="/reports" element={<Reports />} />
         <Route path="/chat" element={<TeamChat />} />
+        <Route path="/materials" element={<CampaignMaterials />} />
         <Route path="/map" element={<WardMap />} />
       </Route>
       <Route path="*" element={<PageNotFound />} />
