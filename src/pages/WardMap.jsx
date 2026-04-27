@@ -36,8 +36,8 @@ export default function WardMap() {
         <div className="h-[600px]">
           <MapContainer center={WARD_CENTER} zoom={14} style={{ height: '100%', width: '100%' }} scrollWheelZoom>
             <TileLayer
-              attribution='&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a>'
-              url="https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png"
+              attribution='&copy; <a href="https://cartodb.com/">CartoDB</a> contributors'
+              url="https://{s}.basemaps.cartocdn.com/positron/{z}/{x}/{y}{r}.png"
             />
             {KEY_LOCATIONS.map((loc) => (
               <Marker key={loc.name} position={loc.pos}>
