@@ -1,0 +1,53 @@
+{
+  "name": "ContactInteraction",
+  "type": "object",
+  "properties": {
+    "contact_id": {
+      "type": "string",
+      "description": "ID of the contact"
+    },
+    "type": {
+      "type": "string",
+      "enum": [
+        "phone_call",
+        "email",
+        "door_knock",
+        "text",
+        "meeting",
+        "other"
+      ],
+      "description": "Type of interaction"
+    },
+    "date": {
+      "type": "string",
+      "format": "date"
+    },
+    "time": {
+      "type": "string",
+      "description": "Time of interaction"
+    },
+    "notes": {
+      "type": "string",
+      "description": "Details about the interaction"
+    },
+    "outcome": {
+      "type": "string",
+      "enum": [
+        "positive",
+        "neutral",
+        "negative",
+        "no_answer"
+      ],
+      "description": "Result of the interaction"
+    },
+    "logged_by": {
+      "type": "string",
+      "description": "Email of volunteer who logged this"
+    }
+  },
+  "required": [
+    "contact_id",
+    "type",
+    "date"
+  ]
+}

@@ -12,6 +12,12 @@ import Events from './pages/Events';
 import Issues from './pages/Issues';
 import Tasks from './pages/Tasks';
 import WardMap from './pages/WardMap';
+import ContactHistory from './pages/ContactHistory';
+import VolunteerAssignments from './pages/VolunteerAssignments';
+import FieldMode from './pages/FieldMode';
+import ElectionDay from './pages/ElectionDay';
+import Reports from './pages/Reports';
+import TeamChat from './pages/TeamChat';
 
 const AuthenticatedApp = () => {
   const { isLoadingAuth, isLoadingPublicSettings, authError, navigateToLogin } = useAuth();
@@ -42,9 +48,15 @@ const AuthenticatedApp = () => {
       <Route element={<AppLayout />}>
         <Route path="/" element={<Dashboard />} />
         <Route path="/contacts" element={<Contacts />} />
+        <Route path="/contact-history" element={<ContactHistory />} />
         <Route path="/events" element={<Events />} />
+        <Route path="/volunteers" element={<VolunteerAssignments />} />
+        <Route path="/field-mode" element={<FieldMode />} />
         <Route path="/issues" element={<Issues />} />
         <Route path="/tasks" element={<Tasks />} />
+        <Route path="/election-day" element={<ElectionDay />} />
+        <Route path="/reports" element={<Reports />} />
+        <Route path="/chat" element={<TeamChat />} />
         <Route path="/map" element={<WardMap />} />
       </Route>
       <Route path="*" element={<PageNotFound />} />

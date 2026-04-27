@@ -1,0 +1,42 @@
+{
+  "name": "EventVolunteer",
+  "type": "object",
+  "properties": {
+    "event_id": {
+      "type": "string",
+      "description": "ID of the campaign event"
+    },
+    "volunteer_name": {
+      "type": "string",
+      "description": "Name of the volunteer"
+    },
+    "volunteer_email": {
+      "type": "string",
+      "description": "Email of the volunteer"
+    },
+    "status": {
+      "type": "string",
+      "enum": [
+        "invited",
+        "confirmed",
+        "attended",
+        "declined"
+      ],
+      "default": "invited",
+      "description": "RSVP status"
+    },
+    "role": {
+      "type": "string",
+      "description": "Role at the event (e.g. team lead, leaflet distributor)"
+    },
+    "reminder_sent": {
+      "type": "boolean",
+      "default": false,
+      "description": "Whether reminder has been sent"
+    }
+  },
+  "required": [
+    "event_id",
+    "volunteer_name"
+  ]
+}

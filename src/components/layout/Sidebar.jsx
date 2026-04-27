@@ -2,7 +2,8 @@ import React, { useState } from 'react';
 import { Link, useLocation } from 'react-router-dom';
 import { 
   LayoutDashboard, Users, Calendar, Leaf, ClipboardList, 
-  MapPin, ChevronLeft, ChevronRight, LogOut
+  MapPin, ChevronLeft, ChevronRight, LogOut, BarChart3, MessageSquare,
+  History, Zap
 } from 'lucide-react';
 import { base44 } from '@/api/base44Client';
 import { cn } from '@/lib/utils';
@@ -10,9 +11,15 @@ import { cn } from '@/lib/utils';
 const navItems = [
   { path: '/', label: 'Dashboard', icon: LayoutDashboard },
   { path: '/contacts', label: 'Voter Contacts', icon: Users },
+  { path: '/contact-history', label: 'Contact History', icon: History },
   { path: '/events', label: 'Events', icon: Calendar },
+  { path: '/volunteers', label: 'Volunteer Assignments', icon: Users },
+  { path: '/field-mode', label: 'Field Mode', icon: Zap },
   { path: '/issues', label: 'Local Issues', icon: Leaf },
   { path: '/tasks', label: 'Tasks', icon: ClipboardList },
+  { path: '/election-day', label: 'Election Day', icon: ClipboardList },
+  { path: '/reports', label: 'Reports', icon: BarChart3 },
+  { path: '/chat', label: 'Team Chat', icon: MessageSquare },
   { path: '/map', label: 'Ward Map', icon: MapPin },
 ];
 

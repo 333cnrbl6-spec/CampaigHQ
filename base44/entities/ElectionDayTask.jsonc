@@ -1,0 +1,54 @@
+{
+  "name": "ElectionDayTask",
+  "type": "object",
+  "properties": {
+    "title": {
+      "type": "string",
+      "description": "Task title"
+    },
+    "category": {
+      "type": "string",
+      "enum": [
+        "polling_station",
+        "get_out_vote",
+        "logistics",
+        "comms",
+        "safety",
+        "other"
+      ],
+      "description": "Task category"
+    },
+    "assigned_to": {
+      "type": "string",
+      "description": "Name or email of assignee"
+    },
+    "location": {
+      "type": "string",
+      "description": "Polling station or location"
+    },
+    "start_time": {
+      "type": "string",
+      "description": "Start time (e.g. 6:30 AM)"
+    },
+    "end_time": {
+      "type": "string",
+      "description": "End time (e.g. 10:00 PM)"
+    },
+    "status": {
+      "type": "string",
+      "enum": [
+        "planned",
+        "in_progress",
+        "completed"
+      ],
+      "default": "planned"
+    },
+    "notes": {
+      "type": "string"
+    }
+  },
+  "required": [
+    "title",
+    "category"
+  ]
+}
