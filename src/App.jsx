@@ -5,7 +5,13 @@ import { BrowserRouter as Router, Route, Routes } from 'react-router-dom';
 import PageNotFound from './lib/PageNotFound';
 import { AuthProvider, useAuth } from '@/lib/AuthContext';
 import UserNotRegisteredError from '@/components/UserNotRegisteredError';
-// Add page imports here
+import AppLayout from './components/layout/AppLayout';
+import Dashboard from './pages/Dashboard';
+import Contacts from './pages/Contacts';
+import Events from './pages/Events';
+import Issues from './pages/Issues';
+import Tasks from './pages/Tasks';
+import WardMap from './pages/WardMap';
 
 const AuthenticatedApp = () => {
   const { isLoadingAuth, isLoadingPublicSettings, authError, navigateToLogin } = useAuth();
@@ -33,7 +39,14 @@ const AuthenticatedApp = () => {
   // Render the main app
   return (
     <Routes>
-      {/* Add your page Route elements here */}
+      <Route element={<AppLayout />}>
+        <Route path="/" element={<Dashboard />} />
+        <Route path="/contacts" element={<Contacts />} />
+        <Route path="/events" element={<Events />} />
+        <Route path="/issues" element={<Issues />} />
+        <Route path="/tasks" element={<Tasks />} />
+        <Route path="/map" element={<WardMap />} />
+      </Route>
       <Route path="*" element={<PageNotFound />} />
     </Routes>
   );

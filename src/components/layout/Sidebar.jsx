@@ -1,0 +1,84 @@
+import React, { useState } from 'react';
+import { Link, useLocation } from 'react-router-dom';
+import { 
+  LayoutDashboard, Users, Calendar, Leaf, ClipboardList, 
+  MapPin, ChevronLeft, ChevronRight, LogOut
+} from 'lucide-react';
+import { base44 } from '@/api/base44Client';
+import { cn } from '@/lib/utils';
+
+const navItems = [
+  { path: '/', label: 'Dashboard', icon: LayoutDashboard },
+  { path: '/contacts', label: 'Voter Contacts', icon: Users },
+  { path: '/events', label: 'Events', icon: Calendar },
+  { path: '/issues', label: 'Local Issues', icon: Leaf },
+  { path: '/tasks', label: 'Tasks', icon: ClipboardList },
+  { path: '/map', label: 'Ward Map', icon: MapPin },
+];
+
+export default function Sidebar() {
+  const [collapsed, setCollapsed] = useState(false);
+  const location = useLocation();
+
+  return (
+    <aside className={cn(
+      "h-screen bg-sidebar text-sidebar-foreground flex flex-col transition-all duration-300 sticky top-0",
+      collapsed ? "w-[72px]" : "w-[260px]"
+    )}>
+      {/* Header */}
+      <div className="p-5 border-b border-sidebar-border">
+        <div className="flex items-center gap-3">
+          <div className="w-10 h-10 rounded-full bg-primary flex items-center justify-center flex-shrink-0">
+            <Leaf className="w-5 h-5 text-primary-foreground" />
+          </div>
+          {!collapsed && (
+            <div className="overflow-hidden">
+              <h1 className="font-heading text-lg font-bold text-sidebar-foreground leading-tight">Paul Binns</h1>
+              <p className="text-xs text-sidebar-foreground/60 leading-tight">Green Party Campaign</p>
+            </div>
+          )}
+        </div>
+      </div>
+
+      {/* Navigation */}
+      <nav className="flex-1 py-4 px-3 space-y-1">
+        {navItems.map(({ path, label, icon: Icon }) => {
+          const isActive = location.pathname === path;
+          return (
+            <Link
+              key={path}
+              to={path}
+              className={cn(
+                "flex items-center gap-3 px-3 py-2.5 rounded-lg text-sm font-medium transition-all duration-200",
+                isActive 
+                  ? "bg-sidebar-primary text-sidebar-primary-foreground shadow-md" 
+                  : "text-sidebar-foreground/70 hover:bg-sidebar-accent hover:text-sidebar-accent-foreground"
+              )}
+            >
+              <Icon className="w-5 h-5 flex-shrink-0" />
+              {!collapsed && <span>{label}</span>}
+            </Link>
+          );
+        })}
+      </nav>
+
+      {/* Footer */}
+      <div className="p-3 border-t border-sidebar-border space-y-1">
+        <button
+          onClick={() => setCollapsed(!collapsed)}
+          className="flex items-center gap-3 px-3 py-2.5 rounded-lg text-sm text-sidebar-foreground/60 hover:bg-sidebar-accent hover:text-sidebar-accent-foreground transition-colors w-full"
+        >
+          {collapsed ? <ChevronRight className="w-5 h-5" /> : <ChevronLeft className="w-5 h-5" />}
+          {!collapsed && <span>Collapse</span>}
+        </button>
+        <button
+          onClick={() => base44.auth.logout()}
+          className="flex items-center gap-3 px-3 py-2.5 rounded-lg text-sm text-sidebar-foreground/60 hover:bg-sidebar-accent hover:text-sidebar-accent-foreground transition-colors w-full"
+        >
+          <LogOut className="w-5 h-5 flex-shrink-0" />
+          {!collapsed && <span>Log out</span>}
+        </button>
+      </div>
+    </aside>
+  );
+}

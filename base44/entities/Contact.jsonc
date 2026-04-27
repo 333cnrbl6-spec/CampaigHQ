@@ -1,0 +1,59 @@
+{
+  "name": "Contact",
+  "type": "object",
+  "properties": {
+    "name": {
+      "type": "string",
+      "description": "Full name of the voter/contact"
+    },
+    "address": {
+      "type": "string",
+      "description": "Street address"
+    },
+    "postcode": {
+      "type": "string"
+    },
+    "phone": {
+      "type": "string"
+    },
+    "email": {
+      "type": "string"
+    },
+    "support_level": {
+      "type": "string",
+      "enum": [
+        "strong_supporter",
+        "leaning",
+        "undecided",
+        "opposed",
+        "unknown"
+      ],
+      "default": "unknown"
+    },
+    "notes": {
+      "type": "string"
+    },
+    "canvassed": {
+      "type": "boolean",
+      "default": false
+    },
+    "canvass_date": {
+      "type": "string",
+      "format": "date"
+    },
+    "key_issues": {
+      "type": "array",
+      "items": {
+        "type": "string"
+      }
+    },
+    "volunteer": {
+      "type": "boolean",
+      "default": false,
+      "description": "Whether this contact has volunteered"
+    }
+  },
+  "required": [
+    "name"
+  ]
+}

@@ -1,0 +1,54 @@
+{
+  "name": "CampaignEvent",
+  "type": "object",
+  "properties": {
+    "title": {
+      "type": "string",
+      "description": "Event title"
+    },
+    "type": {
+      "type": "string",
+      "enum": [
+        "canvassing",
+        "hustings",
+        "leafleting",
+        "meeting",
+        "social",
+        "fundraiser",
+        "other"
+      ],
+      "default": "canvassing"
+    },
+    "date": {
+      "type": "string",
+      "format": "date"
+    },
+    "time": {
+      "type": "string",
+      "description": "Start time"
+    },
+    "location": {
+      "type": "string"
+    },
+    "description": {
+      "type": "string"
+    },
+    "attendees_count": {
+      "type": "number",
+      "default": 0
+    },
+    "status": {
+      "type": "string",
+      "enum": [
+        "upcoming",
+        "completed",
+        "cancelled"
+      ],
+      "default": "upcoming"
+    }
+  },
+  "required": [
+    "title",
+    "date"
+  ]
+}

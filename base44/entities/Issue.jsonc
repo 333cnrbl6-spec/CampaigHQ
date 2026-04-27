@@ -1,0 +1,48 @@
+{
+  "name": "Issue",
+  "type": "object",
+  "properties": {
+    "title": {
+      "type": "string",
+      "description": "Issue title"
+    },
+    "category": {
+      "type": "string",
+      "enum": [
+        "environment",
+        "housing",
+        "transport",
+        "community",
+        "health",
+        "education",
+        "economy",
+        "planning"
+      ],
+      "default": "environment"
+    },
+    "description": {
+      "type": "string"
+    },
+    "policy_position": {
+      "type": "string",
+      "description": "Paul's position on this issue"
+    },
+    "priority": {
+      "type": "string",
+      "enum": [
+        "high",
+        "medium",
+        "low"
+      ],
+      "default": "medium"
+    },
+    "mentions_count": {
+      "type": "number",
+      "default": 0,
+      "description": "How many voters raised this issue"
+    }
+  },
+  "required": [
+    "title"
+  ]
+}
