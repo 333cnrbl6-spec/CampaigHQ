@@ -27,6 +27,7 @@ const navItems = [
   { path: '/gotv', label: 'GOTV Tracker', icon: Target },
   { path: '/activity', label: 'Live Activity', icon: Radio },
   { path: '/turf', label: 'Turf Management', icon: MapPin },
+  { path: '/polling-map', label: 'Polling Districts', icon: MapPin },
 ];
 
 export default function Sidebar() {
