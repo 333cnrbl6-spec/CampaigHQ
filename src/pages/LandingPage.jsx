@@ -44,68 +44,70 @@ function CountdownUnit({ value, label }) {
 
 const PLEDGES = [
   {
-    icon: MapPin,
+    icon: AlertTriangle,
     color: 'text-amber-600',
     bg: 'bg-amber-50 border-amber-200',
-    title: 'Fix Our Roads & Pavements',
-    desc: 'A full roads and pavement audit within 30 days of election. Publish repair timelines and chase officers for every unresolved issue in Tyldesley & Mosley Common.',
+    title: 'Stand With Residents on Warehouses',
+    desc: 'The Chaddock Lane warehouse development — imposed over the objections of hundreds of residents — has caused flooding, noise, and rat infestations. I will hold the council accountable and demand the transparency residents were denied.',
   },
   {
     icon: TreePine,
     color: 'text-green-600',
     bg: 'bg-green-50 border-green-200',
-    title: 'Protect Green Spaces',
-    desc: 'Fight against inappropriate development on greenbelt land. Our parks, commons, and open spaces are irreplaceable — I will defend every square foot.',
+    title: 'Protect Green Belt & Open Spaces',
+    desc: 'Mosley Common\'s greenbelt is under relentless pressure from developers. I will fight every inappropriate planning application and defend our open spaces for future generations.',
   },
   {
     icon: Home,
     color: 'text-blue-600',
     bg: 'bg-blue-50 border-blue-200',
-    title: 'Scrutinise Housing Plans',
-    desc: 'Hold developers and the council accountable on the Mosley Common development. Ensure any new homes serve local need, not just profit, and protect existing infrastructure.',
+    title: 'Scrutinise the 1,050 Home Development',
+    desc: 'The proposed 1,050 home development on Mosley Common has faced thousands of objections. I will demand it serves genuine local housing need, not developer profit, with proper infrastructure to match.',
   },
   {
-    icon: Shield,
+    icon: Bike,
     color: 'text-purple-600',
     bg: 'bg-purple-50 border-purple-200',
-    title: 'Safer Streets',
-    desc: 'Work with residents and authorities to tackle anti-social behaviour, improve street lighting, and make Tyldesley & Mosley Common a ward where everyone feels safe.',
+    title: 'Fix the Transport Crisis',
+    desc: 'It can take 30 minutes to travel the 2 miles between Mosley Common and Tyldesley. Residents deserve reliable, affordable local transport. I will push for real improvement at every council meeting.',
+  },
+  {
+    icon: MapPin,
+    color: 'text-rose-600',
+    bg: 'bg-rose-50 border-rose-200',
+    title: 'Fix Roads & Pavements',
+    desc: 'A full roads and pavement audit within 30 days of taking office. I will publish repair timelines and chase officers on every unresolved pothole and pavement issue in the ward.',
   },
   {
     icon: Trash2,
-    color: 'text-rose-600',
-    bg: 'bg-rose-50 border-rose-200',
-    title: 'Reliable Local Services',
-    desc: 'No more missed bin collections. Cleaner streets and better maintained public spaces. I will hold the council to account every single week.',
-  },
-  {
-    icon: Baby,
     color: 'text-teal-600',
     bg: 'bg-teal-50 border-teal-200',
-    title: 'Youth & Community Facilities',
-    desc: 'Advocate for better facilities for young people and families — safe play areas, youth clubs, and spaces that bring our community together.',
+    title: 'Reliable Local Services',
+    desc: 'No more missed bin collections. Cleaner streets, maintained public spaces, and a councillor who actually holds the council to account — week in, week out.',
   },
 ];
 
 const VALUES = [
   { icon: Heart, label: 'Compassion', desc: 'A career built around delivering life-saving treatment to children and vulnerable communities worldwide.' },
-  { icon: Globe, label: 'Global Experience', desc: 'Over 20 years working with local communities and national governments to deliver real-world solutions.' },
+  { icon: Globe, label: 'Global Expertise', desc: 'Educated at the Liverpool School of Tropical Medicine. Over 20 years working with national governments worldwide.' },
   { icon: Users, label: 'Community First', desc: '6 years living in Tyldesley — drawn here by its warmth and community spirit.' },
   { icon: Leaf, label: 'Green Values', desc: 'Committed to environmental protection, sustainability, and a fairer economy for all.' },
 ];
 
 const TIMELINE = [
-  { year: '20+ Years', label: 'International health & community work', detail: 'Worked with local communities and national governments worldwide to deliver life-saving treatment to children.' },
+  { year: 'LSTM', label: 'Liverpool School of Tropical Medicine', detail: 'Trained at one of the world\'s leading institutions for global health and tropical medicine — building the expertise to work with governments worldwide.' },
+  { year: '20+ Years', label: 'International health & community work', detail: 'Worked with local communities and national governments worldwide to deliver life-saving treatment to children — knowing how to listen to what people need and help them get it.' },
   { year: '6 Years', label: 'Tyldesley resident', detail: 'Chose Tyldesley for its community spirit and warmth. Rooted in the ward, Paul knows the streets, the issues, and the people.' },
-  { year: '2026', label: 'Green Party candidate', detail: 'Standing for Tyldesley & Mosley Common in the May 2026 local elections to put residents first.' },
+  { year: '2026', label: 'Green Party candidate — Tyldesley & Mosley Common', detail: 'Standing in the Wigan local elections on 7 May 2026. One of five candidates — the only one who has spent 20 years putting communities before politics.' },
 ];
 
 const GREEN_WHY = [
-  'The Green Party is the only party with a credible plan to protect our local green belt and open spaces.',
-  'We believe public services must work for people, not cut to the bone.',
-  'We stand for transparency, accountability, and councillors who actually show up.',
-  'We support a fairer economy — one where working families in Tyldesley don\'t get left behind.',
-  'Environmental health is community health — clean air, green spaces, and safe streets matter.',
+  'The Green Party is the only party fighting back against inappropriate warehouse and housing developments on our greenbelt.',
+  'We stand for transparency — residents were denied fair consultation on the Chaddock Lane warehouses. That must never happen again.',
+  'We believe public services must work for people, not be cut to fund developer handouts.',
+  'We support affordable, genuinely local housing — not 1,050-home developments that strain our roads, schools and drainage.',
+  'Environmental health is community health — clean air, flood prevention, green spaces and safe streets matter.',
+  'Greens are the only party winning seats from Reform by offering hope over hate — in Tyldesley as in Margate.',
 ];
 
 const QUOTES = [
@@ -389,12 +391,12 @@ function WhyGreenSection() {
 
 function LocalIssuesSection() {
   const issues = [
-    { icon: MapPin, color: 'text-amber-600', bg: 'bg-amber-50 border-amber-200', label: 'Roads & Potholes', desc: 'Crumbling roads and dangerous pavements are a constant frustration. Residents deserve safe streets.' },
-    { icon: TreePine, color: 'text-green-600', bg: 'bg-green-50 border-green-200', label: 'Green Space Protection', desc: 'Greenbelt land and open spaces are under pressure from developers. Our commons must be protected.' },
-    { icon: Shield, color: 'text-purple-600', bg: 'bg-purple-50 border-purple-200', label: 'Anti-social Behaviour', desc: 'Residents want safer streets, better lighting, and a council that takes community safety seriously.' },
-    { icon: Trash2, color: 'text-rose-600', bg: 'bg-rose-50 border-rose-200', label: 'Bin Collections & Street Cleaning', desc: 'Missed collections and littered streets reflect a council that isn\'t listening. Basic services must work.' },
-    { icon: Home, color: 'text-blue-600', bg: 'bg-blue-50 border-blue-200', label: 'Housing & Planning', desc: 'New development must serve local people, not just developers. Affordable homes and protected infrastructure.' },
-    { icon: Baby, color: 'text-teal-600', bg: 'bg-teal-50 border-teal-200', label: 'Youth & Family Facilities', desc: 'Young people need safe spaces, youth clubs, and community facilities that give them a stake in their ward.' },
+    { icon: AlertTriangle, color: 'text-amber-600', bg: 'bg-amber-50 border-amber-200', label: 'Warehouse Development', desc: 'The Chaddock Lane "cruise liner" warehouses were approved despite nearly 300 residents packing Astley Community Club to object. Construction has caused flooding, noise and rat infestations.' },
+    { icon: Home, color: 'text-blue-600', bg: 'bg-blue-50 border-blue-200', label: '1,050 Home Development', desc: 'Thousands of objections have been raised against the proposed Mosley Common housing estate. Residents demand proper infrastructure and genuine affordability, not developer-driven planning.' },
+    { icon: TreePine, color: 'text-green-600', bg: 'bg-green-50 border-green-200', label: 'Green Belt Under Pressure', desc: 'Mosley Common is a rat run for HGVs heading to the motorway. Our greenbelt and open spaces face mounting pressure from industrial and residential development.' },
+    { icon: Bike, color: 'text-purple-600', bg: 'bg-purple-50 border-purple-200', label: 'Transport & Congestion', desc: 'It can take 30 minutes to travel just 2 miles from Mosley Common to Tyldesley. Poor bus links and heavy lorry traffic make everyday journeys a frustration.' },
+    { icon: MapPin, color: 'text-rose-600', bg: 'bg-rose-50 border-rose-200', label: 'Roads & Potholes', desc: 'Crumbling roads and broken pavements are a persistent source of frustration. Residents deserve safe streets — and a councillor who will chase every repair.' },
+    { icon: Trash2, color: 'text-teal-600', bg: 'bg-teal-50 border-teal-200', label: 'Bin Collections & Street Cleaning', desc: 'Missed collections and littered streets show a council not listening. Basic services must be reliable — these are the foundations of a decent community.' },
   ];
   return (
     <section className="py-24 bg-muted/30">
@@ -417,7 +419,7 @@ function LocalIssuesSection() {
             </div>
           ))}
         </div>
-        <p className="text-xs text-muted-foreground text-center mt-6 italic">Issues raised during volunteer canvassing conversations across the ward.</p>
+        <p className="text-xs text-muted-foreground text-center mt-6 italic">Sources: resident canvassing, BBC News, ITV News, Manchester Evening News, North West Bylines.</p>
       </div>
     </section>
   );
