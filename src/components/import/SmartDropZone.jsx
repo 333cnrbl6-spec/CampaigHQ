@@ -1,5 +1,5 @@
 import React, { useState } from 'react';
-import { Upload, FileText, FileJson, Image, AlertCircle, Loader2, CheckCircle } from 'lucide-react';
+import { Upload, FileText, FileJson, Image, Loader2, CheckCircle } from 'lucide-react';
 import { cn } from '@/lib/utils';
 
 const getFileIcon = (filename) => {
