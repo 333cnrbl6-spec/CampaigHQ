@@ -3,8 +3,9 @@ import { base44 } from '@/api/base44Client';
 import { useQuery } from '@tanstack/react-query';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { BarChart, Bar, PieChart, Pie, Cell, XAxis, YAxis, CartesianGrid, Tooltip, Legend, ResponsiveContainer, LineChart, Line } from 'recharts';
-import { TrendingUp, Users, MessageSquare, Target } from 'lucide-react';
+import { TrendingUp, Users, MessageSquare, Target, Map } from 'lucide-react';
 import { format, subDays } from 'date-fns';
+import CanvassingCoverageMap from '@/components/organizer/CanvassingCoverageMap';
 
 const SUPPORT_COLORS = {
   strong_supporter: '#10b981',
@@ -171,8 +172,22 @@ export default function OrganizerDashboard() {
         </Card>
       </div>
 
-      {/* Charts */}
-      <div className="grid grid-cols-1 lg:grid-cols-2 gap-6 mb-8">
+      {/* Coverage Map */}
+       <Card className="mb-8">
+         <CardHeader>
+           <CardTitle className="flex items-center gap-2">
+             <Map className="w-5 h-5" />
+             Geographic Coverage Map
+           </CardTitle>
+           <p className="text-sm text-muted-foreground mt-2">Green zones show canvassed areas. Red zones are priority targets. Larger circles indicate higher household density.</p>
+         </CardHeader>
+         <CardContent>
+           <CanvassingCoverageMap contacts={allContacts} />
+         </CardContent>
+       </Card>
+
+       {/* Charts */}
+       <div className="grid grid-cols-1 lg:grid-cols-2 gap-6 mb-8">
         {/* Support Level Distribution */}
         <Card>
           <CardHeader>
