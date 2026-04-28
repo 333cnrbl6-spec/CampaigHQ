@@ -71,29 +71,12 @@ export default function CampaignHelperBot() {
     }
   };
 
-  // Initial greeting based on page
+  // Initialize conversation (no greeting message needed)
   useEffect(() => {
-    if (conversationId && messages.length === 0 && !isLoading) {
-      const pageContext = {
-        '/dashboard': 'the Dashboard',
-        '/contacts': 'the Voter Contacts manager',
-        '/field-mode': 'Field Mode for canvassing',
-        '/events': 'Campaign Events',
-        '/tasks': 'Tasks',
-        '/reports': 'Reports',
-        '/turf': 'Turf Management',
-        '/chat': 'Team Chat',
-        '/outreach': 'Bulk Outreach',
-      }[location.pathname] || 'the campaign tool';
-
-      const greeting = `Hi! I'm Olive, your friendly Green Party campaign assistant. I'm here on ${pageContext} to help with suggestions, guidance, and real-time support. What can I help you with?`;
-      
-      setIsLoading(true);
-      base44.agents.getConversation(conversationId).then((conv) => {
-        base44.agents.addMessage(conv, { role: 'assistant', content: greeting });
-      });
+    if (conversationId && !isLoading) {
+      setIsLoading(false);
     }
-  }, [conversationId, messages.length, location.pathname]);
+  }, [conversationId]);
 
   return (
     <>
