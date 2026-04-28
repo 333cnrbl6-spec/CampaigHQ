@@ -2,6 +2,7 @@ import React, { useState, useCallback } from 'react';
 import { base44 } from '@/api/base44Client';
 import { Button } from '@/components/ui/button';
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/components/ui/dialog';
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Upload, FileText, CheckCircle, AlertTriangle, Loader2, X } from 'lucide-react';
 import { cn } from '@/lib/utils';
 
@@ -11,8 +12,12 @@ export default function SmartDataImporter({ entityName, onComplete, trigger }) {
   const [open, setOpen] = useState(false);
   const [dragActive, setDragActive] = useState(false);
   const [file, setFile] = useState(null);
-  const [step, setStep] = useState('upload'); // upload, processing, review, complete
+  const [step, setStep] = useState('upload'); // upload, classify, review, complete
   const [processing, setProcessing] = useState(false);
+  const [filePreview, setFilePreview] = useState(null);
+  const [schema, setSchema] = useState(null);
+  const [proposedMapping, setProposedMapping] = useState({});
+  const [userMapping, setUserMapping] = useState({});
   const [extractedData, setExtractedData] = useState([]);
   const [issues, setIssues] = useState([]);
   const [importedCount, setImportedCount] = useState(0);
@@ -29,19 +34,85 @@ export default function SmartDataImporter({ entityName, onComplete, trigger }) {
     setStep('processing');
     setProcessing(true);
 
-    const isImage = /\.(jpg|jpeg|png)$/i.test(selectedFile.name);
-    const isCsv = /\.csv$/i.test(selectedFile.name);
-    const isJson = /\.json$/i.test(selectedFile.name);
-
     try {
       // Upload file to get URL
       const uploadRes = await base44.integrations.Core.UploadFile({ file: selectedFile });
       const fileUrl = uploadRes.file_url;
 
       // Get schema for the entity
-      const schema = await base44.entities[entityName].schema();
+      const entitySchema = await base44.entities[entityName].schema();
+      setSchema(entitySchema);
 
-      // Extract data using AI with the entity schema
+      // Use AI to analyze file structure and propose mapping
+      const analysisRes = await base44.integrations.Core.InvokeLLM({
+        prompt: `You are a data mapping assistant. Analyze this file and identify the data structure and fields present.
+        
+File URL: ${fileUrl}
+Target entity schema fields: ${JSON.stringify(entitySchema.properties || {})}
+
+Respond with a JSON object containing:
+1. "detected_fields": array of field names detected in the source file
+2. "field_mapping": object mapping detected fields to target schema fields (best guesses)
+3. "file_preview": first 2-3 rows/records from the file as a readable summary
+4. "confidence": overall confidence score (0-100) of the mapping
+
+Example format:
+{
+  "detected_fields": ["Name", "Email", "Phone"],
+  "field_mapping": {
+    "Name": "name",
+    "Email": "email",
+    "Phone": "phone"
+  },
+  "file_preview": "Row 1: John Doe, john@example.com, 555-1234",
+  "confidence": 85
+}`,
+        file_urls: [fileUrl],
+        response_json_schema: {
+          type: 'object',
+          properties: {
+            detected_fields: { type: 'array', items: { type: 'string' } },
+            field_mapping: { type: 'object', additionalProperties: { type: 'string' } },
+            file_preview: { type: 'string' },
+            confidence: { type: 'number' },
+          },
+        },
+      });
+
+      const analysis = analysisRes;
+      setFilePreview(analysis.file_preview);
+      setProposedMapping(analysis.field_mapping || {});
+      setUserMapping(analysis.field_mapping || {});
+      setStep('classify');
+    } catch (error) {
+      setIssues([
+        {
+          type: 'error',
+          issue: 'File analysis failed',
+          value: error.message || 'Please check file format and try again',
+        },
+      ]);
+      setStep('review');
+    } finally {
+      setProcessing(false);
+    }
+  }, [entityName]);
+
+  const handleDrop = (e) => {
+    e.preventDefault();
+    e.stopPropagation();
+    setDragActive(false);
+    const files = e.dataTransfer.files;
+    if (files?.[0]) processFile(files[0]);
+  };
+
+  const handleExtractAndValidate = async () => {
+    setProcessing(true);
+    try {
+      const uploadRes = await base44.integrations.Core.UploadFile({ file });
+      const fileUrl = uploadRes.file_url;
+
+      // Extract with the confirmed mapping
       const extractRes = await base44.integrations.Core.ExtractDataFromUploadedFile({
         file_url: fileUrl,
         json_schema: {
@@ -72,8 +143,19 @@ export default function SmartDataImporter({ entityName, onComplete, trigger }) {
 
       const { records = [], issues: extractedIssues = [] } = extractRes.output || {};
 
-      // Validate and cross-check records with schema
-      const validated = records.map((record, idx) => {
+      // Remap fields according to user's mapping, then validate
+      const remappedRecords = records.map((record) => {
+        const remapped = {};
+        for (const [sourceField, targetField] of Object.entries(userMapping)) {
+          if (record[sourceField] !== undefined && targetField) {
+            remapped[targetField] = record[sourceField];
+          }
+        }
+        return remapped;
+      });
+
+      // Validate against schema
+      const validated = remappedRecords.map((record, idx) => {
         const validated = {};
         const recordIssues = [];
 
@@ -81,7 +163,6 @@ export default function SmartDataImporter({ entityName, onComplete, trigger }) {
           if (schema.properties && schema.properties[key]) {
             validated[key] = value;
           } else if (!schema.properties || Object.keys(schema.properties).length === 0) {
-            // If schema has no specific properties, accept all fields
             validated[key] = value;
           } else {
             recordIssues.push(`Unknown field: ${key}`);
@@ -100,7 +181,7 @@ export default function SmartDataImporter({ entityName, onComplete, trigger }) {
         return { record: validated, issues: recordIssues, index: idx + 1 };
       });
 
-      // Separate valid records from problematic ones
+      // Separate valid from problematic
       const validRecords = validated.filter((v) => v.issues.length === 0).map((v) => v.record);
       const problematicRecords = validated.filter((v) => v.issues.length > 0);
 
@@ -122,22 +203,14 @@ export default function SmartDataImporter({ entityName, onComplete, trigger }) {
       setIssues([
         {
           type: 'error',
-          issue: error.message || 'Processing failed',
-          value: 'Please check file format and try again',
+          issue: 'Processing failed',
+          value: error.message || 'Please try again',
         },
       ]);
       setStep('review');
     } finally {
       setProcessing(false);
     }
-  }, [entityName]);
-
-  const handleDrop = (e) => {
-    e.preventDefault();
-    e.stopPropagation();
-    setDragActive(false);
-    const files = e.dataTransfer.files;
-    if (files?.[0]) processFile(files[0]);
   };
 
   const handleImport = async () => {
@@ -166,9 +239,20 @@ export default function SmartDataImporter({ entityName, onComplete, trigger }) {
     setOpen(false);
     setStep('upload');
     setFile(null);
+    setFilePreview(null);
+    setSchema(null);
+    setProposedMapping({});
+    setUserMapping({});
     setExtractedData([]);
     setIssues([]);
     setImportedCount(0);
+  };
+
+  const getSchemaFieldType = (fieldName) => {
+    if (!schema?.properties?.[fieldName]) return 'string';
+    const prop = schema.properties[fieldName];
+    if (prop.enum) return `enum: ${prop.enum.join(', ')}`;
+    return prop.type || 'string';
   };
 
   return (
@@ -216,8 +300,79 @@ export default function SmartDataImporter({ entityName, onComplete, trigger }) {
             <Loader2 className="w-8 h-8 animate-spin text-primary mb-3" />
             <p className="text-sm font-medium">Analyzing your file...</p>
             <p className="text-xs text-muted-foreground mt-1">
-              Extracting and validating data with AI
+              AI is examining the structure and proposing field mappings
             </p>
+          </div>
+        )}
+
+        {step === 'classify' && (
+          <div className="space-y-4">
+            {filePreview && (
+              <div className="bg-muted/50 border border-border rounded-lg p-3">
+                <p className="text-xs font-medium text-muted-foreground mb-2">File Preview:</p>
+                <p className="text-xs text-foreground/70">{filePreview}</p>
+              </div>
+            )}
+
+            <div>
+              <p className="text-sm font-medium mb-3">Confirm Field Mapping</p>
+              <p className="text-xs text-muted-foreground mb-3">
+                AI has detected fields from your file. Map them to the target entity fields below.
+              </p>
+
+              <div className="space-y-3 max-h-60 overflow-y-auto">
+                {Object.entries(proposedMapping).map(([sourceField, targetField]) => (
+                  <div key={sourceField} className="flex items-center gap-3">
+                    <div className="flex-1">
+                      <p className="text-xs font-medium text-foreground/70">{sourceField}</p>
+                    </div>
+                    <p className="text-xs text-muted-foreground">→</p>
+                    <div className="flex-1">
+                      <Select
+                        value={userMapping[sourceField] || ''}
+                        onValueChange={(value) =>
+                          setUserMapping((prev) => ({
+                            ...prev,
+                            [sourceField]: value,
+                          }))
+                        }
+                      >
+                        <SelectTrigger className="h-8 text-xs">
+                          <SelectValue placeholder="Select field..." />
+                        </SelectTrigger>
+                        <SelectContent>
+                          <SelectItem value={null}>Skip this field</SelectItem>
+                          {schema?.properties &&
+                            Object.entries(schema.properties).map(([fieldName]) => (
+                              <SelectItem key={fieldName} value={fieldName}>
+                                {fieldName}
+                              </SelectItem>
+                            ))}
+                        </SelectContent>
+                      </Select>
+                      <p className="text-xs text-muted-foreground mt-1">
+                        Type: {getSchemaFieldType(userMapping[sourceField])}
+                      </p>
+                    </div>
+                  </div>
+                ))}
+              </div>
+            </div>
+
+            <div className="flex justify-end gap-3 pt-4">
+              <Button variant="outline" onClick={closeDialog}>
+                Cancel
+              </Button>
+              <Button onClick={handleExtractAndValidate} disabled={processing}>
+                {processing ? (
+                  <>
+                    <Loader2 className="w-4 h-4 animate-spin mr-2" /> Processing...
+                  </>
+                ) : (
+                  'Extract & Validate'
+                )}
+              </Button>
+            </div>
           </div>
         )}
 
@@ -261,8 +416,7 @@ export default function SmartDataImporter({ entityName, onComplete, trigger }) {
                   ))}
                 </div>
                 <p className="text-xs text-amber-700 mt-3 italic">
-                  These records have been set aside. You can review and manually import them
-                  later.
+                  These records have been set aside. You can review and manually import them later.
                 </p>
               </div>
             )}
