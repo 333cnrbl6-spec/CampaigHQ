@@ -26,6 +26,7 @@ const navItems = [
   { path: '/leaderboard', label: 'Leaderboard', icon: Trophy },
   { path: '/gotv', label: 'GOTV Tracker', icon: Target },
   { path: '/activity', label: 'Live Activity', icon: Radio },
+  { path: '/turf', label: 'Turf Management', icon: MapPin },
 ];
 
 export default function Sidebar() {

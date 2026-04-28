@@ -1,0 +1,43 @@
+{
+  "name": "Turf",
+  "type": "object",
+  "properties": {
+    "name": {
+      "type": "string",
+      "description": "Name of this turf area (e.g. 'North Tyldesley Block A')"
+    },
+    "assigned_to": {
+      "type": "string",
+      "description": "Name or email of canvasser / team assigned to this turf"
+    },
+    "color": {
+      "type": "string",
+      "description": "Hex color for map display"
+    },
+    "geojson": {
+      "type": "string",
+      "description": "GeoJSON string representing the drawn polygon/shape"
+    },
+    "status": {
+      "type": "string",
+      "enum": [
+        "unassigned",
+        "assigned",
+        "in_progress",
+        "completed"
+      ],
+      "default": "unassigned"
+    },
+    "notes": {
+      "type": "string"
+    },
+    "contact_count": {
+      "type": "number",
+      "default": 0,
+      "description": "Estimated number of contacts in this turf"
+    }
+  },
+  "required": [
+    "name"
+  ]
+}

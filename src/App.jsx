@@ -21,6 +21,7 @@ import TeamChat from './pages/TeamChat';
 import CampaignMaterials from './pages/CampaignMaterials';
 import Outreach from './pages/Outreach';
 import Leaderboard from './pages/Leaderboard';
+import TurfManagement from './pages/TurfManagement';
 import GOTVTracker from './pages/GOTVTracker';
 import ActivityFeed from './pages/ActivityFeed';
 
@@ -68,6 +69,7 @@ const AuthenticatedApp = () => {
         <Route path="/leaderboard" element={<Leaderboard />} />
         <Route path="/gotv" element={<GOTVTracker />} />
         <Route path="/activity" element={<ActivityFeed />} />
+        <Route path="/turf" element={<TurfManagement />} />
       </Route>
       <Route path="*" element={<PageNotFound />} />
     </Routes>
