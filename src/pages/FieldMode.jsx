@@ -1,12 +1,15 @@
-import React, { useState } from 'react';
+import React, { useState, useMemo } from 'react';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
+import { Input } from '@/components/ui/input';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Badge } from '@/components/ui/badge';
 import { Textarea } from '@/components/ui/textarea';
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/components/ui/dialog';
-import { ChevronLeft, ChevronRight, Check, X, AlertCircle, WifiOff, Wifi, RefreshCw, CloudUpload } from 'lucide-react';
+import { ChevronLeft, ChevronRight, Check, X, AlertCircle, WifiOff, Wifi, RefreshCw, CloudUpload, Search, Clock, MessageSquare } from 'lucide-react';
 import { useOfflineFieldMode } from '../hooks/useOfflineFieldMode';
+import { base44 } from '@/api/base44Client';
+import { useQuery } from '@tanstack/react-query';
 
 const SUPPORT_LEVELS = {
   strong_supporter: { label: 'Strong Supporter', color: 'bg-green-100 text-green-800' },
@@ -21,6 +24,8 @@ export default function FieldMode() {
   const [showInteractionDialog, setShowInteractionDialog] = useState(false);
   const [interactionData, setInteractionData] = useState({ type: 'door_knock', outcome: 'neutral', notes: '' });
   const [supportLevel, setSupportLevel] = useState('unknown');
+  const [searchQuery, setSearchQuery] = useState('');
+  const [searchMode, setSearchMode] = useState(false);
 
   const {
     isOnline,
@@ -32,6 +37,24 @@ export default function FieldMode() {
     logInteraction,
     syncQueue,
   } = useOfflineFieldMode();
+
+  // Fetch interaction history for current contact
+  const { data: interactions = [] } = useQuery({
+    queryKey: ['interactions', contacts[currentIndex]?.id],
+    queryFn: () => base44.entities.ContactInteraction.filter({ contact_id: contacts[currentIndex]?.id }, '-date', 10),
+    enabled: !!contacts[currentIndex]?.id && isOnline,
+  });
+
+  // Search contacts by name, postcode, address
+  const filteredContacts = useMemo(() => {
+    if (!searchQuery.trim()) return contacts;
+    const query = searchQuery.toLowerCase();
+    return contacts.filter(c =>
+      c.name?.toLowerCase().includes(query) ||
+      c.postcode?.toLowerCase().includes(query) ||
+      c.address?.toLowerCase().includes(query)
+    );
+  }, [contacts, searchQuery]);
 
   if (isLoadingContacts) {
     return (
@@ -55,8 +78,9 @@ export default function FieldMode() {
     );
   }
 
-  const currentContact = contacts[currentIndex];
-  const progress = Math.round((currentIndex / contacts.length) * 100);
+  const currentContact = searchMode ? filteredContacts[currentIndex] : contacts[currentIndex];
+  const displayContacts = searchMode ? filteredContacts : contacts;
+  const progress = Math.round((currentIndex / displayContacts.length) * 100);
 
   const handleLogInteraction = async () => {
     const interactionPayload = {
@@ -78,7 +102,13 @@ export default function FieldMode() {
     setShowInteractionDialog(false);
     setInteractionData({ type: 'door_knock', outcome: 'neutral', notes: '' });
     setSupportLevel('unknown');
-    setCurrentIndex(i => Math.min(i + 1, contacts.length - 1));
+    setCurrentIndex(i => Math.min(i + 1, displayContacts.length - 1));
+  };
+
+  const handleSelectContact = (index) => {
+    setCurrentIndex(index);
+    setSearchMode(false);
+    setSearchQuery('');
   };
 
   return (
@@ -113,24 +143,74 @@ export default function FieldMode() {
           </div>
         )}
 
+        {/* Search Bar */}
+        {!searchMode && (
+          <div className="relative">
+            <Input
+              placeholder="Search by name, postcode, address..."
+              value={searchQuery}
+              onChange={(e) => {
+                setSearchQuery(e.target.value);
+                setSearchMode(e.target.value.trim().length > 0);
+                setCurrentIndex(0);
+              }}
+              className="pl-10"
+            />
+            <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 w-4 h-4 text-muted-foreground" />
+          </div>
+        )}
+
+        {/* Search Results */}
+        {searchMode && filteredContacts.length > 0 && (
+          <div className="max-h-96 overflow-y-auto space-y-2 border border-border rounded-lg p-2">
+            {filteredContacts.map((contact, idx) => (
+              <button
+                key={contact.id}
+                onClick={() => handleSelectContact(idx)}
+                className={`w-full text-left p-3 rounded-lg border transition-colors ${
+                  idx === currentIndex
+                    ? 'bg-primary/10 border-primary'
+                    : 'bg-muted/30 border-border hover:bg-muted/50'
+                }`}
+              >
+                <p className="font-medium text-sm">{contact.name}</p>
+                <p className="text-xs text-muted-foreground mt-1">{contact.address}</p>
+                {contact.postcode && <p className="text-xs text-muted-foreground">{contact.postcode}</p>}
+              </button>
+            ))}
+          </div>
+        )}
+
+        {searchMode && filteredContacts.length === 0 && (
+          <div className="text-center py-4">
+            <p className="text-sm text-muted-foreground">No contacts found</p>
+            <Button variant="ghost" size="sm" onClick={() => { setSearchQuery(''); setSearchMode(false); }} className="mt-2">
+              Clear search
+            </Button>
+          </div>
+        )}
+
         {/* Progress Bar */}
-        <div>
-          <div className="flex justify-between items-center mb-2">
-            <h1 className="text-2xl font-bold font-heading">Door Knocking</h1>
-            <span className="text-sm font-medium text-muted-foreground">{currentIndex + 1} of {contacts.length}</span>
+        {!searchMode && (
+          <div>
+            <div className="flex justify-between items-center mb-2">
+              <h1 className="text-2xl font-bold font-heading">Door Knocking</h1>
+              <span className="text-sm font-medium text-muted-foreground">{currentIndex + 1} of {displayContacts.length}</span>
+            </div>
+            <div className="w-full bg-border rounded-full h-2">
+              <div className="bg-primary h-2 rounded-full transition-all" style={{ width: `${progress}%` }} />
+            </div>
+            <p className="text-xs text-muted-foreground mt-1">{progress}% complete</p>
           </div>
-          <div className="w-full bg-border rounded-full h-2">
-            <div className="bg-primary h-2 rounded-full transition-all" style={{ width: `${progress}%` }} />
-          </div>
-          <p className="text-xs text-muted-foreground mt-1">{progress}% complete</p>
-        </div>
+        )}
 
         {/* Contact Card */}
         <Card>
           <CardHeader>
             <CardTitle className="text-xl">{currentContact.name}</CardTitle>
           </CardHeader>
-          <CardContent className="space-y-3">
+          <CardContent className="space-y-4">
+            {/* Contact Info */}
             <div>
               <p className="text-sm text-muted-foreground">Address</p>
               <p className="font-medium">{currentContact.address}</p>
@@ -142,40 +222,95 @@ export default function FieldMode() {
                 <p className="font-medium">{currentContact.phone}</p>
               </div>
             )}
-            {currentContact.notes && (
+            {currentContact.email && (
               <div>
-                <p className="text-sm text-muted-foreground">Notes</p>
+                <p className="text-sm text-muted-foreground">Email</p>
+                <p className="font-medium text-sm">{currentContact.email}</p>
+              </div>
+            )}
+
+            {/* Support Level & Canvass Status */}
+            <div className="border-t border-border pt-3">
+              <p className="text-sm font-semibold mb-2">Relationship Status</p>
+              <div className="space-y-2">
+                {currentContact.support_level && currentContact.support_level !== 'unknown' && (
+                  <Badge className={SUPPORT_LEVELS[currentContact.support_level]?.color}>
+                    {SUPPORT_LEVELS[currentContact.support_level]?.label}
+                  </Badge>
+                )}
+                {currentContact.canvassed && currentContact.canvass_date && (
+                  <div className="flex items-center gap-2 text-xs">
+                    <Clock className="w-3 h-3 text-muted-foreground" />
+                    <span className="text-muted-foreground">Last visited: {currentContact.canvass_date}</span>
+                  </div>
+                )}
+                {!currentContact.canvassed && (
+                  <p className="text-xs text-muted-foreground">Not yet canvassed</p>
+                )}
+              </div>
+            </div>
+
+            {/* Key Issues */}
+            {currentContact.key_issues?.length > 0 && (
+              <div className="border-t border-border pt-3">
+                <p className="text-sm font-semibold mb-2">Key Concerns</p>
+                <div className="flex flex-wrap gap-1">
+                  {currentContact.key_issues.map((issue) => (
+                    <Badge key={issue} variant="secondary" className="text-xs">
+                      {issue}
+                    </Badge>
+                  ))}
+                </div>
+              </div>
+            )}
+
+            {/* General Notes */}
+            {currentContact.notes && (
+              <div className="border-t border-border pt-3">
+                <p className="text-sm font-semibold mb-2">Notes</p>
                 <p className="text-sm bg-secondary/30 p-2 rounded">{currentContact.notes}</p>
               </div>
             )}
-            {currentContact.support_level && currentContact.support_level !== 'unknown' && (
-              <div>
-                <p className="text-sm text-muted-foreground">Previous Support</p>
-                <Badge className={SUPPORT_LEVELS[currentContact.support_level]?.color}>
-                  {SUPPORT_LEVELS[currentContact.support_level]?.label}
-                </Badge>
+
+            {/* Interaction History */}
+            {isOnline && interactions.length > 0 && (
+              <div className="border-t border-border pt-3">
+                <p className="text-sm font-semibold mb-2 flex items-center gap-1">
+                  <MessageSquare className="w-4 h-4" /> Recent Interactions
+                </p>
+                <div className="space-y-2 max-h-40 overflow-y-auto">
+                  {interactions.map((interaction) => (
+                    <div key={interaction.id} className="bg-muted/30 p-2 rounded text-xs">
+                      <p className="font-medium capitalize">{interaction.type.replace('_', ' ')} • {interaction.date}</p>
+                      {interaction.outcome && <p className="text-muted-foreground">Outcome: {interaction.outcome}</p>}
+                      {interaction.notes && <p className="text-muted-foreground mt-1">{interaction.notes}</p>}
+                    </div>
+                  ))}
+                </div>
               </div>
             )}
           </CardContent>
         </Card>
 
         {/* Action Buttons */}
-        <div className="space-y-3">
-          <Button className="w-full h-12 text-base gap-2" onClick={() => setShowInteractionDialog(true)}>
-            <Check className="w-5 h-5" /> Log Interaction
-          </Button>
-          <div className="flex gap-2">
-            <Button variant="outline" className="flex-1" onClick={() => setCurrentIndex(i => Math.max(0, i - 1))} disabled={currentIndex === 0}>
-              <ChevronLeft className="w-4 h-4" />
+        {!searchMode && (
+          <div className="space-y-3">
+            <Button className="w-full h-12 text-base gap-2" onClick={() => setShowInteractionDialog(true)}>
+              <Check className="w-5 h-5" /> Log Interaction
             </Button>
-            <Button variant="outline" className="flex-1" onClick={() => setCurrentIndex(i => Math.min(contacts.length - 1, i + 1))} disabled={currentIndex === contacts.length - 1}>
-              <ChevronRight className="w-4 h-4" />
+            <div className="flex gap-2">
+              <Button variant="outline" className="flex-1" onClick={() => setCurrentIndex(i => Math.max(0, i - 1))} disabled={currentIndex === 0}>
+                <ChevronLeft className="w-4 h-4" />
+              </Button>
+              <Button variant="outline" className="flex-1" onClick={() => setCurrentIndex(i => Math.min(displayContacts.length - 1, i + 1))} disabled={currentIndex === displayContacts.length - 1}>
+                <ChevronRight className="w-4 h-4" />
+              </Button>
+            </div>
+            <Button variant="ghost" className="w-full text-destructive" onClick={() => setCurrentIndex(i => Math.min(displayContacts.length - 1, i + 1))}>
+              <X className="w-4 h-4 mr-2" /> Skip Contact
             </Button>
           </div>
-          <Button variant="ghost" className="w-full text-destructive" onClick={() => setCurrentIndex(i => Math.min(contacts.length - 1, i + 1))}>
-            <X className="w-4 h-4 mr-2" /> Skip Contact
-          </Button>
-        </div>
+        )}
 
         {/* Interaction Dialog */}
         <Dialog open={showInteractionDialog} onOpenChange={setShowInteractionDialog}>
