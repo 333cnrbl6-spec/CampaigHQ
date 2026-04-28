@@ -1,0 +1,43 @@
+{
+  "name": "ImportLog",
+  "type": "object",
+  "properties": {
+    "file_name": {
+      "type": "string",
+      "description": "Name of the uploaded file"
+    },
+    "entity_type": {
+      "type": "string",
+      "description": "Type of entity imported (e.g. Contact, Issue)"
+    },
+    "record_count": {
+      "type": "number",
+      "description": "Number of records successfully created"
+    },
+    "status": {
+      "type": "string",
+      "enum": [
+        "completed",
+        "failed"
+      ],
+      "default": "completed",
+      "description": "Status of the import"
+    },
+    "created_record_ids": {
+      "type": "array",
+      "items": {
+        "type": "string"
+      },
+      "description": "IDs of created records for rollback"
+    },
+    "error_message": {
+      "type": "string",
+      "description": "Error message if import failed"
+    }
+  },
+  "required": [
+    "file_name",
+    "entity_type",
+    "record_count"
+  ]
+}

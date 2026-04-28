@@ -6,6 +6,7 @@ import { Button } from '@/components/ui/button';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import SmartDropZone from '@/components/import/SmartDropZone';
 import FieldMapper from '@/components/import/FieldMapper';
+import RecentImports from '@/components/import/RecentImports';
 
 const ENTITIES = {
   Contact: { icon: '👥', description: 'Voter contacts and contact details' },
@@ -100,8 +101,20 @@ Map each source column to its corresponding target field. Only include mapped fi
 
       const records = extractRes.records || [];
       if (records.length > 0) {
-        await base44.entities[selectedEntity].bulkCreate(records);
+        const createdRecords = await base44.entities[selectedEntity].bulkCreate(records);
+        const recordIds = createdRecords.map(r => r.id) || [];
+        
+        // Log the import
+        await base44.entities.ImportLog.create({
+          file_name: currentFile.name,
+          entity_type: selectedEntity,
+          record_count: records.length,
+          status: 'completed',
+          created_record_ids: recordIds,
+        });
+        
         queryClient.invalidateQueries({ queryKey: [selectedEntity.toLowerCase()] });
+        queryClient.invalidateQueries({ queryKey: ['import_logs'] });
         setStatus({ count: records.length, entity: selectedEntity });
         setError(null);
         setTimeout(() => {
@@ -123,7 +136,7 @@ Map each source column to its corresponding target field. Only include mapped fi
   };
 
   return (
-    <div className="p-6 lg:p-10 max-w-2xl mx-auto">
+    <div className="p-6 lg:p-10 max-w-4xl mx-auto">
       <div className="mb-8">
         <h1 className="font-heading text-3xl font-bold mb-2">Import Data</h1>
         <p className="text-muted-foreground">
@@ -237,6 +250,11 @@ Map each source column to its corresponding target field. Only include mapped fi
             <span>{error}</span>
           </div>
         )}
+      </div>
+
+      <div className="mt-12 pt-8 border-t border-border">
+        <h2 className="font-heading text-2xl font-bold mb-4">Recent Imports</h2>
+        <RecentImports />
       </div>
     </div>
   );
