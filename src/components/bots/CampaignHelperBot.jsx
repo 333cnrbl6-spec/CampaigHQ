@@ -24,11 +24,16 @@ export default function CampaignHelperBot() {
       const conv = await base44.agents.createConversation({
         agent_name: AGENT_NAME,
         metadata: {
-          name: 'Campaign Helper Chat',
-          description: 'Live assistance with campaign tasks',
+          name: 'Chat with Olive',
+          description: 'Campaign support and guidance',
         },
       });
       setConversationId(conv.id);
+      // Add greeting message
+      setMessages([{
+        role: 'assistant',
+        content: "Hi! 👋 I'm **Olive**, your Green Party campaign assistant. I'm here to help with volunteer coordination, voter outreach, event planning, and keeping our campaign running smoothly. What can I help you with today?"
+      }]);
     };
     initConversation();
   }, []);
@@ -112,17 +117,14 @@ export default function CampaignHelperBot() {
             className="fixed bottom-24 right-6 z-40 w-96 max-w-[calc(100vw-24px)] h-[600px] bg-white rounded-2xl shadow-2xl border border-border/50 flex flex-col overflow-hidden"
           >
             {/* Header */}
-            <div className="bg-gradient-to-r from-primary to-emerald-600 text-white p-4 flex items-center justify-between">
+            <div className="bg-gradient-to-r from-primary via-emerald-500 to-emerald-600 text-white p-4 flex items-center justify-between">
               <div className="flex items-center gap-3">
-                <div className="w-10 h-10 rounded-full bg-white/20 flex flex-col items-center justify-center relative overflow-hidden">
-                  {/* Head */}
-                  <div className="w-3 h-3 rounded-full bg-orange-200 absolute top-1"></div>
-                  {/* Body */}
-                  <div className="w-4 h-2.5 bg-emerald-300 rounded-sm mt-4"></div>
+                <div className="w-10 h-10 rounded-full bg-white/20 flex items-center justify-center text-lg">
+                  🌿
                 </div>
                 <div>
                   <h3 className="font-semibold text-sm">Olive</h3>
-                  <p className="text-xs text-white/70">Campaign Helper</p>
+                  <p className="text-xs text-white/75">Green Party Campaign Guide</p>
                 </div>
               </div>
             </div>
@@ -157,7 +159,7 @@ export default function CampaignHelperBot() {
                 <div className="flex justify-start">
                   <div className="bg-white text-foreground border border-border/50 rounded-xl px-3 py-2 flex items-center gap-2">
                     <Loader2 className="w-3 h-3 animate-spin" />
-                    <span className="text-xs">Olive is thinking...</span>
+                    <span className="text-xs">Olive is working on that...</span>
                   </div>
                 </div>
               )}
@@ -167,7 +169,7 @@ export default function CampaignHelperBot() {
             {/* Input */}
             <div className="border-t border-border/50 p-3 bg-white flex gap-2">
               <Input
-                placeholder="Ask for help..."
+                placeholder="Ask Olive anything..."
                 value={input}
                 onChange={(e) => setInput(e.target.value)}
                 onKeyPress={(e) => e.key === 'Enter' && handleSendMessage()}
