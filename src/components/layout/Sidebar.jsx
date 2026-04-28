@@ -28,6 +28,7 @@ const navItems = [
   { path: '/activity', label: 'Live Activity', icon: Radio },
   { path: '/turf', label: 'Turf Management', icon: MapPin },
   { path: '/polling-map', label: 'Polling Districts', icon: MapPin },
+  { path: '/turf-sheets', label: 'Turf Sheets', icon: Printer },
 ];
 
 export default function Sidebar() {

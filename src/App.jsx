@@ -22,6 +22,7 @@ import CampaignMaterials from './pages/CampaignMaterials';
 import Outreach from './pages/Outreach';
 import Leaderboard from './pages/Leaderboard';
 import TurfManagement from './pages/TurfManagement';
+import TurfSheets from './pages/TurfSheets';
 import PollingMap from './pages/PollingMap';
 import GOTVTracker from './pages/GOTVTracker';
 import ActivityFeed from './pages/ActivityFeed';
@@ -72,6 +73,7 @@ const AuthenticatedApp = () => {
         <Route path="/activity" element={<ActivityFeed />} />
         <Route path="/turf" element={<TurfManagement />} />
         <Route path="/polling-map" element={<PollingMap />} />
+        <Route path="/turf-sheets" element={<TurfSheets />} />
       </Route>
       <Route path="*" element={<PageNotFound />} />
     </Routes>
