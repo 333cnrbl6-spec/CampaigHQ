@@ -131,8 +131,11 @@ export default function CampaignHelperBot() {
             {/* Header */}
             <div className="bg-gradient-to-r from-primary to-emerald-600 text-white p-4 flex items-center justify-between">
               <div className="flex items-center gap-3">
-                <div className="w-8 h-8 rounded-full bg-white/20 flex items-center justify-center text-lg">
-                  🌿
+                <div className="w-10 h-10 rounded-full bg-white/20 flex flex-col items-center justify-center relative overflow-hidden">
+                  {/* Head */}
+                  <div className="w-3 h-3 rounded-full bg-orange-200 absolute top-1"></div>
+                  {/* Body */}
+                  <div className="w-4 h-2.5 bg-emerald-300 rounded-sm mt-4"></div>
                 </div>
                 <div>
                   <h3 className="font-semibold text-sm">Olive</h3>
