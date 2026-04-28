@@ -1,8 +1,9 @@
 import { useState } from 'react';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
-import { Copy, CheckCheck, Twitter, Instagram, Facebook, Linkedin, ChevronDown, ChevronUp, Lightbulb, Calendar, Megaphone } from 'lucide-react';
+import { Copy, CheckCheck, Twitter, Instagram, Facebook, ChevronDown, ChevronUp, Lightbulb, Calendar, Megaphone } from 'lucide-react';
 import { toast } from 'sonner';
+import AIMessageAssistant from '../components/social/AIMessageAssistant';
 
 // ─── Data ────────────────────────────────────────────────────────────────────
 
@@ -377,7 +378,7 @@ function StepPhase({ phase }) {
 
 export default function SocialMedia() {
   const [activePlatform, setActivePlatform] = useState('facebook');
-  const [activeTab, setActiveTab] = useState('posts'); // posts | steps | hashtags
+  const [activeTab, setActiveTab] = useState('ai');
 
   const platform = PLATFORMS.find(p => p.key === activePlatform);
   const PlatformIcon = platform.icon;
@@ -394,6 +395,7 @@ export default function SocialMedia() {
       {/* Tab nav */}
       <div className="flex gap-2 flex-wrap">
         {[
+          { key: 'ai', label: '✨ AI Assistant' },
           { key: 'posts', label: '📝 Ready-to-Copy Posts' },
           { key: 'steps', label: '📅 Campaign Plan' },
           { key: 'hashtags', label: '#️⃣ Hashtag Bank' },
@@ -404,6 +406,9 @@ export default function SocialMedia() {
           </Button>
         ))}
       </div>
+
+      {/* AI TAB */}
+      {activeTab === 'ai' && <AIMessageAssistant />}
 
       {/* POSTS TAB */}
       {activeTab === 'posts' && (
