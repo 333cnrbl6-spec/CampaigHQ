@@ -45,13 +45,24 @@ export default function DataImport() {
       const uploadRes = await base44.integrations.Core.UploadFile({ file });
       setFileUrl(uploadRes.file_url);
 
-      // Extract all text/content from the document
-      const textRes = await base44.integrations.Core.InvokeLLM({
-        prompt: `Extract ALL text and content from this document. Return the complete extracted text.`,
-        file_urls: [uploadRes.file_url],
+      // Extract text using generic schema that works for all file types
+      const extractRes = await base44.integrations.Core.ExtractDataFromUploadedFile({
+        file_url: uploadRes.file_url,
+        json_schema: {
+          type: 'object',
+          properties: {
+            content: { type: 'string', description: 'All text and content from the file' },
+          },
+        },
       });
 
-      setExtractedText(textRes);
+      if (extractRes.status === 'success' && extractRes.output?.content) {
+        setExtractedText(extractRes.output.content);
+      } else {
+        setError(extractRes.details || 'Failed to extract document content');
+        setProcessing(false);
+        setProcessingStep(null);
+      }
     } catch (err) {
       setError(err.message || 'Failed to extract document content');
       setProcessing(false);
