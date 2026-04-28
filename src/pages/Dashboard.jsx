@@ -7,6 +7,7 @@ import UpcomingEvents from '../components/dashboard/UpcomingEvents';
 import SupportBreakdown from '../components/dashboard/SupportBreakdown';
 import RecentActivity from '../components/dashboard/RecentActivity';
 import CanvassingMap from '../components/dashboard/CanvassingMap';
+import SupportLevelWidget from '../components/dashboard/SupportLevelWidget';
 
 export default function Dashboard() {
   const { data: contacts = [] } = useQuery({
@@ -79,6 +80,11 @@ export default function Dashboard() {
       <div className="bg-card rounded-2xl p-6 border border-border/50 shadow-sm mb-6">
         <h3 className="font-heading text-lg font-semibold mb-4">Ward Canvassing Map</h3>
         <CanvassingMap contacts={contacts} />
+      </div>
+
+      {/* Support Level Widget — full width */}
+      <div className="grid grid-cols-1 lg:grid-cols-2 gap-6 mb-6">
+        <SupportLevelWidget contacts={contacts} />
       </div>
 
       {/* Content Grid */}
