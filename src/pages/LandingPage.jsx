@@ -88,14 +88,14 @@ const PLEDGES = [
 ];
 
 const VALUES = [
-  { icon: Heart, label: 'Compassion', desc: 'A career dedicated to community welfare, working with people in need across the world.' },
-  { icon: Globe, label: 'Global Experience', desc: 'Decades of working with governments and communities to deliver real-world solutions.' },
-  { icon: Users, label: 'Community First', desc: '6 years living in Tyldesley — drawn here by its warmth and staying because of its people.' },
+  { icon: Heart, label: 'Compassion', desc: 'A career built around delivering life-saving treatment to children and vulnerable communities worldwide.' },
+  { icon: Globe, label: 'Global Experience', desc: 'Over 20 years working with local communities and national governments to deliver real-world solutions.' },
+  { icon: Users, label: 'Community First', desc: '6 years living in Tyldesley — drawn here by its warmth and community spirit.' },
   { icon: Leaf, label: 'Green Values', desc: 'Committed to environmental protection, sustainability, and a fairer economy for all.' },
 ];
 
 const TIMELINE = [
-  { year: 'Decades', label: 'International health & community work', detail: 'Worked with local communities and national governments around the world, bringing principled problem-solving and a commitment to public welfare.' },
+  { year: '20+ Years', label: 'International health & community work', detail: 'Worked with local communities and national governments worldwide to deliver life-saving treatment to children.' },
   { year: '6 Years', label: 'Tyldesley resident', detail: 'Chose Tyldesley for its community spirit and warmth. Rooted in the ward, Paul knows the streets, the issues, and the people.' },
   { year: '2026', label: 'Green Party candidate', detail: 'Standing for Tyldesley & Mosley Common in the May 2026 local elections to put residents first.' },
 ];
@@ -235,12 +235,12 @@ function AboutSection() {
             </div>
             {/* Floating stats */}
             <div className="absolute -right-6 top-1/4 bg-white rounded-2xl shadow-xl p-4 border border-border/50">
-              <p className="text-3xl font-bold text-primary font-heading">6</p>
-              <p className="text-xs text-muted-foreground font-medium">Years in Tyldesley</p>
+              <p className="text-3xl font-bold text-primary font-heading">20+</p>
+              <p className="text-xs text-muted-foreground font-medium">Years public service</p>
             </div>
             <div className="absolute -left-6 bottom-1/4 bg-white rounded-2xl shadow-xl p-4 border border-border/50">
-              <p className="text-3xl font-bold text-primary font-heading">7</p>
-              <p className="text-xs text-muted-foreground font-medium">May — Polling Day</p>
+              <p className="text-3xl font-bold text-primary font-heading">6</p>
+              <p className="text-xs text-muted-foreground font-medium">Years in Tyldesley</p>
             </div>
           </div>
 
@@ -250,7 +250,7 @@ function AboutSection() {
               <span className="text-primary text-sm font-semibold uppercase tracking-wider">Meet Your Candidate</span>
               <h2 className="font-heading text-4xl font-bold mt-2 mb-4">A Life of Service — Now Fighting for You</h2>
               <p className="text-muted-foreground text-lg leading-relaxed">
-                Paul Binns has built a career around public service — working with local communities and national governments to deliver meaningful change. He brings that same dedication, determination, and compassionate problem-solving to Tyldesley & Mosley Common.
+                For over 20 years, Paul Binns has worked with local communities and national governments worldwide to deliver life-saving treatment to children. He brings that same dedication, determination, and compassionate problem-solving to Tyldesley & Mosley Common.
               </p>
             </div>
 
