@@ -8,6 +8,7 @@ import ImportProgress from '@/components/import/ImportProgress';
 import ExtractionPreview from '@/components/import/ExtractionPreview';
 import DatabaseAssessment from '@/components/import/DatabaseAssessment';
 import RecentImports from '@/components/import/RecentImports';
+import ValidationResults from '@/components/import/ValidationResults';
 
 export default function DataImport() {
   const queryClient = useQueryClient();
@@ -29,6 +30,8 @@ export default function DataImport() {
   const [extractedText, setExtractedText] = useState(null);
   const [textConfirmed, setTextConfirmed] = useState(false);
   const [assessment, setAssessment] = useState(null);
+  const [extractedRecords, setExtractedRecords] = useState(null);
+  const [validationResult, setValidationResult] = useState(null);
   const [error, setError] = useState(null);
   const [importStatus, setImportStatus] = useState(null);
 
@@ -183,7 +186,7 @@ Return a structured JSON assessment with:
     }
   };
 
-  // Stage 4: Import
+  // Stage 4: Extract & Validate Records
   const handleConfirmImport = async (fieldOverrides) => {
     if (!fileUrl || !assessment) return;
 
@@ -208,7 +211,7 @@ Return a structured JSON assessment with:
       const extractRes = await base44.integrations.Core.InvokeLLM({
         prompt: `Extract all records from this file using this field mapping: ${mappingInstructions}.
         
-Map each source column to its corresponding target field. Return ONLY valid, complete records as an array of JSON objects. Do not include incomplete or invalid records.`,
+Map each source column to its corresponding target field. Return ALL records as an array of JSON objects, including incomplete or invalid ones for validation review.`,
         file_urls: [fileUrl],
         response_json_schema: {
           type: 'object',
@@ -221,30 +224,102 @@ Map each source column to its corresponding target field. Return ONLY valid, com
       const records = extractRes.records || [];
 
       if (records.length === 0) {
-        setError('No valid records could be extracted');
+        setError('No records could be extracted from the file');
         return;
       }
 
-      // Create records in the database
+      setExtractedRecords(records);
+      
+      // Validate records against entity schema
       const entityName = assessment.suggestedEntity || 'Contact';
-      const createdRecords = await base44.entities[entityName].bulkCreate(records);
+      const entitySchema = await base44.entities[entityName].schema();
+      
+      const validationErrors = [];
+      const validRecords = [];
+
+      records.forEach((record, idx) => {
+        const recordErrors = [];
+
+        // Check required fields
+        if (entitySchema.required) {
+          entitySchema.required.forEach(field => {
+            if (record[field] === undefined || record[field] === null || 
+                (typeof record[field] === 'string' && record[field].trim() === '')) {
+              recordErrors.push(`Missing required field: ${field}`);
+            }
+          });
+        }
+
+        // Check data types and enums
+        Object.entries(entitySchema.properties || {}).forEach(([field, fieldSchema]) => {
+          if (!(field in record)) return;
+          const value = record[field];
+
+          if (fieldSchema.enum && !fieldSchema.enum.includes(value)) {
+            recordErrors.push(`Field "${field}": "${value}" must be one of: ${fieldSchema.enum.join(', ')}`);
+          }
+
+          if (fieldSchema.type === 'number' && isNaN(Number(value))) {
+            recordErrors.push(`Field "${field}": "${value}" is not a valid number`);
+          }
+
+          if (fieldSchema.format === 'date' && value && !/^\d{4}-\d{2}-\d{2}/.test(String(value))) {
+            recordErrors.push(`Field "${field}": date must be in YYYY-MM-DD format`);
+          }
+        });
+
+        if (recordErrors.length > 0) {
+          validationErrors.push({ recordIndex: idx + 1, errors: recordErrors, record });
+        } else {
+          validRecords.push(record);
+        }
+      });
+
+      setValidationResult({
+        total: records.length,
+        valid: validRecords.length,
+        invalid: validationErrors,
+        entityName,
+      });
+
+      markStageComplete(4);
+    } catch (err) {
+      setError(err.message || 'Failed to extract and validate records');
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  // Stage 5: Final Import (after validation approval)
+  const handleFinalImport = async () => {
+    if (!validationResult?.valid || validationResult.valid === 0) {
+      setError('No valid records to import');
+      return;
+    }
+
+    setLoading(true);
+    try {
+      const validRecords = validationResult.valid
+        ? extractedRecords.filter((_, idx) => !validationResult.invalid.some(err => err.recordIndex === idx + 1))
+        : [];
+
+      const createdRecords = await base44.entities[validationResult.entityName].bulkCreate(validRecords);
       const recordIds = createdRecords.map(r => r.id) || [];
 
       // Log the import
       await base44.entities.ImportLog.create({
         file_name: currentFile.name,
         file_url: fileUrl,
-        entity_type: entityName,
-        record_count: records.length,
+        entity_type: validationResult.entityName,
+        record_count: recordIds.length,
         status: 'completed',
         created_record_ids: recordIds,
       });
 
-      queryClient.invalidateQueries({ queryKey: [entityName.toLowerCase()] });
+      queryClient.invalidateQueries({ queryKey: [validationResult.entityName.toLowerCase()] });
       queryClient.invalidateQueries({ queryKey: ['import_logs'] });
 
-      markStageComplete(4);
-      setImportStatus({ count: records.length, entity: entityName });
+      setImportStatus({ count: recordIds.length, entity: validationResult.entityName });
 
       // Reset after 4 seconds
       setTimeout(() => {
@@ -255,6 +330,8 @@ Map each source column to its corresponding target field. Return ONLY valid, com
         setExtractedText(null);
         setTextConfirmed(false);
         setAssessment(null);
+        setExtractedRecords(null);
+        setValidationResult(null);
         setImportStatus(null);
       }, 4000);
     } catch (err) {
@@ -320,10 +397,23 @@ Map each source column to its corresponding target field. Return ONLY valid, com
           )}
 
           {/* Stage 3: Database Assessment */}
-          {currentStage === 3 && assessment && (
+          {currentStage === 3 && assessment && !validationResult && (
             <DatabaseAssessment
               assessment={assessment}
               onConfirm={handleConfirmImport}
+              loading={loading}
+            />
+          )}
+
+          {/* Stage 4: Validation Results */}
+          {validationResult && !importStatus && (
+            <ValidationResults
+              result={validationResult}
+              onConfirm={handleFinalImport}
+              onCancel={() => {
+                setValidationResult(null);
+                setCurrentStage(3);
+              }}
               loading={loading}
             />
           )}
