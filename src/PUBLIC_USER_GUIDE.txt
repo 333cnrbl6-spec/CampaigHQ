@@ -1,0 +1,335 @@
+================================================================================
+TYLDESLEY & MOSLEY COMMON GREEN PARTY CAMPAIGN APP
+User Guide & Feature Overview
+================================================================================
+
+TABLE OF CONTENTS
+1. App Overview
+2. Getting Started
+3. Key Features & How to Use Them
+4. Best Practices
+5. Troubleshooting
+
+================================================================================
+1. APP OVERVIEW
+================================================================================
+
+The Tyldesley & Mosley Common Green Party Campaign App is a comprehensive tool 
+designed to help Paul Binns and campaign volunteers manage voter contact, track 
+campaign progress, and organize door-knocking activities efficiently.
+
+The app helps you:
+• Track every voter conversation and contact attempt
+• Monitor support levels across the ward
+• Organize volunteers and assign canvassing areas
+• Plan events and coordinate team activities
+• View real-time campaign progress
+• Manage campaign materials and resources
+• Optimize field worker routes using GPS
+• Collaborate with your campaign team
+
+The app works on desktop and mobile, allowing field campaigners to work offline 
+and sync data when they reconnect to the internet.
+
+================================================================================
+2. GETTING STARTED
+================================================================================
+
+LOGGING IN
+- Visit the app URL in your web browser
+- Log in with your campaign email and password
+- For first-time access, contact your campaign administrator
+
+NAVIGATING THE APP
+The main menu (left sidebar) includes:
+• Dashboard - Overview of campaign progress
+• Voter Contacts - Manage contact database
+• Field Mode - Door-knocking interface for field campaigners
+• Events - Campaign events and volunteer coordination
+• Reports - Analytics and campaign metrics
+• Organizer Dashboard - Real-time progress monitoring
+• And more...
+
+================================================================================
+3. KEY FEATURES & HOW TO USE THEM
+================================================================================
+
+A. VOTER CONTACTS
+Purpose: Central database of all voter contacts in the ward
+
+How to use:
+1. Click "Voter Contacts" in the main menu
+2. View all recorded contacts with their names, addresses, phone numbers
+3. Search by name, address, or postcode using the search bar
+4. Filter by voter status or support level
+
+ADDING A NEW CONTACT:
+1. Click the "Add Contact" button
+2. Enter contact details: name, address, postcode
+3. Optionally add: phone, email, voter status, support level, notes
+4. Click "Save"
+
+EDITING CONTACT DETAILS:
+1. Click the pencil icon next to any contact
+2. Update information as needed
+3. Click "Save"
+
+BULK TAGGING CONTACTS:
+1. Select multiple contacts using the checkboxes
+2. Click "Apply Tags"
+3. Choose from suggested tags (e.g., "Requires Follow-up", "Display Poster")
+   or create custom tags
+4. Click "Apply" to tag all selected contacts at once
+
+This is useful for organizing contacts into groups for specific actions.
+
+---
+
+B. FIELD MODE (Door-Knocking Interface)
+Purpose: Optimized interface for field campaigners actively canvassing
+
+Key Features:
+• GPS-sorted contact list - Shows closest addresses first to minimize walking
+• Offline functionality - Works without internet; syncs when reconnected
+• Quick interaction logging - Record every door knock with one tap
+• Real-time queue monitoring - See pending interactions waiting to sync
+
+How to use:
+
+STARTING A CANVASSING SESSION:
+1. Click "Field Mode" from the menu
+2. Your device location is automatically detected
+3. Contacts are automatically sorted by proximity (closest first)
+4. Status indicator shows "Online" or "Offline"
+
+LOGGING AN INTERACTION:
+1. View the current contact's details on screen
+2. Click "Log Interaction"
+3. Select support level (Strong Supporter, Leaning, Undecided, Opposed, Unknown)
+4. Record the outcome (Positive, Neutral, Negative, No Answer)
+5. Add notes about key discussion points or concerns
+6. Click "Save & Next" to move to the next contact
+7. If offline, interaction is saved locally and syncs when you reconnect
+
+NAVIGATING CONTACTS:
+1. Use arrow buttons to move between contacts
+2. Use search bar to quickly find specific addresses
+3. Click any contact in search results to jump directly to them
+
+VIEWING CONTACT HISTORY:
+1. Scroll down on any contact card
+2. See previous interactions including dates and outcomes
+3. Review notes from previous visits
+
+---
+
+C. ORGANIZER DASHBOARD
+Purpose: Real-time summary for campaign organizers/managers to monitor progress
+
+View at a glance:
+• Total doors knocked in the campaign
+• Percentage of contacts canvassed
+• Support level breakdown (pie chart)
+• Interaction outcomes (positive/neutral/negative/no answer)
+• 7-day interaction trend to track momentum
+• Number of strong supporters identified
+
+How to use:
+1. Click "Organizer" in the menu
+2. Dashboard updates automatically as field workers log interactions
+3. Use this to identify campaign progress and areas needing more effort
+4. Share progress with volunteers to maintain morale
+
+---
+
+D. EVENTS
+Purpose: Organize campaign events and coordinate volunteers
+
+Features:
+• Create campaign events (canvassing days, hustings, fundraisers, etc.)
+• Set date, time, location, and description
+• Invite volunteers and track RSVPs
+• Manage event volunteers and assign roles
+
+How to use:
+1. Click "Events" in the menu
+2. Click "Add Event"
+3. Enter event details: title, type, date, time, location, description
+4. Invite volunteers by entering their email addresses
+5. Track who has confirmed attendance
+6. Send reminders to volunteers before the event
+
+---
+
+E. TASKS
+Purpose: Manage campaign to-do items and assignments
+
+How to use:
+1. Click "Tasks" in the menu
+2. Create tasks with title, description, due date, priority, and assigned person
+3. Filter by status (To Do, In Progress, Done) or category
+4. Mark tasks complete as work is done
+5. Use for campaign coordination and deadline tracking
+
+---
+
+F. REPORTS
+Purpose: Analyze campaign data and identify trends
+
+Reports available:
+• Canvassing progress by area
+• Support level breakdown
+• Interaction type analysis
+• Volunteer activity summary
+• Geographic coverage maps
+
+How to use:
+1. Click "Reports" in the menu
+2. View charts and statistics
+3. Use data to identify areas for improvement
+4. Share reports with campaign team for strategic decisions
+
+---
+
+G. DATA IMPORT
+Purpose: Bulk import voter contact lists
+
+Supported formats: CSV, Excel, JSON, PDF, images, Word docs
+
+How to use:
+1. Click "Data Import" in the menu
+2. Upload your contact file
+3. AI automatically detects field structure
+4. Review and confirm field mapping
+5. Validation checks for data quality
+6. Import confirmed contacts to the database
+7. View import history and ability to rollback if needed
+
+This is useful when you have large voter lists from council records or 
+other sources.
+
+---
+
+H. TEAM CHAT
+Purpose: Internal team communication
+
+How to use:
+1. Click "Team Chat" in the menu
+2. Send messages to individual team members
+3. Use for quick coordination, updates, and questions
+4. Keeps all team communication in one place
+
+---
+
+I. CAMPAIGN MATERIALS
+Purpose: Store and access campaign resources
+
+Content:
+• Door cards (to leave at homes)
+• Leaflet templates
+• Policy sheets
+• Posters
+• Social media content
+
+How to use:
+1. Click "Campaign Materials" in the menu
+2. Download materials to print or distribute
+3. Print door cards and leaflets for field distribution
+4. Reference policy positions when talking to voters
+
+================================================================================
+4. BEST PRACTICES
+================================================================================
+
+FOR FIELD CAMPAIGNERS:
+✓ Check your device location is on before starting Field Mode
+✓ Log interactions immediately after speaking to each voter
+✓ Be specific in notes - record key issues mentioned and promises made
+✓ Update support level based on the conversation outcome
+✓ Keep the app open in Field Mode to maintain accuracy
+✓ If going offline, the app will sync automatically when reconnected
+
+FOR ORGANIZERS:
+✓ Check the Organizer Dashboard daily to monitor progress
+✓ Use Reports to identify which areas need more canvassing
+✓ Celebrate milestones with the team to maintain motivation
+✓ Review interaction trends to see if momentum is building
+✓ Use volunteer data to recognize high-performing campaigners
+
+FOR DATA QUALITY:
+✓ Review imported data for duplicates before bulk importing
+✓ Keep contact information up to date
+✓ Use consistent naming conventions and address formats
+✓ Tag contacts appropriately for easy filtering later
+✓ Write clear, detailed notes on each interaction
+
+FOR CAMPAIGN SUCCESS:
+✓ Focus on areas with many "Undecided" voters first
+✓ Follow up with "Leaning" supporters to convert to strong supporters
+✓ Use event registrations to identify keen volunteers
+✓ Share positive interaction stories to inspire the team
+✓ Track which issues are most commonly raised and develop responses
+
+================================================================================
+5. TROUBLESHOOTING
+================================================================================
+
+PROBLEM: Field Mode shows "Offline" and won't sync
+SOLUTION: 
+- Check internet connection on your device
+- Wait a few moments for connection to establish
+- Click "Sync Now" button manually
+- If still offline, interactions are being saved locally and will sync 
+  automatically when connection returns
+
+PROBLEM: Contact not appearing in search
+SOLUTION:
+- Check spelling of search term
+- Try searching by different field (name vs address vs postcode)
+- Refresh the page (Ctrl+R or Cmd+R)
+- Verify contact was saved successfully
+
+PROBLEM: Can't log in
+SOLUTION:
+- Check caps lock is not on
+- Verify email address is correct
+- Check password hasn't expired
+- Contact campaign administrator for password reset
+
+PROBLEM: Bulk tag operation failed
+SOLUTION:
+- Ensure you have stable internet connection
+- Try applying fewer tags at once
+- Refresh page and try again
+- Contact support if problem persists
+
+PROBLEM: Location services not working on mobile
+SOLUTION:
+- Check location permission is enabled for the app
+- Go to phone settings > Location > Ensure location services are on
+- Allow app to access location when prompted
+- Refresh Field Mode page
+
+PROBLEM: Data looks incorrect after import
+SOLUTION:
+- Check import validation report for flagged records
+- Go to Recent Imports section to review import details
+- Use Rollback feature to undo import if needed
+- Re-import with corrected source data
+
+================================================================================
+SUPPORT & CONTACT
+================================================================================
+
+For technical issues or questions about features:
+- Contact your campaign administrator
+- Email: [Campaign tech contact]
+- Phone: [Campaign tech phone]
+
+For feedback or feature requests:
+- Share suggestions with your campaign coordinator
+- Help improve the app for future campaigns
+
+================================================================================
+END OF USER GUIDE
+================================================================================
