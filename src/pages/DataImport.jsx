@@ -1,5 +1,6 @@
 import React, { useState } from 'react';
 import { base44 } from '@/api/base44Client';
+import { useQueryClient } from '@tanstack/react-query';
 import { CheckCircle, Loader2, AlertTriangle } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
@@ -15,6 +16,7 @@ const ENTITIES = {
 };
 
 export default function DataImport() {
+  const queryClient = useQueryClient();
   const [processing, setProcessing] = useState(false);
   const [detectedEntity, setDetectedEntity] = useState(null);
   const [selectedEntity, setSelectedEntity] = useState(null);
@@ -86,6 +88,7 @@ Return a JSON object with:
       const records = extractRes.records || [];
       if (records.length > 0) {
         await base44.entities[selectedEntity].bulkCreate(records);
+        queryClient.invalidateQueries({ queryKey: [selectedEntity.toLowerCase()] });
         setStatus({ count: records.length, entity: selectedEntity });
         setError(null);
         setTimeout(() => {
