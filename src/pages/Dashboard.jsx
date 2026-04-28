@@ -8,6 +8,7 @@ import SupportBreakdown from '../components/dashboard/SupportBreakdown';
 import RecentActivity from '../components/dashboard/RecentActivity';
 import CanvassingMap from '../components/dashboard/CanvassingMap';
 import SupportLevelWidget from '../components/dashboard/SupportLevelWidget';
+import GamifiedLeaderboard from '../components/dashboard/GamifiedLeaderboard';
 
 export default function Dashboard() {
   const { data: contacts = [] } = useQuery({
@@ -28,6 +29,11 @@ export default function Dashboard() {
   const { data: issues = [] } = useQuery({
     queryKey: ['issues'],
     queryFn: () => base44.entities.Issue.list('-priority', 50),
+  });
+
+  const { data: interactions = [] } = useQuery({
+    queryKey: ['interactions'],
+    queryFn: () => base44.entities.ContactInteraction.list('-date', 1000),
   });
 
   const canvassed = contacts.filter(c => c.canvassed).length;
@@ -91,6 +97,7 @@ export default function Dashboard() {
       <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
         <UpcomingEvents events={upcomingEvents} />
         <SupportBreakdown contacts={contacts} />
+        <GamifiedLeaderboard interactions={interactions} contacts={contacts} />
         <RecentActivity contacts={contacts} events={events} tasks={tasks} />
         
         {/* Top Issues */}
