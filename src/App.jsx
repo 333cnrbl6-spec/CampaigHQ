@@ -19,6 +19,7 @@ import ElectionDay from './pages/ElectionDay';
 import Reports from './pages/Reports';
 import TeamChat from './pages/TeamChat';
 import CampaignMaterials from './pages/CampaignMaterials';
+import Outreach from './pages/Outreach';
 
 const AuthenticatedApp = () => {
   const { isLoadingAuth, isLoadingPublicSettings, authError, navigateToLogin } = useAuth();
@@ -60,6 +61,7 @@ const AuthenticatedApp = () => {
         <Route path="/chat" element={<TeamChat />} />
         <Route path="/materials" element={<CampaignMaterials />} />
         <Route path="/map" element={<WardMap />} />
+        <Route path="/outreach" element={<Outreach />} />
       </Route>
       <Route path="*" element={<PageNotFound />} />
     </Routes>

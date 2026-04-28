@@ -3,7 +3,7 @@ import { Link, useLocation } from 'react-router-dom';
 import { 
   LayoutDashboard, Users, Calendar, Leaf, ClipboardList, 
   MapPin, ChevronLeft, ChevronRight, LogOut, BarChart3, MessageSquare,
-  History, Zap, Printer
+  History, Zap, Printer, Send
 } from 'lucide-react';
 import { base44 } from '@/api/base44Client';
 import { cn } from '@/lib/utils';
@@ -22,6 +22,7 @@ const navItems = [
   { path: '/chat', label: 'Team Chat', icon: MessageSquare },
   { path: '/materials', label: 'Campaign Materials', icon: Printer },
   { path: '/map', label: 'Ward Map', icon: MapPin },
+  { path: '/outreach', label: 'Bulk Outreach', icon: Send },
 ];
 
 export default function Sidebar() {
