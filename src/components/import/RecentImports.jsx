@@ -2,7 +2,7 @@ import React, { useState } from 'react';
 import { base44 } from '@/api/base44Client';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { Button } from '@/components/ui/button';
-import { CheckCircle, AlertCircle, Trash2, Loader2 } from 'lucide-react';
+import { CheckCircle, AlertCircle, Trash2, Loader2, Download } from 'lucide-react';
 import { format } from 'date-fns';
 import {
   AlertDialog,
@@ -92,21 +92,28 @@ export default function RecentImports() {
               )}
             </div>
           </div>
-          <AlertDialog>
-            <AlertDialogTrigger asChild>
-              <Button
-                variant="ghost"
-                size="sm"
-                disabled={rollbackLoading === importLog.id}
-                className="flex-shrink-0 ml-2"
-              >
-                {rollbackLoading === importLog.id ? (
-                  <Loader2 className="w-4 h-4 animate-spin" />
-                ) : (
-                  <Trash2 className="w-4 h-4" />
-                )}
-              </Button>
-            </AlertDialogTrigger>
+          <div className="flex items-center gap-2 flex-shrink-0 ml-2">
+            {importLog.file_url && (
+              <a href={importLog.file_url} target="_blank" rel="noopener noreferrer">
+                <Button variant="ghost" size="sm" title="Download original file">
+                  <Download className="w-4 h-4" />
+                </Button>
+              </a>
+            )}
+            <AlertDialog>
+              <AlertDialogTrigger asChild>
+                <Button
+                  variant="ghost"
+                  size="sm"
+                  disabled={rollbackLoading === importLog.id}
+                >
+                  {rollbackLoading === importLog.id ? (
+                    <Loader2 className="w-4 h-4 animate-spin" />
+                  ) : (
+                    <Trash2 className="w-4 h-4" />
+                  )}
+                </Button>
+              </AlertDialogTrigger>
             <AlertDialogContent>
               <AlertDialogTitle>Rollback import?</AlertDialogTitle>
               <AlertDialogDescription>
@@ -120,11 +127,12 @@ export default function RecentImports() {
                 >
                   Rollback
                 </AlertDialogAction>
-              </div>
-            </AlertDialogContent>
-          </AlertDialog>
-        </div>
-      ))}
+                </div>
+                </AlertDialogContent>
+                </AlertDialog>
+                </div>
+                </div>
+                ))}
     </div>
   );
 }

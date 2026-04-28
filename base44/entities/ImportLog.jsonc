@@ -6,6 +6,10 @@
       "type": "string",
       "description": "Name of the uploaded file"
     },
+    "file_url": {
+      "type": "string",
+      "description": "URL to the uploaded file for access/audit"
+    },
     "entity_type": {
       "type": "string",
       "description": "Type of entity imported (e.g. Contact, Issue)"

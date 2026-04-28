@@ -186,6 +186,7 @@ Map each source column to its corresponding target field. Return ONLY valid, com
       // Log the import
       await base44.entities.ImportLog.create({
         file_name: currentFile.name,
+        file_url: fileUrl,
         entity_type: entityName,
         record_count: records.length,
         status: 'completed',
