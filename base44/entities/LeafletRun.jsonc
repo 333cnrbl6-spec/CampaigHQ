@@ -1,0 +1,56 @@
+{
+  "name": "LeafletRun",
+  "type": "object",
+  "properties": {
+    "street_name": {
+      "type": "string",
+      "description": "Street or road name"
+    },
+    "area": {
+      "type": "string",
+      "enum": [
+        "Tyldesley",
+        "Mosley Common",
+        "Astley",
+        "Other"
+      ],
+      "default": "Tyldesley"
+    },
+    "postcode": {
+      "type": "string"
+    },
+    "assigned_to": {
+      "type": "string",
+      "description": "Volunteer name assigned to this street"
+    },
+    "status": {
+      "type": "string",
+      "enum": [
+        "not_started",
+        "in_progress",
+        "completed"
+      ],
+      "default": "not_started"
+    },
+    "leaflets_delivered": {
+      "type": "number",
+      "default": 0,
+      "description": "Number of leaflets delivered on this street"
+    },
+    "total_houses": {
+      "type": "number",
+      "default": 0,
+      "description": "Estimated number of houses on this street"
+    },
+    "notes": {
+      "type": "string"
+    },
+    "completed_date": {
+      "type": "string",
+      "format": "date"
+    }
+  },
+  "required": [
+    "street_name"
+  ]
+}

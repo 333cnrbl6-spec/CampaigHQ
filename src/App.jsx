@@ -28,6 +28,7 @@ import GOTVTracker from './pages/GOTVTracker';
 import ActivityFeed from './pages/ActivityFeed';
 import SocialMedia from './pages/SocialMedia';
 import LandingPage from './pages/LandingPage';
+import LeafletTracker from './pages/LeafletTracker';
 
 const AuthenticatedApp = () => {
   const { isLoadingAuth, isLoadingPublicSettings, authError, navigateToLogin } = useAuth();
@@ -78,6 +79,7 @@ const AuthenticatedApp = () => {
         <Route path="/polling-map" element={<PollingMap />} />
         <Route path="/turf-sheets" element={<TurfSheets />} />
         <Route path="/social-media" element={<SocialMedia />} />
+        <Route path="/leaflets" element={<LeafletTracker />} />
       </Route>
       <Route path="*" element={<PageNotFound />} />
     </Routes>

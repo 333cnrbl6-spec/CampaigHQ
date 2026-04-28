@@ -30,6 +30,7 @@ const navItems = [
   { path: '/polling-map', label: 'Polling Districts', icon: MapPin },
   { path: '/turf-sheets', label: 'Turf Sheets', icon: Printer },
   { path: '/social-media', label: 'Social Media Toolkit', icon: Share2 },
+  { path: '/leaflets', label: 'Leaflet Distribution', icon: MapPin },
   { path: '/', label: 'Campaign Landing Page', icon: Globe },
 ];
 
