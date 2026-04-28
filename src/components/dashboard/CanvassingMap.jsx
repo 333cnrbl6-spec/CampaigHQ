@@ -1,7 +1,8 @@
-import { useEffect, useMemo, useRef } from 'react';
+import { useMemo, useState } from 'react';
 import { MapContainer, TileLayer, CircleMarker, Popup, LayerGroup, ZoomControl } from 'react-leaflet';
 import 'leaflet/dist/leaflet.css';
 import { Badge } from '@/components/ui/badge';
+import { Button } from '@/components/ui/button';
 
 // Real postcode coordinates for Tyldesley & Mosley Common ward (M29)
 const POSTCODE_COORDS = {
@@ -30,12 +31,26 @@ function aggregateByPostcode(contacts) {
   for (const c of contacts) {
     const pc = (c.postcode || '').trim().toUpperCase();
     if (!pc) continue;
-    if (!map[pc]) map[pc] = { total: 0, canvassed: 0, supporters: 0, postcode: pc };
+    if (!map[pc]) map[pc] = { total: 0, canvassed: 0, supporters: 0, strong: 0, undecided: 0, opposed: 0, postcode: pc };
     map[pc].total++;
     if (c.canvassed) map[pc].canvassed++;
     if (c.support_level === 'strong_supporter' || c.support_level === 'leaning') map[pc].supporters++;
+    if (c.support_level === 'strong_supporter') map[pc].strong++;
+    if (c.support_level === 'undecided') map[pc].undecided++;
+    if (c.support_level === 'opposed') map[pc].opposed++;
   }
   return map;
+}
+
+// Interpolate between two hex colours by ratio 0-1
+function lerpColor(a, b, t) {
+  const ah = parseInt(a.slice(1), 16), bh = parseInt(b.slice(1), 16);
+  const ar = (ah >> 16) & 0xff, ag = (ah >> 8) & 0xff, ab = ah & 0xff;
+  const br = (bh >> 16) & 0xff, bg = (bh >> 8) & 0xff, bb = bh & 0xff;
+  const rr = Math.round(ar + (br - ar) * t);
+  const rg = Math.round(ag + (bg - ag) * t);
+  const rb = Math.round(ab + (bb - ab) * t);
+  return `#${((1 << 24) | (rr << 16) | (rg << 8) | rb).toString(16).slice(1)}`;
 }
 
 function getCoords(postcode) {
@@ -48,7 +63,14 @@ function getCoords(postcode) {
   return null;
 }
 
+const MODES = [
+  { key: 'canvassing', label: 'Canvassing Progress' },
+  { key: 'supporters', label: 'Supporter Concentration' },
+  { key: 'outreach',   label: 'Outreach Priority' },
+];
+
 export default function CanvassingMap({ contacts = [] }) {
+  const [mode, setMode] = useState('canvassing');
   const aggregated = useMemo(() => aggregateByPostcode(contacts), [contacts]);
 
   const totalContacts = contacts.length;
@@ -57,26 +79,93 @@ export default function CanvassingMap({ contacts = [] }) {
 
   const entries = Object.values(aggregated);
 
+  // Max strong supporters across all postcodes (for normalising colour scale)
+  const maxStrong = useMemo(() => Math.max(1, ...entries.map(e => e.strong)), [entries]);
+  const maxUndecided = useMemo(() => Math.max(1, ...entries.map(e => e.undecided + e.opposed)), [entries]);
+
+  function getMarkerProps(entry) {
+    const canvassRatio = entry.total > 0 ? entry.canvassed / entry.total : 0;
+    const strongRatio = entry.strong / maxStrong;           // 0-1 relative
+    const needRatio = (entry.undecided + entry.opposed) / maxUndecided;
+
+    if (mode === 'canvassing') {
+      let color;
+      if (canvassRatio >= 0.8) color = '#22c55e';
+      else if (canvassRatio >= 0.3) color = '#f59e0b';
+      else color = '#ef4444';
+      return { color, fillOpacity: 0.75 };
+    }
+
+    if (mode === 'supporters') {
+      // Deep green = high strong supporters, grey = none
+      const color = lerpColor('#94a3b8', '#15803d', strongRatio);
+      return { color, fillOpacity: 0.5 + strongRatio * 0.45 };
+    }
+
+    // outreach priority — needs-attention areas: undecided+opposed = red, low = blue
+    const color = lerpColor('#3b82f6', '#ef4444', needRatio);
+    return { color, fillOpacity: 0.5 + needRatio * 0.45 };
+  }
+
+  const legends = {
+    canvassing: [
+      { color: '#22c55e', label: 'Fully canvassed (≥80%)' },
+      { color: '#f59e0b', label: 'Partially canvassed' },
+      { color: '#ef4444', label: 'Not yet visited' },
+    ],
+    supporters: [
+      { color: '#15803d', label: 'High strong supporters' },
+      { color: '#6dbb8a', label: 'Some supporters' },
+      { color: '#94a3b8', label: 'Few/no supporters' },
+    ],
+    outreach: [
+      { color: '#ef4444', label: 'High outreach need' },
+      { color: '#a78bfa', label: 'Moderate need' },
+      { color: '#3b82f6', label: 'Low need' },
+    ],
+  };
+
   return (
     <div className="flex flex-col gap-3">
-      {/* Legend & Stats */}
-      <div className="flex flex-wrap items-center gap-4 text-sm">
-        <div className="flex items-center gap-2">
-          <span className="inline-block w-3 h-3 rounded-full bg-green-500 opacity-80"></span>
-          <span className="text-muted-foreground">Fully canvassed</span>
-        </div>
-        <div className="flex items-center gap-2">
-          <span className="inline-block w-3 h-3 rounded-full bg-amber-400 opacity-80"></span>
-          <span className="text-muted-foreground">Partially canvassed</span>
-        </div>
-        <div className="flex items-center gap-2">
-          <span className="inline-block w-3 h-3 rounded-full bg-red-500 opacity-80"></span>
-          <span className="text-muted-foreground">Not yet visited</span>
-        </div>
-        <div className="ml-auto flex items-center gap-2">
-          <Badge variant="outline">{totalCanvassed} / {totalContacts} canvassed ({pct}%)</Badge>
+      {/* Mode toggle */}
+      <div className="flex flex-wrap items-center gap-2">
+        {MODES.map(m => (
+          <Button
+            key={m.key}
+            size="sm"
+            variant={mode === m.key ? 'default' : 'outline'}
+            onClick={() => setMode(m.key)}
+            className="text-xs h-7 px-3"
+          >
+            {m.label}
+          </Button>
+        ))}
+        <div className="ml-auto">
+          <Badge variant="outline" className="text-xs">{totalCanvassed} / {totalContacts} canvassed ({pct}%)</Badge>
         </div>
       </div>
+
+      {/* Legend */}
+      <div className="flex flex-wrap gap-3 text-xs">
+        {legends[mode].map(l => (
+          <div key={l.label} className="flex items-center gap-1.5">
+            <span className="inline-block w-3 h-3 rounded-full flex-shrink-0" style={{ backgroundColor: l.color, opacity: 0.9 }} />
+            <span className="text-muted-foreground">{l.label}</span>
+          </div>
+        ))}
+      </div>
+
+      {/* Helper callout for outreach mode */}
+      {mode === 'outreach' && (
+        <p className="text-xs bg-red-50 text-red-700 border border-red-200 rounded-lg px-3 py-2">
+          <strong>Outreach Priority:</strong> Red postcodes have the highest concentration of undecided &amp; opposed contacts — focus canvassing efforts here.
+        </p>
+      )}
+      {mode === 'supporters' && (
+        <p className="text-xs bg-green-50 text-green-700 border border-green-200 rounded-lg px-3 py-2">
+          <strong>Supporter Concentration:</strong> Darker green postcodes have the most Strong Supporter contacts relative to the ward.
+        </p>
+      )}
 
       {/* Map */}
       <div className="rounded-lg overflow-hidden border border-border" style={{ height: 420 }}>
@@ -95,34 +184,28 @@ export default function CanvassingMap({ contacts = [] }) {
             {entries.map((entry) => {
               const coords = getCoords(entry.postcode);
               if (!coords) return null;
-
+              const { color, fillOpacity } = getMarkerProps(entry);
+              const radius = Math.max(7, Math.min(20, 7 + entry.total / 6));
               const canvassRatio = entry.total > 0 ? entry.canvassed / entry.total : 0;
-              let color;
-              if (canvassRatio >= 0.8) color = '#22c55e';       // green - done
-              else if (canvassRatio >= 0.3) color = '#f59e0b';  // amber - partial
-              else color = '#ef4444';                            // red - not started
-
-              const radius = Math.max(6, Math.min(18, 6 + entry.total / 8));
+              const strongPct = entry.total > 0 ? Math.round((entry.strong / entry.total) * 100) : 0;
 
               return (
                 <CircleMarker
                   key={entry.postcode}
                   center={coords}
                   radius={radius}
-                  pathOptions={{
-                    color: color,
-                    fillColor: color,
-                    fillOpacity: 0.75,
-                    weight: 2,
-                    opacity: 0.9,
-                  }}
+                  pathOptions={{ color, fillColor: color, fillOpacity, weight: 2, opacity: 0.9 }}
                 >
                   <Popup>
-                    <div className="text-sm font-sans min-w-[160px]">
-                      <p className="font-bold text-base mb-1">{entry.postcode}</p>
-                      <p>Contacts: <strong>{entry.total}</strong></p>
+                    <div className="text-sm font-sans min-w-[180px] space-y-1">
+                      <p className="font-bold text-base">{entry.postcode}</p>
+                      <p>Total contacts: <strong>{entry.total}</strong></p>
                       <p>Canvassed: <strong>{entry.canvassed}</strong> ({Math.round(canvassRatio * 100)}%)</p>
-                      <p>Supporters: <strong>{entry.supporters}</strong></p>
+                      <hr className="my-1" />
+                      <p>Strong Supporters: <strong className="text-green-700">{entry.strong}</strong> ({strongPct}%)</p>
+                      <p>Leaning: <strong>{entry.supporters - entry.strong}</strong></p>
+                      <p>Undecided: <strong className="text-amber-600">{entry.undecided}</strong></p>
+                      <p>Opposed: <strong className="text-red-600">{entry.opposed}</strong></p>
                     </div>
                   </Popup>
                 </CircleMarker>
