@@ -95,15 +95,34 @@ const AuthenticatedApp = () => {
 };
 
 
-function App() {
+function HomeRoute() {
+  const { isLoadingAuth, authError } = useAuth();
 
+  if (isLoadingAuth) {
+    return (
+      <div className="fixed inset-0 flex items-center justify-center">
+        <div className="w-8 h-8 border-4 border-slate-200 border-t-slate-800 rounded-full animate-spin"></div>
+      </div>
+    );
+  }
+
+  // If user is authenticated, go to dashboard instead
+  if (!authError) {
+    return <Navigate to="/dashboard" replace />;
+  }
+
+  // If not authenticated, show landing page
+  return <LandingPage />;
+}
+
+function App() {
   return (
     <AuthProvider>
       <QueryClientProvider client={queryClientInstance}>
         <Router>
           <Routes>
-            {/* Public routes — no auth required */}
-            <Route path="/" element={<LandingPage />} />
+            {/* Public routes — redirect to dashboard if authenticated */}
+            <Route path="/" element={<HomeRoute />} />
             <Route path="/vote" element={<LandingPage />} />
             {/* Auth-gated campaign tool routes */}
             <Route path="/*" element={<AuthenticatedApp />} />
