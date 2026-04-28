@@ -1,7 +1,7 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { base44 } from '@/api/base44Client';
-import { useQueryClient } from '@tanstack/react-query';
-import { Loader2, AlertTriangle } from 'lucide-react';
+import { useQueryClient, useQuery } from '@tanstack/react-query';
+import { Loader2, AlertTriangle, Repeat2 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import SmartDropZone from '@/components/import/SmartDropZone';
 import ImportProgress from '@/components/import/ImportProgress';
@@ -12,6 +12,13 @@ import RecentImports from '@/components/import/RecentImports';
 export default function DataImport() {
   const queryClient = useQueryClient();
   
+  // Fetch last import log to get the file URL
+  const { data: lastImportLog } = useQuery({
+    queryKey: ['import_logs'],
+    queryFn: () => base44.entities.ImportLog.list('-created_date', 1),
+    initialData: [],
+  });
+
   // Stage tracking
   const [currentStage, setCurrentStage] = useState(0);
   const [completedStages, setCompletedStages] = useState([]);
@@ -30,6 +37,39 @@ export default function DataImport() {
 
   const markStageComplete = (stage) => {
     setCompletedStages(prev => [...new Set([...prev, stage])]);
+  };
+
+  // Load last imported file
+  const handleLoadLastImport = async () => {
+    if (!lastImportLog?.[0]?.file_url) return;
+    
+    const log = lastImportLog[0];
+    setCurrentFile({ name: log.file_name });
+    setFileUrl(log.file_url);
+    setCurrentStage(1);
+    
+    // Auto-extract text
+    setLoading(true);
+    try {
+      const extractRes = await base44.integrations.Core.ExtractDataFromUploadedFile({
+        file_url: log.file_url,
+        json_schema: {
+          type: 'object',
+          properties: {
+            content: { type: 'string', description: 'All text and content from the file' },
+          },
+        },
+      });
+
+      if (extractRes.status === 'success' && extractRes.output?.content) {
+        setExtractedText(extractRes.output.content);
+        markStageComplete(1);
+      }
+    } catch (err) {
+      setError(err.message || 'Failed to load file');
+    } finally {
+      setLoading(false);
+    }
   };
 
   // Stage 1: Upload & Extract
@@ -237,7 +277,27 @@ Map each source column to its corresponding target field. Return ONLY valid, com
         <div className="lg:col-span-3 space-y-6">
           {/* Stage 1: Upload */}
           {currentStage === 0 && (
-            <SmartDropZone onFileSelected={handleFileSelected} processing={loading} />
+            <div className="space-y-4">
+              <SmartDropZone onFileSelected={handleFileSelected} processing={loading} />
+              
+              {lastImportLog?.[0]?.file_url && (
+                <div className="bg-accent/10 border border-accent rounded-xl p-6 flex items-center justify-between">
+                  <div>
+                    <p className="font-semibold text-sm">Last imported file</p>
+                    <p className="text-xs text-muted-foreground mt-1">{lastImportLog[0].file_name}</p>
+                  </div>
+                  <Button
+                    onClick={handleLoadLastImport}
+                    disabled={loading}
+                    variant="outline"
+                    size="sm"
+                  >
+                    <Repeat2 className="w-4 h-4 mr-2" />
+                    Load & Review
+                  </Button>
+                </div>
+              )}
+            </div>
           )}
 
           {/* Stage 1: Show extraction preview */}
