@@ -98,8 +98,9 @@ function App() {
       <QueryClientProvider client={queryClientInstance}>
         <Router>
           <Routes>
-            {/* Public routes — no auth required */}
-            <Route path="/" element={<LandingPage />} />
+            {/* Home route — redirect authenticated users to dashboard */}
+            <Route path="/" element={<HomeRouter />} />
+            {/* Public route */}
             <Route path="/vote" element={<LandingPage />} />
             {/* Auth-gated campaign tool routes */}
             <Route path="/*" element={<AuthenticatedApp />} />
@@ -109,6 +110,22 @@ function App() {
       </QueryClientProvider>
     </AuthProvider>
   )
+}
+
+const HomeRouter = () => {
+  const { isLoadingAuth } = useAuth();
+
+  if (isLoadingAuth) {
+    return (
+      <div className="fixed inset-0 flex items-center justify-center">
+        <div className="w-8 h-8 border-4 border-slate-200 border-t-slate-800 rounded-full animate-spin"></div>
+      </div>
+    );
+  }
+
+  const isAuthenticated = localStorage.getItem('base44_auth_token');
+  
+  return isAuthenticated ? <Navigate to="/dashboard" replace /> : <LandingPage />
 }
 
 export default App
