@@ -5,6 +5,7 @@ import { CheckCircle, Loader2, AlertTriangle } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import SmartDropZone from '@/components/import/SmartDropZone';
+import FieldMapper from '@/components/import/FieldMapper';
 
 const ENTITIES = {
   Contact: { icon: '👥', description: 'Voter contacts and contact details' },
@@ -25,6 +26,7 @@ export default function DataImport() {
   const [error, setError] = useState(null);
   const [currentFile, setCurrentFile] = useState(null);
   const [fileUrl, setFileUrl] = useState(null);
+  const [schema, setSchema] = useState(null);
 
   const handleFileSelected = async (file) => {
     setProcessing(true);
@@ -59,6 +61,10 @@ Return a JSON object with:
 
       setDetectedEntity(detectionRes);
       setSelectedEntity(detectionRes.entity_type);
+      
+      // Fetch schema for the detected entity
+      const entitySchema = await base44.entities[detectionRes.entity_type].schema();
+      setSchema(entitySchema);
     } catch (err) {
       setError(err.message || 'Failed to analyze file');
     } finally {
@@ -67,18 +73,22 @@ Return a JSON object with:
     }
   };
 
-  const handleImport = async () => {
+  const handleImport = async (fieldMapping) => {
     if (!selectedEntity || !fileUrl) return;
 
     setProcessing(true);
     setError(null);
 
     try {
-      const schema = await base44.entities[selectedEntity].schema();
+      const mappingInstructions = Object.entries(fieldMapping)
+        .map(([sourceCol, targetField]) => `"${sourceCol}" → "${targetField}"`)
+        .join(', ');
 
-      // Extract and import
+      // Extract and import with user-defined mapping
       const extractRes = await base44.integrations.Core.InvokeLLM({
-        prompt: `Extract all records from this file and map to these fields: ${JSON.stringify(schema.properties || {})}. Return valid records only.`,
+        prompt: `Extract all records from this file using this field mapping: ${mappingInstructions}.
+        
+Map each source column to its corresponding target field. Only include mapped fields in the output. Return valid records only.`,
         file_urls: [fileUrl],
         response_json_schema: {
           type: 'object',
@@ -100,6 +110,7 @@ Return a JSON object with:
           setSelectedEntity(null);
           setCurrentFile(null);
           setFileUrl(null);
+          setSchema(null);
         }, 4000);
       } else {
         setError('No valid records found in file');
@@ -148,13 +159,13 @@ Return a JSON object with:
             </div>
           </div>
         ) : detectedEntity ? (
-          <div className="bg-primary/5 border border-primary/20 rounded-xl p-5 space-y-4">
-            <div>
-              <div className="flex items-center gap-2 mb-2">
+          <div className="space-y-4">
+            <div className="bg-primary/5 border border-primary/20 rounded-xl p-5 space-y-3">
+              <div className="flex items-center gap-2">
                 <CheckCircle className="w-5 h-5 text-primary" />
                 <p className="font-semibold">Data type detected</p>
               </div>
-              <div className="flex items-center gap-3 mt-3">
+              <div className="flex items-center gap-3">
                 <span className="text-2xl">{ENTITIES[detectedEntity.entity_type]?.icon || '📋'}</span>
                 <div>
                   <p className="font-semibold">{detectedEntity.entity_type}</p>
@@ -164,32 +175,46 @@ Return a JSON object with:
                   </p>
                 </div>
               </div>
+
+              <div className="space-y-3 pt-2 border-t border-primary/10">
+                <label className="text-sm font-medium">Or select a different entity:</label>
+                <Select value={selectedEntity} onValueChange={(value) => {
+                  setSelectedEntity(value);
+                  // Fetch new schema when entity changes
+                  base44.entities[value].schema().then(setSchema);
+                }}>
+                  <SelectTrigger>
+                    <SelectValue />
+                  </SelectTrigger>
+                  <SelectContent>
+                    {Object.entries(ENTITIES).map(([name, info]) => (
+                      <SelectItem key={name} value={name}>
+                        {info.icon} {name} — {info.description}
+                      </SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
+              </div>
             </div>
 
-            <div className="space-y-3">
-              <label className="text-sm font-medium">Or select a different entity:</label>
-              <Select value={selectedEntity} onValueChange={setSelectedEntity}>
-                <SelectTrigger>
-                  <SelectValue />
-                </SelectTrigger>
-                <SelectContent>
-                  {Object.entries(ENTITIES).map(([name, info]) => (
-                    <SelectItem key={name} value={name}>
-                      {info.icon} {name} — {info.description}
-                    </SelectItem>
-                  ))}
-                </SelectContent>
-              </Select>
-            </div>
+            {schema && selectedEntity && (
+              <FieldMapper
+                fileUrl={fileUrl}
+                entityName={selectedEntity}
+                schema={schema}
+                onConfirm={handleImport}
+                loading={processing}
+              />
+            )}
 
             {error && (
-              <div className="flex items-center gap-2 text-xs text-destructive bg-destructive/5 rounded-lg p-3 border border-destructive/20">
+              <div className="flex items-center gap-2 text-sm text-destructive bg-destructive/5 rounded-lg p-4 border border-destructive/20">
                 <AlertTriangle className="w-4 h-4" />
                 {error}
               </div>
             )}
 
-            <div className="flex gap-3 pt-2">
+            <div className="flex gap-3">
               <Button
                 variant="outline"
                 onClick={() => {
@@ -197,18 +222,10 @@ Return a JSON object with:
                   setSelectedEntity(null);
                   setError(null);
                   setCurrentFile(null);
+                  setSchema(null);
                 }}
               >
                 Cancel
-              </Button>
-              <Button onClick={handleImport} disabled={processing || !selectedEntity}>
-                {processing ? (
-                  <>
-                    <Loader2 className="w-4 h-4 animate-spin mr-2" /> Importing...
-                  </>
-                ) : (
-                  'Import Data'
-                )}
               </Button>
             </div>
           </div>
