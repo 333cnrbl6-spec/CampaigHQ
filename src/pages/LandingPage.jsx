@@ -88,14 +88,14 @@ const PLEDGES = [
 ];
 
 const VALUES = [
-  { icon: Heart, label: 'Compassion', desc: 'A career built around the welfare of children and vulnerable communities worldwide.' },
-  { icon: Globe, label: 'Global Experience', desc: '20+ years working with governments and communities to deliver life-saving outcomes.' },
+  { icon: Heart, label: 'Compassion', desc: 'A career dedicated to community welfare, working with people in need across the world.' },
+  { icon: Globe, label: 'Global Experience', desc: 'Decades of working with governments and communities to deliver real-world solutions.' },
   { icon: Users, label: 'Community First', desc: '6 years living in Tyldesley — drawn here by its warmth and staying because of its people.' },
   { icon: Leaf, label: 'Green Values', desc: 'Committed to environmental protection, sustainability, and a fairer economy for all.' },
 ];
 
 const TIMELINE = [
-  { year: '20+ Years', label: 'International health & community work', detail: 'Partnered with local communities and national governments worldwide to deliver life-saving healthcare to children.' },
+  { year: 'Decades', label: 'International health & community work', detail: 'Worked with local communities and national governments around the world, bringing principled problem-solving and a commitment to public welfare.' },
   { year: '6 Years', label: 'Tyldesley resident', detail: 'Chose Tyldesley for its community spirit and warmth. Rooted in the ward, Paul knows the streets, the issues, and the people.' },
   { year: '2026', label: 'Green Party candidate', detail: 'Standing for Tyldesley & Mosley Common in the May 2026 local elections to put residents first.' },
 ];
@@ -177,7 +177,7 @@ function HeroSection({ countdown }) {
 
         {/* Tagline */}
         <p className="text-white/90 text-xl md:text-2xl font-light max-w-2xl mx-auto mb-10 leading-relaxed italic">
-          "A community that listens, a councillor who acts."
+          "Principled commitment to hard work and problem solving for all residents."
         </p>
 
         {/* CTAs */}
@@ -235,12 +235,12 @@ function AboutSection() {
             </div>
             {/* Floating stats */}
             <div className="absolute -right-6 top-1/4 bg-white rounded-2xl shadow-xl p-4 border border-border/50">
-              <p className="text-3xl font-bold text-primary font-heading">20+</p>
-              <p className="text-xs text-muted-foreground font-medium">Years public service</p>
-            </div>
-            <div className="absolute -left-6 bottom-1/4 bg-white rounded-2xl shadow-xl p-4 border border-border/50">
               <p className="text-3xl font-bold text-primary font-heading">6</p>
               <p className="text-xs text-muted-foreground font-medium">Years in Tyldesley</p>
+            </div>
+            <div className="absolute -left-6 bottom-1/4 bg-white rounded-2xl shadow-xl p-4 border border-border/50">
+              <p className="text-3xl font-bold text-primary font-heading">7</p>
+              <p className="text-xs text-muted-foreground font-medium">May — Polling Day</p>
             </div>
           </div>
 
@@ -250,7 +250,7 @@ function AboutSection() {
               <span className="text-primary text-sm font-semibold uppercase tracking-wider">Meet Your Candidate</span>
               <h2 className="font-heading text-4xl font-bold mt-2 mb-4">A Life of Service — Now Fighting for You</h2>
               <p className="text-muted-foreground text-lg leading-relaxed">
-                Paul Binns has spent over two decades working with local communities and national governments around the world to deliver life-saving healthcare to children. He brings that same dedication, determination, and compassionate problem-solving to Tyldesley & Mosley Common.
+                Paul Binns has built a career around public service — working with local communities and national governments to deliver meaningful change. He brings that same dedication, determination, and compassionate problem-solving to Tyldesley & Mosley Common.
               </p>
             </div>
 
@@ -389,35 +389,35 @@ function WhyGreenSection() {
 
 function LocalIssuesSection() {
   const issues = [
-    { label: 'Roads & Potholes', value: 87, color: 'bg-amber-500' },
-    { label: 'Green Space Protection', value: 81, color: 'bg-green-500' },
-    { label: 'Anti-social Behaviour', value: 74, color: 'bg-purple-500' },
-    { label: 'Bin Collections', value: 68, color: 'bg-rose-500' },
-    { label: 'Housing & Planning', value: 65, color: 'bg-blue-500' },
-    { label: 'Youth Facilities', value: 58, color: 'bg-teal-500' },
+    { icon: MapPin, color: 'text-amber-600', bg: 'bg-amber-50 border-amber-200', label: 'Roads & Potholes', desc: 'Crumbling roads and dangerous pavements are a constant frustration. Residents deserve safe streets.' },
+    { icon: TreePine, color: 'text-green-600', bg: 'bg-green-50 border-green-200', label: 'Green Space Protection', desc: 'Greenbelt land and open spaces are under pressure from developers. Our commons must be protected.' },
+    { icon: Shield, color: 'text-purple-600', bg: 'bg-purple-50 border-purple-200', label: 'Anti-social Behaviour', desc: 'Residents want safer streets, better lighting, and a council that takes community safety seriously.' },
+    { icon: Trash2, color: 'text-rose-600', bg: 'bg-rose-50 border-rose-200', label: 'Bin Collections & Street Cleaning', desc: 'Missed collections and littered streets reflect a council that isn\'t listening. Basic services must work.' },
+    { icon: Home, color: 'text-blue-600', bg: 'bg-blue-50 border-blue-200', label: 'Housing & Planning', desc: 'New development must serve local people, not just developers. Affordable homes and protected infrastructure.' },
+    { icon: Baby, color: 'text-teal-600', bg: 'bg-teal-50 border-teal-200', label: 'Youth & Family Facilities', desc: 'Young people need safe spaces, youth clubs, and community facilities that give them a stake in their ward.' },
   ];
   return (
     <section className="py-24 bg-muted/30">
-      <div className="max-w-4xl mx-auto px-6">
+      <div className="max-w-5xl mx-auto px-6">
         <div className="text-center mb-12">
           <span className="text-primary text-sm font-semibold uppercase tracking-wider">What Residents Are Saying</span>
           <h2 className="font-heading text-4xl font-bold mt-2 mb-4">The Issues That Matter Most</h2>
-          <p className="text-muted-foreground max-w-xl mx-auto">Based on doorstep conversations across Tyldesley & Mosley Common, these are the priorities that keep coming up again and again.</p>
+          <p className="text-muted-foreground max-w-xl mx-auto">From doorstep conversations across Tyldesley & Mosley Common — these are the priorities coming up again and again.</p>
         </div>
-        <div className="bg-card border border-border/60 rounded-2xl p-8 space-y-5">
-          {issues.map(({ label, value, color }) => (
-            <div key={label} className="space-y-2">
-              <div className="flex justify-between items-center text-sm">
-                <span className="font-medium">{label}</span>
-                <span className="text-muted-foreground font-medium">{value}% of residents raised this</span>
+        <div className="grid sm:grid-cols-2 lg:grid-cols-3 gap-5">
+          {issues.map(({ icon: Icon, color, bg, label, desc }) => (
+            <div key={label} className={`rounded-2xl border p-5 space-y-3 ${bg}`}>
+              <div className="flex items-center gap-3">
+                <div className="w-9 h-9 rounded-xl bg-white/70 flex items-center justify-center flex-shrink-0 shadow-sm">
+                  <Icon className={`w-4 h-4 ${color}`} />
+                </div>
+                <h3 className="font-semibold text-sm">{label}</h3>
               </div>
-              <div className="h-2.5 bg-muted rounded-full overflow-hidden">
-                <div className={`h-full rounded-full ${color} transition-all duration-700`} style={{ width: `${value}%` }} />
-              </div>
+              <p className="text-sm text-foreground/75 leading-relaxed">{desc}</p>
             </div>
           ))}
         </div>
-        <p className="text-xs text-muted-foreground text-center mt-4 italic">Based on volunteer canvassing conversations across the ward — indicative priorities, not a formal poll.</p>
+        <p className="text-xs text-muted-foreground text-center mt-6 italic">Issues raised during volunteer canvassing conversations across the ward.</p>
       </div>
     </section>
   );
