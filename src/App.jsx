@@ -29,6 +29,7 @@ import ActivityFeed from './pages/ActivityFeed';
 import SocialMedia from './pages/SocialMedia';
 import LandingPage from './pages/LandingPage';
 import LeafletTracker from './pages/LeafletTracker';
+import DataImport from './pages/DataImport';
 
 const AuthenticatedApp = () => {
   const { isLoadingAuth, isLoadingPublicSettings, authError, navigateToLogin } = useAuth();
@@ -80,6 +81,7 @@ const AuthenticatedApp = () => {
         <Route path="/turf-sheets" element={<TurfSheets />} />
         <Route path="/social-media" element={<SocialMedia />} />
         <Route path="/leaflets" element={<LeafletTracker />} />
+        <Route path="/import" element={<DataImport />} />
       </Route>
       <Route path="*" element={<PageNotFound />} />
     </Routes>
