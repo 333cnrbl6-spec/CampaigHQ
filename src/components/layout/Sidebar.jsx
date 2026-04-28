@@ -3,7 +3,7 @@ import { Link, useLocation } from 'react-router-dom';
 import { 
   LayoutDashboard, Users, Calendar, Leaf, ClipboardList, 
   MapPin, ChevronLeft, ChevronRight, LogOut, BarChart3, MessageSquare,
-  History, Zap, Printer, Send, Trophy, Target, Radio, Share2, Globe, Upload
+  History, Zap, Printer, Send, Trophy, Target, Radio, Share2, Globe, Upload, Route
 } from 'lucide-react';
 import { base44 } from '@/api/base44Client';
 import { cn } from '@/lib/utils';
@@ -32,6 +32,7 @@ const navItems = [
   { path: '/social-media', label: 'Social Media Toolkit', icon: Share2 },
   { path: '/leaflets', label: 'Leaflet Distribution', icon: MapPin },
   { path: '/import', label: 'Import Data', icon: Upload },
+  { path: '/route', label: 'Route Optimizer', icon: Route },
   { path: '/vote', label: 'Campaign Landing Page', icon: Globe },
 ];
 
