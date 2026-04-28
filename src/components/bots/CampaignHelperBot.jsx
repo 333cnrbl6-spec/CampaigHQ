@@ -1,13 +1,81 @@
 import React, { useState, useEffect, useRef } from 'react';
 import { base44 } from '@/api/base44Client';
-import { MessageCircle, X, Send, Loader2 } from 'lucide-react';
+import { MessageCircle, X, Send, Loader2, Lightbulb } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { motion, AnimatePresence } from 'framer-motion';
 import ReactMarkdown from 'react-markdown';
 import { useLocation } from 'react-router-dom';
+import OliveAvatar from './OliveAvatar';
 
 const AGENT_NAME = 'campaignHelper';
+
+const PAGE_SUGGESTIONS = {
+  '/dashboard': {
+    title: '📊 Dashboard Tips',
+    suggestions: [
+      'Click on support level segments to drill into voter details',
+      'Check the 7-day trend to identify momentum patterns',
+      'Compare recent activity to spot which areas need attention',
+    ]
+  },
+  '/contacts': {
+    title: '👥 Contact Management Tips',
+    suggestions: [
+      'Use bulk tagging to organize contacts by area or issue priority',
+      'Filter by support level to target follow-up conversations',
+      'Add notes to capture key voter concerns for personalization',
+    ]
+  },
+  '/field-mode': {
+    title: '🚶 Canvassing Tips',
+    suggestions: [
+      'Contacts are sorted by proximity to save travel time',
+      'Log interactions immediately to keep data fresh',
+      'Use the support level dropdown to record voter sentiment',
+    ]
+  },
+  '/events': {
+    title: '🎯 Event Management Tips',
+    suggestions: [
+      'Create events to coordinate volunteer activities',
+      'Track volunteer RSVPs to plan resources',
+      'Send reminders to boost attendance',
+    ]
+  },
+  '/organizer': {
+    title: '📈 Campaign Overview Tips',
+    suggestions: [
+      'Use the coverage map to identify under-canvassed neighborhoods',
+      'Monitor support trends to measure campaign momentum',
+      'Review interaction outcomes to refine messaging',
+    ]
+  },
+  '/turf': {
+    title: '🗺️ Turf Management Tips',
+    suggestions: [
+      'Draw turf zones to assign canvassing areas to volunteers',
+      'Use color coding to track zone status',
+      'Optimize routes to maximize volunteer efficiency',
+    ]
+  },
+  '/tasks': {
+    title: '✅ Task Management Tips',
+    suggestions: [
+      'Create tasks for campaign milestones and deadlines',
+      'Assign tasks to team members to track responsibility',
+      'Categorize by priority to stay focused on what matters most',
+    ]
+  },
+  '/outreach': {
+    title: '📧 Outreach Tips',
+    suggestions: [
+      'Segment contacts by support level for targeted messaging',
+      'Use personalization tags to make messages feel personal',
+      'Track delivery to measure campaign reach',
+    ]
+  },
+};
 
 export default function CampaignHelperBot() {
   const [isOpen, setIsOpen] = useState(false);
@@ -15,8 +83,11 @@ export default function CampaignHelperBot() {
   const [messages, setMessages] = useState([]);
   const [input, setInput] = useState('');
   const [isLoading, setIsLoading] = useState(false);
+  const [showSuggestions, setShowSuggestions] = useState(false);
   const messagesEndRef = useRef(null);
   const location = useLocation();
+
+  const currentPageSuggestions = PAGE_SUGGESTIONS[location.pathname];
 
   // Initialize conversation on mount
   useEffect(() => {
@@ -94,17 +165,7 @@ export default function CampaignHelperBot() {
         className="fixed bottom-6 right-6 z-40 w-14 h-14 rounded-full bg-primary hover:bg-primary/90 text-white shadow-lg flex items-center justify-center transition-colors"
         aria-label="Open campaign helper"
       >
-        <AnimatePresence mode="wait">
-          {isOpen ? (
-            <motion.div key="close" initial={{ rotate: -90 }} animate={{ rotate: 0 }} exit={{ rotate: 90 }}>
-              <X className="w-6 h-6" />
-            </motion.div>
-          ) : (
-            <motion.div key="open" initial={{ rotate: 90 }} animate={{ rotate: 0 }} exit={{ rotate: -90 }}>
-              <MessageCircle className="w-6 h-6" />
-            </motion.div>
-          )}
-        </AnimatePresence>
+        <OliveAvatar size="md" animated={!isOpen} />
       </motion.button>
 
       {/* Chat window */}
@@ -119,18 +180,52 @@ export default function CampaignHelperBot() {
             {/* Header */}
             <div className="bg-gradient-to-r from-primary via-emerald-500 to-emerald-600 text-white p-4 flex items-center justify-between">
               <div className="flex items-center gap-3">
-                <div className="w-10 h-10 rounded-full bg-white/20 flex items-center justify-center text-lg">
-                  🌿
-                </div>
+                <OliveAvatar size="md" animated={false} />
                 <div>
                   <h3 className="font-semibold text-sm">Olive</h3>
-                  <p className="text-xs text-white/75">Green Party Campaign Guide</p>
+                  <p className="text-xs text-white/75">Your campaign assistant</p>
                 </div>
               </div>
             </div>
 
             {/* Messages */}
             <div className="flex-1 overflow-y-auto p-4 space-y-3 bg-muted/20">
+              {messages.length === 1 && !showSuggestions && (
+                <motion.button
+                  initial={{ opacity: 0, y: 10 }}
+                  animate={{ opacity: 1, y: 0 }}
+                  onClick={() => setShowSuggestions(true)}
+                  className="w-full mt-4"
+                >
+                  <div className="bg-emerald-50 border border-emerald-200 rounded-lg p-3 text-left hover:bg-emerald-100 transition-colors">
+                    <div className="flex items-center gap-2 mb-2">
+                      <Lightbulb className="w-4 h-4 text-emerald-600" />
+                      <p className="text-xs font-semibold text-emerald-900">Quick tips for this page</p>
+                    </div>
+                    <p className="text-xs text-emerald-700">Tap to see page-specific suggestions</p>
+                  </div>
+                </motion.button>
+              )}
+
+              {showSuggestions && currentPageSuggestions && (
+                <motion.div
+                  initial={{ opacity: 0, y: 10 }}
+                  animate={{ opacity: 1, y: 0 }}
+                  className="bg-emerald-50 border border-emerald-200 rounded-lg p-3 space-y-2"
+                >
+                  <p className="text-xs font-semibold text-emerald-900">{currentPageSuggestions.title}</p>
+                  {currentPageSuggestions.suggestions.map((suggestion, idx) => (
+                    <p key={idx} className="text-xs text-emerald-700">• {suggestion}</p>
+                  ))}
+                  <button
+                    onClick={() => setShowSuggestions(false)}
+                    className="text-xs text-emerald-600 hover:text-emerald-700 font-medium mt-2"
+                  >
+                    Got it
+                  </button>
+                </motion.div>
+              )}
+
               {messages.map((msg, idx) => (
                 <motion.div
                   key={idx}
