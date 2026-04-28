@@ -5,9 +5,10 @@ import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Badge } from '@/components/ui/badge';
-import { Plus, Search, Pencil, Trash2, Phone, Mail, MapPin, CheckCircle2 } from 'lucide-react';
+import { Plus, Search, Pencil, Trash2, Phone, Mail, MapPin, CheckCircle2, Tag } from 'lucide-react';
 import { AnimatePresence, motion } from 'framer-motion';
 import ContactForm from '../components/contacts/ContactForm';
+import BulkTagDialog from '../components/contacts/BulkTagDialog';
 
 const supportBadge = {
   strong_supporter: 'bg-primary/15 text-primary border-primary/25',
@@ -22,6 +23,8 @@ export default function Contacts() {
   const [editing, setEditing] = useState(null);
   const [search, setSearch] = useState('');
   const [filter, setFilter] = useState('all');
+  const [selectedIds, setSelectedIds] = useState(new Set());
+  const [showTagDialog, setShowTagDialog] = useState(false);
   const queryClient = useQueryClient();
 
   const { data: contacts = [], isLoading } = useQuery({
@@ -44,6 +47,24 @@ export default function Contacts() {
     onSuccess: () => queryClient.invalidateQueries({ queryKey: ['contacts'] }),
   });
 
+  const bulkTagMutation = useMutation({
+    mutationFn: async (tags) => {
+      const selectedContacts = contacts.filter(c => selectedIds.has(c.id));
+      await Promise.all(
+        selectedContacts.map(contact =>
+          base44.entities.Contact.update(contact.id, {
+            tags: [...(contact.tags || []), ...tags].filter((v, i, a) => a.indexOf(v) === i),
+          })
+        )
+      );
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['contacts'] });
+      setSelectedIds(new Set());
+      setShowTagDialog(false);
+    },
+  });
+
   const filtered = contacts.filter(c => {
     const matchesSearch = c.name?.toLowerCase().includes(search.toLowerCase()) ||
       c.address?.toLowerCase().includes(search.toLowerCase()) ||
@@ -60,6 +81,24 @@ export default function Contacts() {
       updateMutation.mutate({ id: editing.id, data });
     } else {
       createMutation.mutate(data);
+    }
+  };
+
+  const handleSelectContact = (id) => {
+    const newSelected = new Set(selectedIds);
+    if (newSelected.has(id)) {
+      newSelected.delete(id);
+    } else {
+      newSelected.add(id);
+    }
+    setSelectedIds(newSelected);
+  };
+
+  const handleSelectAll = () => {
+    if (selectedIds.size === filtered.length) {
+      setSelectedIds(new Set());
+    } else {
+      setSelectedIds(new Set(filtered.map(c => c.id)));
     }
   };
 
@@ -87,33 +126,59 @@ export default function Contacts() {
         )}
       </AnimatePresence>
 
-      {/* Filters */}
-      <div className="flex flex-col sm:flex-row gap-3 mb-6">
-        <div className="relative flex-1">
-          <Search className="w-4 h-4 absolute left-3 top-1/2 -translate-y-1/2 text-muted-foreground" />
-          <Input
-            placeholder="Search by name, address, postcode..."
-            value={search}
-            onChange={(e) => setSearch(e.target.value)}
-            className="pl-10"
-          />
-        </div>
-        <Select value={filter} onValueChange={setFilter}>
-          <SelectTrigger className="w-[180px]">
-            <SelectValue placeholder="Filter..." />
-          </SelectTrigger>
-          <SelectContent>
-            <SelectItem value="all">All Contacts</SelectItem>
-            <SelectItem value="voters">Registered Voters</SelectItem>
-            <SelectItem value="non-voters">Non-Voters</SelectItem>
-            <SelectItem value="strong_supporter">Strong Supporter</SelectItem>
-            <SelectItem value="leaning">Leaning</SelectItem>
-            <SelectItem value="undecided">Undecided</SelectItem>
-            <SelectItem value="opposed">Opposed</SelectItem>
-            <SelectItem value="unknown">Unknown</SelectItem>
-          </SelectContent>
-        </Select>
-      </div>
+      {/* Filters & Bulk Actions */}
+       <div className="space-y-4 mb-6">
+         <div className="flex flex-col sm:flex-row gap-3">
+           <div className="relative flex-1">
+             <Search className="w-4 h-4 absolute left-3 top-1/2 -translate-y-1/2 text-muted-foreground" />
+             <Input
+               placeholder="Search by name, address, postcode..."
+               value={search}
+               onChange={(e) => setSearch(e.target.value)}
+               className="pl-10"
+             />
+           </div>
+           <Select value={filter} onValueChange={setFilter}>
+             <SelectTrigger className="w-[180px]">
+               <SelectValue placeholder="Filter..." />
+             </SelectTrigger>
+             <SelectContent>
+               <SelectItem value="all">All Contacts</SelectItem>
+               <SelectItem value="voters">Registered Voters</SelectItem>
+               <SelectItem value="non-voters">Non-Voters</SelectItem>
+               <SelectItem value="strong_supporter">Strong Supporter</SelectItem>
+               <SelectItem value="leaning">Leaning</SelectItem>
+               <SelectItem value="undecided">Undecided</SelectItem>
+               <SelectItem value="opposed">Opposed</SelectItem>
+               <SelectItem value="unknown">Unknown</SelectItem>
+             </SelectContent>
+           </Select>
+         </div>
+
+         {/* Bulk Actions Bar */}
+         {selectedIds.size > 0 && (
+           <div className="bg-primary/5 border border-primary/20 rounded-lg p-3 flex items-center justify-between">
+             <div className="flex items-center gap-2">
+               <input
+                 type="checkbox"
+                 checked={selectedIds.size === filtered.length}
+                 onChange={handleSelectAll}
+                 className="w-4 h-4 rounded cursor-pointer"
+               />
+               <span className="text-sm font-medium">{selectedIds.size} selected</span>
+             </div>
+             <Button
+               onClick={() => setShowTagDialog(true)}
+               variant="outline"
+               size="sm"
+               className="gap-2"
+             >
+               <Tag className="w-4 h-4" />
+               Apply Tags
+             </Button>
+           </div>
+         )}
+       </div>
 
       {/* Contact List */}
       {isLoading ? (
@@ -126,13 +191,19 @@ export default function Contacts() {
         </div>
       ) : (
         <div className="grid gap-3">
-          {filtered.map((contact) => (
-            <div key={contact.id} className="bg-card rounded-xl border border-border/50 p-4 hover:shadow-sm transition-shadow flex items-center gap-4">
-              <div className="w-10 h-10 rounded-full bg-primary/10 flex items-center justify-center flex-shrink-0">
-                <span className="text-sm font-bold text-primary">
-                  {contact.name?.charAt(0)?.toUpperCase()}
-                </span>
-              </div>
+           {filtered.map((contact) => (
+             <div key={contact.id} className={`bg-card rounded-xl border p-4 hover:shadow-sm transition-all flex items-center gap-4 cursor-pointer ${selectedIds.has(contact.id) ? 'border-primary bg-primary/5' : 'border-border/50'}`}>
+               <input
+                 type="checkbox"
+                 checked={selectedIds.has(contact.id)}
+                 onChange={() => handleSelectContact(contact.id)}
+                 className="w-4 h-4 rounded cursor-pointer flex-shrink-0"
+               />
+               <div className="w-10 h-10 rounded-full bg-primary/10 flex items-center justify-center flex-shrink-0">
+                 <span className="text-sm font-bold text-primary">
+                   {contact.name?.charAt(0)?.toUpperCase()}
+                 </span>
+               </div>
               <div className="flex-1 min-w-0">
                 <div className="flex items-center gap-2 flex-wrap">
                   <p className="font-medium text-sm">{contact.name}</p>
@@ -149,6 +220,11 @@ export default function Contacts() {
                       Volunteer
                     </Badge>
                   )}
+                  {contact.tags?.map(tag => (
+                    <Badge key={tag} variant="secondary" className="text-xs bg-blue-100 text-blue-700 border-blue-200">
+                      {tag}
+                    </Badge>
+                  ))}
                 </div>
                 <div className="flex items-center gap-4 mt-1 text-xs text-muted-foreground flex-wrap">
                   {contact.address && <span className="flex items-center gap-1"><MapPin className="w-3 h-3" />{contact.address}</span>}
@@ -168,6 +244,15 @@ export default function Contacts() {
           ))}
         </div>
       )}
+
+      {/* Bulk Tag Dialog */}
+      <BulkTagDialog
+        isOpen={showTagDialog}
+        onOpenChange={setShowTagDialog}
+        selectedCount={selectedIds.size}
+        onApply={(tags) => bulkTagMutation.mutate(tags)}
+        loading={bulkTagMutation.isPending}
+      />
     </div>
   );
 }

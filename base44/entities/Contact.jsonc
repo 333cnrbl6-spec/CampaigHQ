@@ -56,6 +56,13 @@
       "type": "boolean",
       "default": false,
       "description": "Whether this contact has volunteered"
+    },
+    "tags": {
+      "type": "array",
+      "items": {
+        "type": "string"
+      },
+      "description": "Organizational tags (e.g. 'Requires Follow-up', 'Display Poster')"
     }
   },
   "required": [
