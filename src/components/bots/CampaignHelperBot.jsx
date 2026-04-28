@@ -59,13 +59,16 @@ export default function CampaignHelperBot() {
     const pageContext = location.pathname === '/' ? '' : ` (I'm on the ${location.pathname.slice(1).replace(/-/g, ' ')} page)`;
     const contextualMessage = userMessage + pageContext;
 
-    await base44.agents.addMessage({
-      id: conversationId,
-      messages,
-    }, {
-      role: 'user',
-      content: contextualMessage,
-    });
+    try {
+      const conversation = await base44.agents.getConversation(conversationId);
+      await base44.agents.addMessage(conversation, {
+        role: 'user',
+        content: contextualMessage,
+      });
+    } catch (error) {
+      console.error('Error sending message:', error);
+      setIsLoading(false);
+    }
   };
 
   // Initial greeting based on page
@@ -86,10 +89,9 @@ export default function CampaignHelperBot() {
       const greeting = `Hi! I'm Olive, your friendly Green Party campaign assistant. I'm here on ${pageContext} to help with suggestions, guidance, and real-time support. What can I help you with?`;
       
       setIsLoading(true);
-      base44.agents.addMessage(
-        { id: conversationId, messages: [] },
-        { role: 'assistant', content: greeting }
-      );
+      base44.agents.getConversation(conversationId).then((conv) => {
+        base44.agents.addMessage(conv, { role: 'assistant', content: greeting });
+      });
     }
   }, [conversationId, messages.length, location.pathname]);
 
