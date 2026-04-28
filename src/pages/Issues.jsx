@@ -8,7 +8,8 @@ import { Textarea } from '@/components/ui/textarea';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Badge } from '@/components/ui/badge';
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from '@/components/ui/dialog';
-import { Plus, Leaf, TrendingUp, Pencil, Trash2 } from 'lucide-react';
+import { Plus, Leaf, TrendingUp, Pencil, Trash2, Upload } from 'lucide-react';
+import SmartDataImporter from '@/components/import/SmartDataImporter';
 
 const CATEGORIES = ['environment', 'housing', 'transport', 'community', 'health', 'education', 'economy', 'planning'];
 const PRIORITIES = ['high', 'medium', 'low'];
@@ -65,10 +66,19 @@ export default function Issues() {
           <h1 className="font-heading text-3xl font-bold">Local Issues</h1>
           <p className="text-muted-foreground mt-1">Track the issues voters care about</p>
         </div>
-        <Dialog open={dialogOpen} onOpenChange={(open) => { setDialogOpen(open); if (!open) { setEditing(null); setForm(emptyIssue); } }}>
-          <DialogTrigger asChild>
-            <Button className="gap-2"><Plus className="w-4 h-4" /> Add Issue</Button>
-          </DialogTrigger>
+        <div className="flex gap-2">
+          <SmartDataImporter
+            entityName="Issue"
+            onComplete={() => queryClient.invalidateQueries({ queryKey: ['issues'] })}
+            trigger={{
+              type: Button,
+              props: { variant: 'outline', className: 'gap-2', children: [<Upload key="icon" className="w-4 h-4" />, 'Import Data'] }
+            }}
+          />
+          <Dialog open={dialogOpen} onOpenChange={(open) => { setDialogOpen(open); if (!open) { setEditing(null); setForm(emptyIssue); } }}>
+            <DialogTrigger asChild>
+              <Button className="gap-2"><Plus className="w-4 h-4" /> Add Issue</Button>
+            </DialogTrigger>
           <DialogContent className="max-w-lg">
             <DialogHeader>
               <DialogTitle className="font-heading">{editing ? 'Edit Issue' : 'New Issue'}</DialogTitle>
@@ -116,7 +126,8 @@ export default function Issues() {
               </div>
             </form>
           </DialogContent>
-        </Dialog>
+          </Dialog>
+        </div>
       </div>
 
       {isLoading ? (
