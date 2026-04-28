@@ -24,6 +24,8 @@ const navItems = [
   { path: '/map', label: 'Ward Map', icon: MapPin },
   { path: '/outreach', label: 'Bulk Outreach', icon: Send },
   { path: '/automation', label: 'Outreach Automation', icon: Zap },
+  { path: '/shifts', label: 'Shift Management', icon: Calendar },
+  { path: '/calendar', label: 'Volunteer Calendar', icon: Calendar },
   { path: '/leaderboard', label: 'Leaderboard', icon: Trophy },
   { path: '/gotv', label: 'GOTV Tracker', icon: Target },
   { path: '/activity', label: 'Live Activity', icon: Radio },

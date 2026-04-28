@@ -1,0 +1,51 @@
+{
+  "name": "ShiftSignup",
+  "type": "object",
+  "properties": {
+    "shift_id": {
+      "type": "string",
+      "description": "ID of the CanvassingShift"
+    },
+    "volunteer_email": {
+      "type": "string",
+      "description": "Volunteer email address"
+    },
+    "volunteer_name": {
+      "type": "string",
+      "description": "Volunteer full name"
+    },
+    "status": {
+      "type": "string",
+      "enum": [
+        "signed_up",
+        "confirmed",
+        "attended",
+        "cancelled"
+      ],
+      "default": "signed_up",
+      "description": "Signup status"
+    },
+    "notes": {
+      "type": "string",
+      "description": "Volunteer notes or questions"
+    },
+    "signed_up_date": {
+      "type": "string",
+      "format": "date-time",
+      "description": "When they signed up"
+    },
+    "phone": {
+      "type": "string",
+      "description": "Volunteer phone number for shift day contact"
+    },
+    "assigned_area": {
+      "type": "string",
+      "description": "Specific street or postcode area assigned"
+    }
+  },
+  "required": [
+    "shift_id",
+    "volunteer_email",
+    "volunteer_name"
+  ]
+}

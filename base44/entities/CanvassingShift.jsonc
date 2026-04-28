@@ -1,0 +1,74 @@
+{
+  "name": "CanvassingShift",
+  "type": "object",
+  "properties": {
+    "title": {
+      "type": "string",
+      "description": "Shift title (e.g., 'North Tyldesley - Evening Canvass')"
+    },
+    "date": {
+      "type": "string",
+      "format": "date",
+      "description": "Shift date"
+    },
+    "start_time": {
+      "type": "string",
+      "description": "Start time (HH:MM format)"
+    },
+    "end_time": {
+      "type": "string",
+      "description": "End time (HH:MM format)"
+    },
+    "location": {
+      "type": "string",
+      "description": "Meeting location or turf area"
+    },
+    "turf_id": {
+      "type": "string",
+      "description": "Associated turf ID (optional)"
+    },
+    "team_lead": {
+      "type": "string",
+      "description": "Assigned team lead email/name"
+    },
+    "capacity": {
+      "type": "number",
+      "default": 10,
+      "description": "Maximum number of volunteers"
+    },
+    "description": {
+      "type": "string",
+      "description": "Shift details and objectives"
+    },
+    "status": {
+      "type": "string",
+      "enum": [
+        "scheduled",
+        "in_progress",
+        "completed",
+        "cancelled"
+      ],
+      "default": "scheduled",
+      "description": "Shift status"
+    },
+    "contacts_count": {
+      "type": "number",
+      "default": 0,
+      "description": "Estimated number of households to canvass"
+    },
+    "materials_needed": {
+      "type": "array",
+      "items": {
+        "type": "string"
+      },
+      "description": "List of materials to bring (e.g., 'leaflets', 'clipboards')"
+    }
+  },
+  "required": [
+    "title",
+    "date",
+    "start_time",
+    "end_time",
+    "location"
+  ]
+}

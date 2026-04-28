@@ -34,6 +34,8 @@ import DataImport from './pages/DataImport';
 import OrganizerDashboard from './pages/OrganizerDashboard';
 import RouteOptimizer from './pages/RouteOptimizer';
 import OutreachAutomation from './pages/OutreachAutomation';
+import VolunteerCalendar from './pages/VolunteerCalendar';
+import ShiftManagement from './pages/ShiftManagement';
 
 const AuthenticatedApp = () => {
   const { isLoadingAuth, isLoadingPublicSettings, authError, navigateToLogin } = useAuth();
@@ -90,6 +92,8 @@ const AuthenticatedApp = () => {
         <Route path="/organizer" element={<OrganizerDashboard />} />
         <Route path="/route" element={<RouteOptimizer />} />
         <Route path="/automation" element={<OutreachAutomation />} />
+        <Route path="/calendar" element={<VolunteerCalendar />} />
+        <Route path="/shifts" element={<ShiftManagement />} />
       </Route>
       <Route path="*" element={<PageNotFound />} />
     </Routes>
