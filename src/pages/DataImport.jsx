@@ -20,16 +20,19 @@ export default function DataImport() {
   const [selectedEntity, setSelectedEntity] = useState(null);
   const [status, setStatus] = useState(null);
   const [error, setError] = useState(null);
+  const [currentFile, setCurrentFile] = useState(null);
+  const [fileUrl, setFileUrl] = useState(null);
 
   const handleFileSelected = async (file) => {
     setProcessing(true);
     setError(null);
     setDetectedEntity(null);
+    setCurrentFile(file);
 
     try {
       // Upload file
       const uploadRes = await base44.integrations.Core.UploadFile({ file });
-      const fileUrl = uploadRes.file_url;
+      setFileUrl(uploadRes.file_url);
 
       // AI determines the entity type
       const detectionRes = await base44.integrations.Core.InvokeLLM({
@@ -39,7 +42,7 @@ Return a JSON object with:
 - "entity_type": the best matching entity name
 - "confidence": 0-100 confidence score
 - "reason": brief explanation of why this entity type matches`,
-        file_urls: [fileUrl],
+        file_urls: [uploadRes.file_url],
         response_json_schema: {
           type: 'object',
           properties: {
@@ -60,19 +63,41 @@ Return a JSON object with:
   };
 
   const handleImport = async () => {
-    if (!selectedEntity) return;
+    if (!selectedEntity || !fileUrl) return;
 
     setProcessing(true);
     setError(null);
 
     try {
-      // This would need the file again - simplified for now
-      setStatus({ count: 0, message: 'Imported to ' + selectedEntity });
-      setTimeout(() => {
-        setStatus(null);
-        setDetectedEntity(null);
-        setSelectedEntity(null);
-      }, 3000);
+      const schema = await base44.entities[selectedEntity].schema();
+
+      // Extract and import
+      const extractRes = await base44.integrations.Core.InvokeLLM({
+        prompt: `Extract all records from this file and map to these fields: ${JSON.stringify(schema.properties || {})}. Return valid records only.`,
+        file_urls: [fileUrl],
+        response_json_schema: {
+          type: 'object',
+          properties: {
+            records: { type: 'array', items: { type: 'object' } },
+          },
+        },
+      });
+
+      const records = extractRes.records || [];
+      if (records.length > 0) {
+        await base44.entities[selectedEntity].bulkCreate(records);
+        setStatus({ count: records.length, entity: selectedEntity });
+        setError(null);
+        setTimeout(() => {
+          setStatus(null);
+          setDetectedEntity(null);
+          setSelectedEntity(null);
+          setCurrentFile(null);
+          setFileUrl(null);
+        }, 4000);
+      } else {
+        setError('No valid records found in file');
+      }
     } catch (err) {
       setError(err.message || 'Import failed');
     } finally {
@@ -92,7 +117,19 @@ Return a JSON object with:
       <div className="space-y-6">
         <SmartDropZone onFileSelected={handleFileSelected} processing={processing} />
 
-        {detectedEntity && (
+        {status ? (
+          <div className="bg-green-50 border border-green-200 rounded-xl p-6 space-y-3">
+            <div className="flex items-center gap-3">
+              <CheckCircle className="w-6 h-6 text-green-600" />
+              <div>
+                <p className="font-semibold text-green-900">Import successful</p>
+                <p className="text-sm text-green-700 mt-1">
+                  {status.count} {status.entity.toLowerCase()} record{status.count !== 1 ? 's' : ''} imported
+                </p>
+              </div>
+            </div>
+          </div>
+        ) : detectedEntity ? (
           <div className="bg-primary/5 border border-primary/20 rounded-xl p-5 space-y-4">
             <div>
               <div className="flex items-center gap-2 mb-2">
@@ -127,12 +164,6 @@ Return a JSON object with:
               </Select>
             </div>
 
-            {status && (
-              <div className="text-xs text-primary bg-white/50 rounded-lg p-3 border border-primary/20">
-                ✓ {status.message}
-              </div>
-            )}
-
             {error && (
               <div className="flex items-center gap-2 text-xs text-destructive bg-destructive/5 rounded-lg p-3 border border-destructive/20">
                 <AlertTriangle className="w-4 h-4" />
@@ -146,6 +177,8 @@ Return a JSON object with:
                 onClick={() => {
                   setDetectedEntity(null);
                   setSelectedEntity(null);
+                  setError(null);
+                  setCurrentFile(null);
                 }}
               >
                 Cancel
@@ -160,6 +193,13 @@ Return a JSON object with:
                 )}
               </Button>
             </div>
+          </div>
+        ) : null}
+
+        {error && !detectedEntity && (
+          <div className="flex items-center gap-2 text-sm text-destructive bg-destructive/5 rounded-lg p-4 border border-destructive/20">
+            <AlertTriangle className="w-5 h-5 flex-shrink-0" />
+            <span>{error}</span>
           </div>
         )}
       </div>
