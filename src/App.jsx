@@ -55,8 +55,9 @@ const AuthenticatedApp = () => {
   // Render the main app
   return (
     <Routes>
+      <Route path="/" element={<LandingPage />} />
       <Route element={<AppLayout />}>
-        <Route path="/" element={<Dashboard />} />
+        <Route path="/dashboard" element={<Dashboard />} />
         <Route path="/contacts" element={<Contacts />} />
         <Route path="/contact-history" element={<ContactHistory />} />
         <Route path="/events" element={<Events />} />
@@ -78,7 +79,6 @@ const AuthenticatedApp = () => {
         <Route path="/turf-sheets" element={<TurfSheets />} />
         <Route path="/social-media" element={<SocialMedia />} />
       </Route>
-      <Route path="/landing" element={<LandingPage />} />
       <Route path="*" element={<PageNotFound />} />
     </Routes>
   );

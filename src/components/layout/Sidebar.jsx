@@ -9,7 +9,7 @@ import { base44 } from '@/api/base44Client';
 import { cn } from '@/lib/utils';
 
 const navItems = [
-  { path: '/', label: 'Dashboard', icon: LayoutDashboard },
+  { path: '/dashboard', label: 'Dashboard', icon: LayoutDashboard },
   { path: '/contacts', label: 'Voter Contacts', icon: Users },
   { path: '/contact-history', label: 'Contact History', icon: History },
   { path: '/events', label: 'Events', icon: Calendar },
@@ -30,7 +30,7 @@ const navItems = [
   { path: '/polling-map', label: 'Polling Districts', icon: MapPin },
   { path: '/turf-sheets', label: 'Turf Sheets', icon: Printer },
   { path: '/social-media', label: 'Social Media Toolkit', icon: Share2 },
-  { path: '/landing', label: 'Campaign Landing Page', icon: Globe },
+  { path: '/', label: 'Campaign Landing Page', icon: Globe },
 ];
 
 export default function Sidebar() {
