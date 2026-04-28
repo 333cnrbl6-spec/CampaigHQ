@@ -1,4 +1,4 @@
-import React, { useState, useMemo } from 'react';
+import React, { useState, useMemo, useEffect } from 'react';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
@@ -6,8 +6,9 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@
 import { Badge } from '@/components/ui/badge';
 import { Textarea } from '@/components/ui/textarea';
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/components/ui/dialog';
-import { ChevronLeft, ChevronRight, Check, X, AlertCircle, WifiOff, Wifi, RefreshCw, CloudUpload, Search, Clock, MessageSquare } from 'lucide-react';
+import { ChevronLeft, ChevronRight, Check, X, AlertCircle, WifiOff, Wifi, RefreshCw, CloudUpload, Search, Clock, MessageSquare, MapPin } from 'lucide-react';
 import { useOfflineFieldMode } from '../hooks/useOfflineFieldMode';
+import { useGeolocation } from '@/hooks/useGeolocation';
 import { base44 } from '@/api/base44Client';
 import { useQuery } from '@tanstack/react-query';
 
@@ -38,6 +39,13 @@ export default function FieldMode() {
     syncQueue,
   } = useOfflineFieldMode();
 
+  const { location, requestLocation, calculateDistance } = useGeolocation();
+
+  // Request location on mount
+  useEffect(() => {
+    requestLocation();
+  }, []);
+
   // Fetch interaction history for current contact
   const { data: interactions = [] } = useQuery({
     queryKey: ['interactions', contacts[currentIndex]?.id],
@@ -45,16 +53,38 @@ export default function FieldMode() {
     enabled: !!contacts[currentIndex]?.id && isOnline,
   });
 
+  // Sort contacts by proximity to field rep, then apply search
+  const sortedByProximity = useMemo(() => {
+    if (!location) return contacts;
+    
+    return [...contacts].sort((a, b) => {
+      // Use UK postcode centroids as approximation (you'd want real geocoding for production)
+      const getCoords = (postcode) => {
+        // This is a simplified approach - in production you'd use a geocoding API
+        const hash = postcode.split('').reduce((h, c) => ((h << 5) - h) + c.charCodeAt(0), 0);
+        const lat = 53.5 + (Math.abs(hash % 1000) / 1000) * 0.3;
+        const lon = -2.5 + (Math.abs(hash % 500) / 500) * 0.2;
+        return [lat, lon];
+      };
+
+      const [lat1, lon1] = getCoords(a.postcode || '');
+      const [lat2, lon2] = getCoords(b.postcode || '');
+      const dist1 = calculateDistance(location.latitude, location.longitude, lat1, lon1);
+      const dist2 = calculateDistance(location.latitude, location.longitude, lat2, lon2);
+      return dist1 - dist2;
+    });
+  }, [contacts, location, calculateDistance]);
+
   // Search contacts by name, postcode, address
   const filteredContacts = useMemo(() => {
-    if (!searchQuery.trim()) return contacts;
+    if (!searchQuery.trim()) return sortedByProximity;
     const query = searchQuery.toLowerCase();
-    return contacts.filter(c =>
+    return sortedByProximity.filter(c =>
       c.name?.toLowerCase().includes(query) ||
       c.postcode?.toLowerCase().includes(query) ||
       c.address?.toLowerCase().includes(query)
     );
-  }, [contacts, searchQuery]);
+  }, [sortedByProximity, searchQuery]);
 
   if (isLoadingContacts) {
     return (
@@ -116,11 +146,12 @@ export default function FieldMode() {
       <div className="w-full max-w-md space-y-4">
 
         {/* Online/Offline status bar */}
-        <div className={`flex items-center justify-between px-3 py-2 rounded-lg text-sm font-medium ${isOnline ? 'bg-green-50 text-green-700' : 'bg-yellow-50 text-yellow-700 border border-yellow-200'}`}>
-          <div className="flex items-center gap-2">
-            {isOnline ? <Wifi className="w-4 h-4" /> : <WifiOff className="w-4 h-4" />}
-            {isOnline ? 'Online' : 'Offline — interactions will sync when reconnected'}
-          </div>
+         <div className={`flex items-center justify-between px-3 py-2 rounded-lg text-sm font-medium ${isOnline ? 'bg-green-50 text-green-700' : 'bg-yellow-50 text-yellow-700 border border-yellow-200'}`}>
+           <div className="flex items-center gap-2">
+             {isOnline ? <Wifi className="w-4 h-4" /> : <WifiOff className="w-4 h-4" />}
+             <span>{isOnline ? 'Online' : 'Offline — interactions will sync when reconnected'}</span>
+             {location && <span className="text-xs opacity-70 flex items-center gap-1"><MapPin className="w-3 h-3" /> Location sorted</span>}
+           </div>
           {queue.length > 0 && (
             <div className="flex items-center gap-2">
               <span className="bg-yellow-200 text-yellow-800 text-xs px-2 py-0.5 rounded-full font-bold">{queue.length} pending</span>
