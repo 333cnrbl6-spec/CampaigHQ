@@ -3,10 +3,8 @@ import { base44 } from '@/api/base44Client';
 import { Button } from '@/components/ui/button';
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/components/ui/dialog';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
-import { Upload, FileText, CheckCircle, AlertTriangle, Loader2, X } from 'lucide-react';
-import { cn } from '@/lib/utils';
-
-const SUPPORTED_FORMATS = ['.csv', '.xlsx', '.json', '.pdf', '.png', '.jpg', '.jpeg'];
+import { CheckCircle, AlertTriangle, Loader2 } from 'lucide-react';
+import SmartDropZone from './SmartDropZone';
 
 export default function SmartDataImporter({ entityName, onComplete, trigger }) {
   const [open, setOpen] = useState(false);
@@ -265,34 +263,7 @@ Example format:
         </DialogHeader>
 
         {step === 'upload' && (
-          <div
-            onDragEnter={handleDrag}
-            onDragLeave={handleDrag}
-            onDragOver={handleDrag}
-            onDrop={handleDrop}
-            className={cn(
-              'border-2 border-dashed rounded-xl p-12 text-center transition-colors',
-              dragActive ? 'border-primary bg-primary/5' : 'border-border bg-muted/30'
-            )}
-          >
-            <Upload className="w-8 h-8 mx-auto mb-3 text-muted-foreground" />
-            <p className="text-sm font-medium mb-1">Drag files here or click to select</p>
-            <p className="text-xs text-muted-foreground mb-4">
-              Supports CSV, Excel, JSON, PDF, Images
-            </p>
-            <input
-              type="file"
-              accept={SUPPORTED_FORMATS.join(',')}
-              onChange={(e) => processFile(e.target.files?.[0])}
-              className="hidden"
-              id="file-input"
-            />
-            <label htmlFor="file-input" asChild>
-              <Button variant="outline" className="cursor-pointer">
-                Select File
-              </Button>
-            </label>
-          </div>
+          <SmartDropZone onFileSelected={processFile} processing={processing} />
         )}
 
         {step === 'processing' && (
