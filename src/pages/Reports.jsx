@@ -4,7 +4,7 @@ import { base44 } from '@/api/base44Client';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
-import { PieChart, Pie, Cell, ResponsiveContainer, BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, Legend } from 'recharts';
+import { PieChart, Pie, Cell, ResponsiveContainer, BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, Legend, LineChart, Line } from 'recharts';
 import { Download, FileText } from 'lucide-react';
 import html2canvas from 'html2canvas';
 import jsPDF from 'jspdf';
@@ -46,6 +46,18 @@ export default function Reports() {
     { name: 'Text/SMS', value: interactions.filter(i => i.type === 'text').length },
     { name: 'Meeting', value: interactions.filter(i => i.type === 'meeting').length }
   ].filter(d => d.value > 0);
+
+  // Persuasion rate: contacts that changed from non-supporter to supporter/leaning
+  const persuasionData = [
+    { name: 'Strong Support', value: contacts.filter(c => c.support_level === 'strong_supporter' && c.canvassed).length, fill: '#16a34a' },
+    { name: 'Leaning', value: contacts.filter(c => c.support_level === 'leaning' && c.canvassed).length, fill: '#3b82f6' },
+    { name: 'Undecided', value: contacts.filter(c => c.support_level === 'undecided' && c.canvassed).length, fill: '#eab308' },
+    { name: 'Opposed', value: contacts.filter(c => c.support_level === 'opposed' && c.canvassed).length, fill: '#ef4444' },
+  ];
+  const canvassedWithOutcome = persuasionData.reduce((s, d) => s + d.value, 0);
+  const persuasionRate = canvassedWithOutcome > 0
+    ? Math.round(((persuasionData[0].value + persuasionData[1].value) / canvassedWithOutcome) * 100)
+    : 0;
 
   // Volunteers
   const volunteers = contacts.filter(c => c.volunteer);
@@ -112,6 +124,31 @@ export default function Reports() {
             </CardContent>
           </Card>
         </div>
+
+        {/* Persuasion Rate */}
+        <Card>
+          <CardHeader>
+            <CardTitle>Persuasion Rate (Canvassed Voters)</CardTitle>
+          </CardHeader>
+          <CardContent>
+            <div className="flex items-center gap-8">
+              <div className="text-center">
+                <div className="text-5xl font-bold text-primary">{persuasionRate}%</div>
+                <p className="text-sm text-muted-foreground mt-1">Supporters + Leaners<br/>among canvassed voters</p>
+              </div>
+              <div className="flex-1">
+                <ResponsiveContainer width="100%" height={160}>
+                  <PieChart>
+                    <Pie data={persuasionData} cx="50%" cy="50%" outerRadius={70} dataKey="value" label={({ name, value }) => value > 0 ? `${name}: ${value}` : ''}>
+                      {persuasionData.map((entry, i) => <Cell key={i} fill={entry.fill} />)}
+                    </Pie>
+                    <Tooltip />
+                  </PieChart>
+                </ResponsiveContainer>
+              </div>
+            </div>
+          </CardContent>
+        </Card>
 
         {/* Charts */}
         <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">

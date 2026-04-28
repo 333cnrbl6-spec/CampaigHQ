@@ -20,6 +20,9 @@ import Reports from './pages/Reports';
 import TeamChat from './pages/TeamChat';
 import CampaignMaterials from './pages/CampaignMaterials';
 import Outreach from './pages/Outreach';
+import Leaderboard from './pages/Leaderboard';
+import GOTVTracker from './pages/GOTVTracker';
+import ActivityFeed from './pages/ActivityFeed';
 
 const AuthenticatedApp = () => {
   const { isLoadingAuth, isLoadingPublicSettings, authError, navigateToLogin } = useAuth();
@@ -62,6 +65,9 @@ const AuthenticatedApp = () => {
         <Route path="/materials" element={<CampaignMaterials />} />
         <Route path="/map" element={<WardMap />} />
         <Route path="/outreach" element={<Outreach />} />
+        <Route path="/leaderboard" element={<Leaderboard />} />
+        <Route path="/gotv" element={<GOTVTracker />} />
+        <Route path="/activity" element={<ActivityFeed />} />
       </Route>
       <Route path="*" element={<PageNotFound />} />
     </Routes>
