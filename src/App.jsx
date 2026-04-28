@@ -27,6 +27,7 @@ import PollingMap from './pages/PollingMap';
 import GOTVTracker from './pages/GOTVTracker';
 import ActivityFeed from './pages/ActivityFeed';
 import SocialMedia from './pages/SocialMedia';
+import LandingPage from './pages/LandingPage';
 
 const AuthenticatedApp = () => {
   const { isLoadingAuth, isLoadingPublicSettings, authError, navigateToLogin } = useAuth();
@@ -77,6 +78,7 @@ const AuthenticatedApp = () => {
         <Route path="/turf-sheets" element={<TurfSheets />} />
         <Route path="/social-media" element={<SocialMedia />} />
       </Route>
+      <Route path="/landing" element={<LandingPage />} />
       <Route path="*" element={<PageNotFound />} />
     </Routes>
   );
