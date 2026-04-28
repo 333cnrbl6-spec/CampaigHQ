@@ -6,6 +6,7 @@ import { Button } from '@/components/ui/button';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import SmartDropZone from '@/components/import/SmartDropZone';
 import FieldMapper from '@/components/import/FieldMapper';
+import ExtractionPreview from '@/components/import/ExtractionPreview';
 import RecentImports from '@/components/import/RecentImports';
 
 const ENTITIES = {
@@ -20,7 +21,7 @@ const ENTITIES = {
 export default function DataImport() {
   const queryClient = useQueryClient();
   const [processing, setProcessing] = useState(false);
-  const [processingStep, setProcessingStep] = useState(null); // 'analyzing' or null
+  const [processingStep, setProcessingStep] = useState(null); // 'extracting', 'analyzing', or null
   const [detectedEntity, setDetectedEntity] = useState(null);
   const [selectedEntity, setSelectedEntity] = useState(null);
   const [status, setStatus] = useState(null);
@@ -28,28 +29,51 @@ export default function DataImport() {
   const [currentFile, setCurrentFile] = useState(null);
   const [fileUrl, setFileUrl] = useState(null);
   const [schema, setSchema] = useState(null);
+  const [extractedText, setExtractedText] = useState(null);
+  const [textConfirmed, setTextConfirmed] = useState(false);
 
   const handleFileSelected = async (file) => {
     setProcessing(true);
-    setProcessingStep('analyzing');
+    setProcessingStep('extracting');
     setError(null);
     setDetectedEntity(null);
     setCurrentFile(file);
+    setTextConfirmed(false);
 
     try {
       // Upload file
       const uploadRes = await base44.integrations.Core.UploadFile({ file });
       setFileUrl(uploadRes.file_url);
 
-      // AI determines the entity type
+      // Extract all text/content from the document
+      const textRes = await base44.integrations.Core.InvokeLLM({
+        prompt: `Extract ALL text and content from this document. Return the complete extracted text.`,
+        file_urls: [uploadRes.file_url],
+      });
+
+      setExtractedText(textRes);
+    } catch (err) {
+      setError(err.message || 'Failed to extract document content');
+      setProcessing(false);
+      setProcessingStep(null);
+    }
+  };
+
+  const handleTextConfirmed = async () => {
+    if (!fileUrl) return;
+    
+    setProcessingStep('analyzing');
+
+    try {
+      // AI determines the entity type based on extracted text
       const detectionRes = await base44.integrations.Core.InvokeLLM({
-        prompt: `Analyze this data file and determine which entity type it contains. Choose from: ${Object.keys(ENTITIES).join(', ')}.
+        prompt: `Based on this document content, determine which entity type it contains. Choose from: ${Object.keys(ENTITIES).join(', ')}.
         
 Return a JSON object with:
 - "entity_type": the best matching entity name
 - "confidence": 0-100 confidence score
 - "reason": brief explanation of why this entity type matches`,
-        file_urls: [uploadRes.file_url],
+        file_urls: [fileUrl],
         response_json_schema: {
           type: 'object',
           properties: {
@@ -124,6 +148,8 @@ Map each source column to its corresponding target field. Only include mapped fi
           setCurrentFile(null);
           setFileUrl(null);
           setSchema(null);
+          setExtractedText(null);
+          setTextConfirmed(false);
         }, 4000);
       } else {
         setError('No valid records found in file');
@@ -147,16 +173,39 @@ Map each source column to its corresponding target field. Only include mapped fi
       <div className="space-y-6">
         <SmartDropZone onFileSelected={handleFileSelected} processing={processing} />
 
+        {processingStep === 'extracting' && (
+          <div className="bg-blue-50 border border-blue-200 rounded-xl p-6 space-y-3">
+            <div className="flex items-center gap-3">
+              <Loader2 className="w-5 h-5 text-blue-600 animate-spin" />
+              <div>
+                <p className="font-semibold text-blue-900">Extracting content...</p>
+                <p className="text-sm text-blue-700 mt-1">AI is reading the document</p>
+              </div>
+            </div>
+          </div>
+        )}
+
         {processingStep === 'analyzing' && (
           <div className="bg-blue-50 border border-blue-200 rounded-xl p-6 space-y-3">
             <div className="flex items-center gap-3">
               <Loader2 className="w-5 h-5 text-blue-600 animate-spin" />
               <div>
-                <p className="font-semibold text-blue-900">Analyzing file...</p>
-                <p className="text-sm text-blue-700 mt-1">AI is determining the data type and structure</p>
+                <p className="font-semibold text-blue-900">Analyzing content...</p>
+                <p className="text-sm text-blue-700 mt-1">AI is determining the data type</p>
               </div>
             </div>
           </div>
+        )}
+
+        {extractedText && !detectedEntity && !textConfirmed && (
+          <ExtractionPreview
+            extractedText={extractedText}
+            fileName={currentFile?.name}
+            onProceed={() => {
+              setTextConfirmed(true);
+              handleTextConfirmed();
+            }}
+          />
         )}
 
         {status ? (
@@ -236,6 +285,8 @@ Map each source column to its corresponding target field. Only include mapped fi
                   setError(null);
                   setCurrentFile(null);
                   setSchema(null);
+                  setExtractedText(null);
+                  setTextConfirmed(false);
                 }}
               >
                 Cancel
