@@ -31,6 +31,7 @@ import SocialMedia from './pages/SocialMedia';
 import LandingPage from './pages/LandingPage';
 import LeafletTracker from './pages/LeafletTracker';
 import DataImport from './pages/DataImport';
+import OrganizerDashboard from './pages/OrganizerDashboard';
 
 const AuthenticatedApp = () => {
   const { isLoadingAuth, isLoadingPublicSettings, authError, navigateToLogin } = useAuth();
@@ -84,6 +85,7 @@ const AuthenticatedApp = () => {
         <Route path="/social-media" element={<SocialMedia />} />
         <Route path="/leaflets" element={<LeafletTracker />} />
         <Route path="/import" element={<DataImport />} />
+        <Route path="/organizer" element={<OrganizerDashboard />} />
       </Route>
       <Route path="*" element={<PageNotFound />} />
     </Routes>
