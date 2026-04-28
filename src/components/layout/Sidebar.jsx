@@ -31,7 +31,7 @@ const navItems = [
   { path: '/turf-sheets', label: 'Turf Sheets', icon: Printer },
   { path: '/social-media', label: 'Social Media Toolkit', icon: Share2 },
   { path: '/leaflets', label: 'Leaflet Distribution', icon: MapPin },
-  { path: '/', label: 'Campaign Landing Page', icon: Globe },
+  { path: '/vote', label: 'Campaign Landing Page', icon: Globe },
 ];
 
 export default function Sidebar() {

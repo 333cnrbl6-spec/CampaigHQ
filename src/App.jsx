@@ -1,7 +1,7 @@
 import { Toaster } from "@/components/ui/toaster"
 import { QueryClientProvider } from '@tanstack/react-query'
 import { queryClientInstance } from '@/lib/query-client'
-import { BrowserRouter as Router, Route, Routes } from 'react-router-dom';
+import { BrowserRouter as Router, Route, Routes, Navigate } from 'react-router-dom';
 import PageNotFound from './lib/PageNotFound';
 import { AuthProvider, useAuth } from '@/lib/AuthContext';
 import UserNotRegisteredError from '@/components/UserNotRegisteredError';
@@ -56,9 +56,9 @@ const AuthenticatedApp = () => {
   // Render the main app
   return (
     <Routes>
-      <Route path="/" element={<LandingPage />} />
       <Route element={<AppLayout />}>
         <Route path="/dashboard" element={<Dashboard />} />
+        <Route index element={<Navigate to="/dashboard" replace />} />
         <Route path="/contacts" element={<Contacts />} />
         <Route path="/contact-history" element={<ContactHistory />} />
         <Route path="/events" element={<Events />} />
@@ -93,7 +93,13 @@ function App() {
     <AuthProvider>
       <QueryClientProvider client={queryClientInstance}>
         <Router>
-          <AuthenticatedApp />
+          <Routes>
+            {/* Public routes — no auth required */}
+            <Route path="/" element={<LandingPage />} />
+            <Route path="/vote" element={<LandingPage />} />
+            {/* Auth-gated campaign tool routes */}
+            <Route path="/*" element={<AuthenticatedApp />} />
+          </Routes>
         </Router>
         <Toaster />
       </QueryClientProvider>
