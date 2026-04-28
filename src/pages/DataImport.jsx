@@ -35,6 +35,13 @@ export default function DataImport() {
   // Processing
   const [loading, setLoading] = useState(false);
 
+  // Auto-load last import on mount
+  useEffect(() => {
+    if (lastImportLog?.[0]?.file_url && currentStage === 0 && !currentFile) {
+      handleLoadLastImport();
+    }
+  }, [lastImportLog]);
+
   const markStageComplete = (stage) => {
     setCompletedStages(prev => [...new Set([...prev, stage])]);
   };
