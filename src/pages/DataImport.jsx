@@ -58,6 +58,8 @@ export default function DataImport() {
 
       if (extractRes.status === 'success' && extractRes.output?.content) {
         setExtractedText(extractRes.output.content);
+        setProcessing(false);
+        setProcessingStep(null);
       } else {
         setError(extractRes.details || 'Failed to extract document content');
         setProcessing(false);
