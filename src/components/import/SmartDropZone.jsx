@@ -2,15 +2,16 @@ import React, { useState } from 'react';
 import { Upload, FileText, FileJson, Image, AlertCircle, Loader2, CheckCircle } from 'lucide-react';
 import { cn } from '@/lib/utils';
 
-const SUPPORTED_FORMATS = ['.csv', '.xlsx', '.json', '.pdf', '.png', '.jpg', '.jpeg'];
-
 const getFileIcon = (filename) => {
-  if (/\.csv$/i.test(filename)) return { icon: FileText, label: 'CSV', color: 'text-blue-600' };
-  if (/\.xlsx?$/i.test(filename)) return { icon: FileText, label: 'Excel', color: 'text-green-600' };
-  if (/\.json$/i.test(filename)) return { icon: FileJson, label: 'JSON', color: 'text-amber-600' };
-  if (/\.pdf$/i.test(filename)) return { icon: FileText, label: 'PDF', color: 'text-red-600' };
-  if (/\.(png|jpg|jpeg)$/i.test(filename)) return { icon: Image, label: 'Image', color: 'text-purple-600' };
-  return { icon: FileText, label: 'File', color: 'text-gray-600' };
+  const ext = filename.split('.').pop()?.toLowerCase() || '';
+  
+  if (/^csv$/.test(ext)) return { icon: FileText, label: 'CSV', color: 'text-blue-600' };
+  if (/^xlsx?$/.test(ext)) return { icon: FileText, label: 'Excel', color: 'text-green-600' };
+  if (/^json$/.test(ext)) return { icon: FileJson, label: 'JSON', color: 'text-amber-600' };
+  if (/^pdf$/.test(ext)) return { icon: FileText, label: 'PDF', color: 'text-red-600' };
+  if (/^(png|jpg|jpeg|gif|webp|svg)$/.test(ext)) return { icon: Image, label: ext.toUpperCase(), color: 'text-purple-600' };
+  if (/^(txt|doc|docx|md)$/.test(ext)) return { icon: FileText, label: ext.toUpperCase(), color: 'text-slate-600' };
+  return { icon: FileText, label: ext.toUpperCase() || 'File', color: 'text-gray-600' };
 };
 
 const formatFileSize = (bytes) => {
@@ -104,14 +105,13 @@ export default function SmartDropZone({ onFileSelected, processing = false }) {
             <p className="text-xs text-muted-foreground mt-1">or click to browse</p>
           </div>
           <p className="text-xs text-muted-foreground">
-            CSV, Excel, JSON, PDF, or Images
+            All file types supported
           </p>
         </div>
       )}
 
       <input
         type="file"
-        accept={SUPPORTED_FORMATS.join(',')}
         onChange={handleFileInput}
         className="hidden"
         id="smart-file-input"
