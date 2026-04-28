@@ -18,6 +18,7 @@ const ENTITIES = {
 export default function DataImport() {
   const queryClient = useQueryClient();
   const [processing, setProcessing] = useState(false);
+  const [processingStep, setProcessingStep] = useState(null); // 'analyzing' or null
   const [detectedEntity, setDetectedEntity] = useState(null);
   const [selectedEntity, setSelectedEntity] = useState(null);
   const [status, setStatus] = useState(null);
@@ -27,6 +28,7 @@ export default function DataImport() {
 
   const handleFileSelected = async (file) => {
     setProcessing(true);
+    setProcessingStep('analyzing');
     setError(null);
     setDetectedEntity(null);
     setCurrentFile(file);
@@ -61,6 +63,7 @@ Return a JSON object with:
       setError(err.message || 'Failed to analyze file');
     } finally {
       setProcessing(false);
+      setProcessingStep(null);
     }
   };
 
@@ -119,6 +122,18 @@ Return a JSON object with:
 
       <div className="space-y-6">
         <SmartDropZone onFileSelected={handleFileSelected} processing={processing} />
+
+        {processingStep === 'analyzing' && (
+          <div className="bg-blue-50 border border-blue-200 rounded-xl p-6 space-y-3">
+            <div className="flex items-center gap-3">
+              <Loader2 className="w-5 h-5 text-blue-600 animate-spin" />
+              <div>
+                <p className="font-semibold text-blue-900">Analyzing file...</p>
+                <p className="text-sm text-blue-700 mt-1">AI is determining the data type and structure</p>
+              </div>
+            </div>
+          </div>
+        )}
 
         {status ? (
           <div className="bg-green-50 border border-green-200 rounded-xl p-6 space-y-3">
