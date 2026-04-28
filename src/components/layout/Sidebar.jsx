@@ -23,6 +23,7 @@ const navItems = [
   { path: '/materials', label: 'Campaign Materials', icon: Printer },
   { path: '/map', label: 'Ward Map', icon: MapPin },
   { path: '/outreach', label: 'Bulk Outreach', icon: Send },
+  { path: '/automation', label: 'Outreach Automation', icon: Zap },
   { path: '/leaderboard', label: 'Leaderboard', icon: Trophy },
   { path: '/gotv', label: 'GOTV Tracker', icon: Target },
   { path: '/activity', label: 'Live Activity', icon: Radio },

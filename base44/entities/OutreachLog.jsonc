@@ -1,0 +1,77 @@
+{
+  "name": "OutreachLog",
+  "type": "object",
+  "properties": {
+    "sequence_id": {
+      "type": "string",
+      "description": "ID of the OutreachSequence"
+    },
+    "contact_id": {
+      "type": "string",
+      "description": "ID of the Contact"
+    },
+    "contact_name": {
+      "type": "string",
+      "description": "Contact name for reference"
+    },
+    "contact_email": {
+      "type": "string",
+      "description": "Contact email for reference"
+    },
+    "channel": {
+      "type": "string",
+      "enum": [
+        "email",
+        "sms"
+      ],
+      "description": "Channel used"
+    },
+    "message_index": {
+      "type": "number",
+      "description": "Which message in the sequence"
+    },
+    "status": {
+      "type": "string",
+      "enum": [
+        "scheduled",
+        "sent",
+        "failed",
+        "skipped"
+      ],
+      "default": "scheduled",
+      "description": "Delivery status"
+    },
+    "subject": {
+      "type": "string",
+      "description": "Email subject sent"
+    },
+    "body": {
+      "type": "string",
+      "description": "Message body sent"
+    },
+    "error": {
+      "type": "string",
+      "description": "Error message if failed"
+    },
+    "trigger_event": {
+      "type": "string",
+      "description": "The event that triggered this"
+    },
+    "scheduled_for": {
+      "type": "string",
+      "format": "date-time",
+      "description": "When this message is scheduled"
+    },
+    "sent_at": {
+      "type": "string",
+      "format": "date-time",
+      "description": "When the message was actually sent"
+    }
+  },
+  "required": [
+    "sequence_id",
+    "contact_id",
+    "channel",
+    "message_index"
+  ]
+}

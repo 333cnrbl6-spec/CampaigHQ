@@ -1,0 +1,112 @@
+{
+  "name": "OutreachSequence",
+  "type": "object",
+  "properties": {
+    "name": {
+      "type": "string",
+      "description": "Name of the automation sequence"
+    },
+    "description": {
+      "type": "string",
+      "description": "What this sequence does"
+    },
+    "trigger_event": {
+      "type": "string",
+      "enum": [
+        "support_level_changed",
+        "contact_created",
+        "canvassed_status_changed",
+        "volunteer_status_changed"
+      ],
+      "description": "Event that triggers the sequence"
+    },
+    "trigger_value": {
+      "type": "string",
+      "description": "Specific value to trigger on (e.g., 'strong_supporter' for support_level_changed)"
+    },
+    "channel": {
+      "type": "string",
+      "enum": [
+        "email",
+        "sms"
+      ],
+      "description": "Delivery channel"
+    },
+    "status": {
+      "type": "string",
+      "enum": [
+        "active",
+        "paused"
+      ],
+      "default": "active",
+      "description": "Is this sequence running?"
+    },
+    "messages": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "properties": {
+          "delay_hours": {
+            "type": "number",
+            "description": "Hours to wait before sending this message"
+          },
+          "subject": {
+            "type": "string",
+            "description": "Email subject (email channel only)"
+          },
+          "body": {
+            "type": "string",
+            "description": "Message content with placeholders"
+          },
+          "order": {
+            "type": "number",
+            "description": "Sequence order"
+          }
+        }
+      },
+      "description": "Message sequence with delays"
+    },
+    "filters": {
+      "type": "object",
+      "properties": {
+        "support_level": {
+          "type": "array",
+          "items": {
+            "type": "string"
+          },
+          "description": "Only apply to contacts with these support levels"
+        },
+        "registered_voter": {
+          "type": "boolean",
+          "description": "Only registered voters"
+        },
+        "has_contact_method": {
+          "type": "string",
+          "enum": [
+            "email",
+            "phone",
+            "any"
+          ],
+          "description": "Must have contact method"
+        }
+      },
+      "description": "Additional filters for sequence eligibility"
+    },
+    "sent_count": {
+      "type": "number",
+      "default": 0,
+      "description": "Total messages sent in this sequence"
+    },
+    "enabled": {
+      "type": "boolean",
+      "default": true,
+      "description": "Is this sequence enabled?"
+    }
+  },
+  "required": [
+    "name",
+    "trigger_event",
+    "channel",
+    "messages"
+  ]
+}

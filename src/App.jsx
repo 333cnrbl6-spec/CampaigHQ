@@ -33,6 +33,7 @@ import LeafletTracker from './pages/LeafletTracker';
 import DataImport from './pages/DataImport';
 import OrganizerDashboard from './pages/OrganizerDashboard';
 import RouteOptimizer from './pages/RouteOptimizer';
+import OutreachAutomation from './pages/OutreachAutomation';
 
 const AuthenticatedApp = () => {
   const { isLoadingAuth, isLoadingPublicSettings, authError, navigateToLogin } = useAuth();
@@ -88,6 +89,7 @@ const AuthenticatedApp = () => {
         <Route path="/import" element={<DataImport />} />
         <Route path="/organizer" element={<OrganizerDashboard />} />
         <Route path="/route" element={<RouteOptimizer />} />
+        <Route path="/automation" element={<OutreachAutomation />} />
       </Route>
       <Route path="*" element={<PageNotFound />} />
     </Routes>
