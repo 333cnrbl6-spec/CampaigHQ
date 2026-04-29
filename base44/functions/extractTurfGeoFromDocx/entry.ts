@@ -22,74 +22,110 @@ Deno.serve(async (req) => {
       name.startsWith('word/media/') && /\.(png|jpg|jpeg|gif|bmp|emf|wmf)$/i.test(name)
     );
 
-    if (mediaFiles.length === 0) {
-      return Response.json({ error: 'No map image found in document', geojson: null });
-    }
+    // Filter to raster images only (EMF/WMF are Windows vector formats the LLM can't see)
+    const rasterFiles = mediaFiles.filter(name => /\.(png|jpg|jpeg|gif|bmp)$/i.test(name));
+    console.log('All media files:', mediaFiles.join(', '));
+    console.log('Raster files:', rasterFiles.join(', '));
 
-    // Use the first (usually largest/only) image
-    const imgFile = zip.files[mediaFiles[0]];
-    const imgBytes = await imgFile.async('uint8array');
-    const ext = mediaFiles[0].split('.').pop().toLowerCase();
-    const mimeMap = { png: 'image/png', jpg: 'image/jpeg', jpeg: 'image/jpeg', gif: 'image/gif', bmp: 'image/bmp' };
-    const imageMimeType = mimeMap[ext] || 'image/png';
-
-    // Upload the extracted image so the LLM can access it via URL
-    const imgFileObj = new File([imgBytes], `map.${ext || 'png'}`, { type: imageMimeType });
-    const uploadRes = await base44.asServiceRole.integrations.Core.UploadFile({ file: imgFileObj });
-    const imageUrl = uploadRes.file_url;
-
-    // Use LLM vision to analyse the map image
     const streetList = (streets || []).map(s => s.street_name).join(', ');
 
-    const llmResult = await base44.asServiceRole.integrations.Core.InvokeLLM({
-      model: 'claude_sonnet_4_6',
-      prompt: `You are a GIS analyst. This image is a hand-drawn or printed map section of the Tyldesley & Mosley Common ward in Wigan, Greater Manchester, England (approximate centre: latitude 53.514, longitude -2.467).
+    // If no raster images, skip straight to street-name-only inference
+    if (rasterFiles.length === 0) {
+      console.log('No raster images found — using street-name inference only');
+    }
+
+    let imageUrl = null;
+
+    if (rasterFiles.length > 0) {
+      // Use the first raster image
+      const imgFile = zip.files[rasterFiles[0]];
+      const imgBytes = await imgFile.async('uint8array');
+      const ext = rasterFiles[0].split('.').pop().toLowerCase();
+      const mimeMap = { png: 'image/png', jpg: 'image/jpeg', jpeg: 'image/jpeg', gif: 'image/gif', bmp: 'image/bmp' };
+      const imageMimeType = mimeMap[ext] || 'image/png';
+
+      // Upload the extracted image so the LLM can access it via URL
+      const imgFileObj = new File([imgBytes], `map.${ext || 'png'}`, { type: imageMimeType });
+      const uploadRes = await base44.asServiceRole.integrations.Core.UploadFile({ file: imgFileObj });
+      imageUrl = uploadRes.file_url;
+      console.log('Uploaded raster map image:', imageUrl);
+    }
+
+    const prompt = imageUrl
+      ? `You are a GIS analyst. This image is a hand-drawn or printed map section of the Tyldesley & Mosley Common ward in Wigan, Greater Manchester, England (approximate centre: latitude 53.514, longitude -2.467).
 
 The map section covers streets including: ${streetList || 'unknown streets'}.
 
-Your task: Analyse the map image carefully and produce a GeoJSON Polygon that approximates the geographic boundary of the area shown on this map. Look for visible street names, road layout, and area shape.
+Analyse the map image carefully and produce coordinate pairs that approximate the geographic boundary of the area shown. Look for visible street names, road layout, and overall area shape.
 
 Rules:
-- The ward centre is at lat 53.514, lon -2.467
-- Tyldesley town centre is at approx lat 53.5145, lon -2.4650
-- Use the visible map image and the street list to estimate real-world coordinates
+- Ward centre: lat 53.514, lon -2.467. Tyldesley town centre: lat 53.5145, lon -2.4650
+- Use the map image AND street names to estimate real-world coordinates
 - Street blocks are typically 0.001-0.005 degrees apart
-- Return ONLY a valid GeoJSON Polygon geometry object (no Feature wrapper)
-- Coordinates must be [longitude, latitude] pairs
-- The polygon must close (first and last point identical)
-- Produce 4-8 corner points tracing the boundary
+- Each point: lon first, then lat. Longitude ~-2.4 to -2.5, latitude ~53.50 to 53.53
+- Produce 4-8 corner points tracing the outer boundary. DO NOT close the ring.
 
-Example format:
-{"type":"Polygon","coordinates":[[[lon1,lat1],[lon2,lat2],[lon3,lat3],[lon4,lat4],[lon1,lat1]]]}`,
-      file_urls: [imageUrl],
+Return an object with a "points" array where each element has "lon" and "lat" number fields.`
+      : `You are a GIS analyst with deep knowledge of Tyldesley & Mosley Common ward in Wigan, Greater Manchester, England.
+
+Using your knowledge of the area and the following street names, estimate the geographic boundary of the turf/leaflet-route area that covers these streets: ${streetList || 'unknown streets'}.
+
+Rules:
+- Ward centre: lat 53.514, lon -2.467. Tyldesley town centre: lat 53.5145, lon -2.4650
+- Longitude ~-2.4 to -2.5, latitude ~53.50 to 53.53
+- Street blocks are typically 0.001-0.005 degrees apart
+- Produce 4-8 corner points forming a polygon enclosing the named streets. DO NOT close the ring.
+
+Return an object with a "points" array where each element has "lon" and "lat" number fields.`;
+
+    const llmOptions = {
+      model: imageUrl ? 'gemini_3_1_pro' : 'claude_sonnet_4_6',
+      prompt,
       response_json_schema: {
         type: 'object',
         properties: {
-          polygon: {
-            type: 'object',
-            properties: {
-              type: { type: 'string' },
-              coordinates: {
-                type: 'array',
-                items: {
-                  type: 'array',
-                  items: { type: 'array', items: { type: 'number' } },
-                },
+          points: {
+            type: 'array',
+            items: {
+              type: 'object',
+              properties: {
+                lon: { type: 'number' },
+                lat: { type: 'number' },
               },
+              required: ['lon', 'lat'],
             },
           },
         },
-        required: ['polygon'],
+        required: ['points'],
       },
-    });
+    };
 
-    // Validate it looks like a polygon
-    const poly = llmResult?.polygon;
-    if (!poly?.type || !poly?.coordinates) {
-      return Response.json({ error: 'LLM did not return a valid GeoJSON polygon', geojson: null });
+    if (imageUrl) llmOptions.file_urls = [imageUrl];
+
+    let llmResult;
+    try {
+      llmResult = await base44.asServiceRole.integrations.Core.InvokeLLM(llmOptions);
+    } catch (llmErr) {
+      console.log('LLM error:', llmErr.message);
+      return Response.json({ error: 'LLM call failed: ' + llmErr.message, geojson: null });
+    }
+    console.log('LLM result:', JSON.stringify(llmResult));
+
+    // Validate we have at least 3 points
+    const points = llmResult?.points;
+    if (!points || points.length < 3) {
+      return Response.json({ error: 'LLM did not return enough coordinate points', geojson: null });
     }
 
-    const geojson = JSON.stringify({ type: 'Feature', geometry: poly, properties: {} });
+    // Build a closed ring
+    const ring = points.map(p => [p.lon, p.lat]);
+    ring.push(ring[0]); // close the polygon
+
+    const geojson = JSON.stringify({
+      type: 'Feature',
+      geometry: { type: 'Polygon', coordinates: [ring] },
+      properties: {},
+    });
 
     // If turf_id provided, update the Turf record
     if (turf_id) {

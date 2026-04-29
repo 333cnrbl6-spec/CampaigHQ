@@ -10,7 +10,7 @@ import TurfSidebar from '../components/turf/TurfSidebar';
 import TurfRoutePanel from '../components/turf/TurfRoutePanel';
 import BulkAssignDialog from '../components/turf/BulkAssignDialog';
 import { Button } from '@/components/ui/button';
-import { Pencil, Trash2, Layers, Route } from 'lucide-react';
+import { Pencil, Trash2, Layers, Route, Wand2 } from 'lucide-react';
 
 // Fix leaflet default marker icons
 delete L.Icon.Default.prototype._getIconUrl;
@@ -145,6 +145,7 @@ export default function TurfManagement() {
   const [showRoute, setShowRoute] = useState(false);
   const [routeCoords, setRouteCoords] = useState([]);
   const [showBulkAssign, setShowBulkAssign] = useState(false);
+  const [autoDrawing, setAutoDrawing] = useState(false);
 
   const { data: turfs = [] } = useQuery({
     queryKey: ['turfs'],
@@ -183,6 +184,35 @@ export default function TurfManagement() {
     });
     setNamePrompt(false);
     setPendingGeoJSON(null);
+  };
+
+  const handleAutoDrawBoundary = async () => {
+    const turf = turfs.find(t => t.id === selectedId);
+    if (!turf?.file_url) return;
+    setAutoDrawing(true);
+    try {
+      // Get associated leaflet runs (streets) for this turf if no streets on turf itself
+      const leafletRuns = await base44.entities.LeafletRun.list('-created_date', 100);
+      const streets = leafletRuns
+        .filter(r => turf.name && r.notes)
+        .map(r => ({ street_name: r.street_name }))
+        .slice(0, 20);
+
+      const res = await base44.functions.invoke('extractTurfGeoFromDocx', {
+        file_url: turf.file_url,
+        turf_id: turf.id,
+        streets,
+      });
+
+      if (res.data?.geojson) {
+        queryClient.invalidateQueries(['turfs']);
+      } else {
+        alert('AI boundary generation failed: ' + (res.data?.error || 'Unknown error'));
+      }
+    } catch (err) {
+      alert('Error: ' + err.message);
+    }
+    setAutoDrawing(false);
   };
 
   const handleBulkAssign = (turfIds, team) => {
@@ -241,6 +271,18 @@ export default function TurfManagement() {
                 <Route className="w-4 h-4" />
                 {showRoute ? 'Hide Route' : 'Walking Route'}
               </Button>
+              {turfs.find(t => t.id === selectedId)?.file_url && (
+                <Button
+                  size="sm"
+                  variant="outline"
+                  className="gap-2 border-purple-300 text-purple-700 hover:bg-purple-50"
+                  onClick={handleAutoDrawBoundary}
+                  disabled={autoDrawing}
+                >
+                  <Wand2 className={`w-4 h-4 ${autoDrawing ? 'animate-spin' : ''}`} />
+                  {autoDrawing ? 'AI Drawing…' : turfs.find(t => t.id === selectedId)?.geojson ? 'Redraw AI Boundary' : 'Auto-draw Boundary'}
+                </Button>
+              )}
               <Button
                 size="sm"
                 variant="destructive"

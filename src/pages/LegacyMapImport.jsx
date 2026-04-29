@@ -112,6 +112,7 @@ export default function LegacyMapImport() {
           filename: item.file.name,
           text_content: rawText,
           streets,
+          file_url: uploadedFileUrl,
         });
 
         if (!res.data?.success) throw new Error(res.data?.error || 'Import failed');

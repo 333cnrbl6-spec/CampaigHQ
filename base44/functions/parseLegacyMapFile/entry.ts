@@ -47,7 +47,7 @@ Deno.serve(async (req) => {
     if (!user) return Response.json({ error: 'Unauthorized' }, { status: 401 });
 
     // Accepts either pre-extracted text content OR file_url for mammoth conversion
-    const { filename, text_content, streets: clientStreets } = await req.json();
+    const { filename, text_content, streets: clientStreets, file_url } = await req.json();
     if (!filename) return Response.json({ error: 'filename is required' }, { status: 400 });
 
     const meta = parseFilename(filename);
@@ -69,6 +69,7 @@ Deno.serve(async (req) => {
       target_doors: meta.total_households,
       doors_knocked: 0,
       goal: `Leaflet drop — ${meta.total_households} addresses`,
+      ...(file_url ? { file_url } : {}),
     });
 
     // Create LeafletRun records per street

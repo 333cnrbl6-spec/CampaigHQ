@@ -25,6 +25,10 @@
       "type": "string",
       "description": "GeoJSON string representing the drawn polygon/shape"
     },
+    "file_url": {
+      "type": "string",
+      "description": "URL of the original legacy DOCX file (used for AI boundary generation)"
+    },
     "status": {
       "type": "string",
       "enum": [
