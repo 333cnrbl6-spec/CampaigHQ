@@ -36,6 +36,7 @@ import RouteOptimizer from './pages/RouteOptimizer';
 import OutreachAutomation from './pages/OutreachAutomation';
 import VolunteerCalendar from './pages/VolunteerCalendar';
 import ShiftManagement from './pages/ShiftManagement';
+import CanvassingScripts from './pages/CanvassingScripts';
 
 const AuthenticatedApp = () => {
   const { isLoadingAuth, isLoadingPublicSettings, authError, navigateToLogin } = useAuth();
@@ -94,6 +95,7 @@ const AuthenticatedApp = () => {
         <Route path="/automation" element={<OutreachAutomation />} />
         <Route path="/calendar" element={<VolunteerCalendar />} />
         <Route path="/shifts" element={<ShiftManagement />} />
+        <Route path="/scripts" element={<CanvassingScripts />} />
       </Route>
       <Route path="*" element={<PageNotFound />} />
     </Routes>
