@@ -35,9 +35,9 @@ const navItems = [
   { path: '/social-media', label: 'Social Media Toolkit', icon: Share2 },
   { path: '/leaflets', label: 'Leaflet Distribution', icon: MapPin },
   { path: '/import', label: 'Import Data', icon: Upload },
+  { path: '/legacy-import', label: 'Import Map Files', icon: FileText },
   { path: '/route', label: 'Route Optimizer', icon: Route },
   { path: '/scripts', label: 'AI Canvassing Scripts', icon: Wand2 },
-  { path: '/legacy-import', label: 'Import Map Files', icon: FileText },
   { path: '/vote', label: 'Campaign Landing Page', icon: Globe },
 ];
 

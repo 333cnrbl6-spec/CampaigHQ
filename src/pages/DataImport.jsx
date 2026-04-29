@@ -1,7 +1,8 @@
 import React, { useState, useEffect } from 'react';
 import { base44 } from '@/api/base44Client';
 import { useQueryClient, useQuery } from '@tanstack/react-query';
-import { Loader2, AlertTriangle, Repeat2 } from 'lucide-react';
+import { useNavigate } from 'react-router-dom';
+import { Loader2, AlertTriangle, Repeat2, FileText, ArrowRight } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import SmartDropZone from '@/components/import/SmartDropZone';
 import ImportProgress from '@/components/import/ImportProgress';
@@ -10,8 +11,12 @@ import DatabaseAssessment from '@/components/import/DatabaseAssessment';
 import RecentImports from '@/components/import/RecentImports';
 import ValidationResults from '@/components/import/ValidationResults';
 
+const isLegacyMapFile = (filename) => /\.docx?$/i.test(filename);
+
 export default function DataImport() {
   const queryClient = useQueryClient();
+  const navigate = useNavigate();
+  const [legacyFileDetected, setLegacyFileDetected] = useState(null);
   
   // Fetch last import log to get the file URL
   const { data: lastImportLog } = useQuery({
@@ -84,6 +89,12 @@ export default function DataImport() {
 
   // Stage 1: Upload & Extract
   const handleFileSelected = async (file) => {
+    // Intercept DOCX files — route to legacy map importer
+    if (isLegacyMapFile(file.name)) {
+      setLegacyFileDetected(file.name);
+      return;
+    }
+
     setCurrentStage(1);
     setError(null);
     setExtractedText(null);
@@ -362,6 +373,20 @@ Map each source column to its corresponding target field. Return ALL records as 
           {/* Stage 1: Upload */}
           {currentStage === 0 && (
             <div className="space-y-4">
+              {legacyFileDetected && (
+                <div className="bg-amber-50 border border-amber-200 rounded-xl p-4 flex items-start gap-3">
+                  <FileText className="w-5 h-5 text-amber-600 flex-shrink-0 mt-0.5" />
+                  <div className="flex-1">
+                    <p className="font-semibold text-amber-900 text-sm">Legacy map file detected</p>
+                    <p className="text-xs text-amber-700 mt-0.5">
+                      <strong>{legacyFileDetected}</strong> looks like a legacy DOCX map file. Use the dedicated importer to extract streets and create Turf + Leaflet Run records.
+                    </p>
+                  </div>
+                  <Button size="sm" onClick={() => navigate('/legacy-import')} className="gap-1.5 flex-shrink-0">
+                    Open Importer <ArrowRight className="w-3.5 h-3.5" />
+                  </Button>
+                </div>
+              )}
               <SmartDropZone onFileSelected={handleFileSelected} processing={loading} />
               
               {lastImportLog?.[0]?.file_url && (
