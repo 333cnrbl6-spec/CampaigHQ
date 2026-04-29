@@ -4,7 +4,7 @@ import { base44 } from '@/api/base44Client';
 import { useQueryClient } from '@tanstack/react-query';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
-import { Upload, FileText, CheckCircle2, AlertCircle, Loader2, X, MapPin, Home, Layers } from 'lucide-react';
+import { Upload, FileText, CheckCircle2, AlertCircle, Loader2, X, MapPin, Home, Layers, Wand2 } from 'lucide-react';
 
 function FileDropZone({ onFile }) {
   const [dragging, setDragging] = useState(false);
@@ -68,6 +68,7 @@ const STATUS = {
   pending: { icon: FileText, color: 'text-muted-foreground', label: 'Queued' },
   uploading: { icon: Loader2, color: 'text-blue-500', label: 'Reading file...', spin: true },
   processing: { icon: Loader2, color: 'text-amber-500', label: 'Importing...', spin: true },
+  geo_matching: { icon: Wand2, color: 'text-purple-500', label: 'AI map matching...', spin: true },
   done: { icon: CheckCircle2, color: 'text-green-600', label: 'Imported' },
   error: { icon: AlertCircle, color: 'text-destructive', label: 'Failed' },
 };
@@ -103,7 +104,10 @@ export default function LegacyMapImport() {
         updateItem(item.id, { status: 'processing' });
         const streets = parseStreetsFromText(rawText);
 
-        // Step 3: Send parsed data to backend for entity creation
+        // Step 3: Upload raw file so backend can extract the map image
+        const { file_url: uploadedFileUrl } = await base44.integrations.Core.UploadFile({ file: item.file });
+
+        // Step 4: Send parsed data to backend for entity creation
         const res = await base44.functions.invoke('parseLegacyMapFile', {
           filename: item.file.name,
           text_content: rawText,
@@ -112,7 +116,23 @@ export default function LegacyMapImport() {
 
         if (!res.data?.success) throw new Error(res.data?.error || 'Import failed');
 
-        updateItem(item.id, { status: 'done', result: res.data });
+        const turfId = res.data.turf_created?.id;
+
+        // Step 5: AI map geo-matching — extract map image from docx and generate GeoJSON
+        updateItem(item.id, { status: 'geo_matching', result: res.data });
+        let geoResult = null;
+        try {
+          const geoRes = await base44.functions.invoke('extractTurfGeoFromDocx', {
+            file_url: uploadedFileUrl,
+            turf_id: turfId,
+            streets,
+          });
+          geoResult = geoRes.data;
+        } catch {
+          // Geo matching is best-effort — don't fail the whole import
+        }
+
+        updateItem(item.id, { status: 'done', result: res.data, geoResult });
       } catch (err) {
         updateItem(item.id, { status: 'error', error: err.message });
       }
@@ -203,6 +223,14 @@ export default function LegacyMapImport() {
                             <MapPin className="w-3.5 h-3.5 text-primary" />
                             <span><strong className="text-foreground">{item.result.streets_imported}</strong> streets imported</span>
                           </div>
+                        </div>
+                      )}
+                      {item.status === 'done' && (
+                        <div className={`mt-1.5 flex items-center gap-1.5 text-xs ${item.geoResult?.geojson ? 'text-purple-700' : 'text-amber-600'}`}>
+                          <Wand2 className="w-3.5 h-3.5" />
+                          {item.geoResult?.geojson
+                            ? 'AI map boundary matched — overlay ready on dashboard'
+                            : 'AI map matching skipped — draw boundary manually in Turf Management'}
                         </div>
                       )}
 
