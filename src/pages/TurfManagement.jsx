@@ -8,6 +8,7 @@ import 'leaflet-draw/dist/leaflet.draw.css';
 import 'leaflet-draw';
 import TurfSidebar from '../components/turf/TurfSidebar';
 import TurfRoutePanel from '../components/turf/TurfRoutePanel';
+import BulkAssignDialog from '../components/turf/BulkAssignDialog';
 import { Button } from '@/components/ui/button';
 import { Pencil, Trash2, Layers, Route } from 'lucide-react';
 
@@ -75,7 +76,6 @@ function TurfLayers({ turfs, selectedId, onSelect }) {
   const layersRef = useRef({});
 
   useEffect(() => {
-    // Remove old layers
     Object.values(layersRef.current).forEach(l => map.removeLayer(l));
     layersRef.current = {};
 
@@ -84,17 +84,45 @@ function TurfLayers({ turfs, selectedId, onSelect }) {
       try {
         const geo = JSON.parse(turf.geojson);
         const color = turf.color || DEFAULT_COLOR;
+        const isSelected = selectedId === turf.id;
+        const isUrgent = turf.priority === 'urgent';
+        const isHigh = turf.priority === 'high';
+
+        // Progress fill override
+        let fillColor = color;
+        let fillOpacity = isSelected ? 0.45 : 0.25;
+        if (turf.target_doors > 0) {
+          const pct = Math.min(1, (turf.doors_knocked || 0) / turf.target_doors);
+          fillOpacity = 0.15 + pct * 0.5;
+        }
+
+        const dashArray = isUrgent ? '8 4' : isHigh ? '6 3' : null;
+
         const layer = L.geoJSON(geo, {
           style: {
-            color,
-            fillColor: color,
-            fillOpacity: selectedId === turf.id ? 0.45 : 0.25,
-            weight: selectedId === turf.id ? 3 : 2,
+            color: isUrgent ? '#ef4444' : isHigh ? '#f97316' : color,
+            fillColor,
+            fillOpacity,
+            weight: isSelected ? 4 : isUrgent ? 3 : 2,
+            dashArray,
           },
         }).addTo(map);
 
+        const progressText = turf.target_doors > 0
+          ? `<br/><span style="font-size:11px">🚪 ${turf.doors_knocked || 0}/${turf.target_doors} doors</span>`
+          : '';
+        const priorityLabel = turf.priority && turf.priority !== 'normal'
+          ? `<br/><span style="font-size:11px;color:${isUrgent ? '#ef4444' : '#f97316'}">⚠️ ${turf.priority.toUpperCase()}</span>`
+          : '';
+        const goalText = turf.goal ? `<br/><span style="font-size:11px;color:#6b7280">🎯 ${turf.goal}</span>` : '';
+        const teamText = turf.assigned_team?.length > 0
+          ? `<br/><span style="font-size:11px">👥 ${turf.assigned_team.slice(0,2).join(', ')}${turf.assigned_team.length > 2 ? ` +${turf.assigned_team.length-2}` : ''}</span>`
+          : turf.assigned_to
+          ? `<br/><span style="font-size:11px">👤 ${turf.assigned_to}</span>`
+          : '';
+
         layer.bindTooltip(
-          `<strong>${turf.name}</strong>${turf.assigned_to ? `<br/><span style="font-size:11px">👤 ${turf.assigned_to}</span>` : ''}`,
+          `<strong>${turf.name}</strong>${priorityLabel}${teamText}${goalText}${progressText}`,
           { sticky: true }
         );
 
@@ -115,7 +143,8 @@ export default function TurfManagement() {
   const [namePrompt, setNamePrompt] = useState(false);
   const [newName, setNewName] = useState('');
   const [showRoute, setShowRoute] = useState(false);
-  const [routeCoords, setRouteCoords] = useState([]); // [[lat,lng],...]
+  const [routeCoords, setRouteCoords] = useState([]);
+  const [showBulkAssign, setShowBulkAssign] = useState(false);
 
   const { data: turfs = [] } = useQuery({
     queryKey: ['turfs'],
@@ -149,10 +178,24 @@ export default function TurfManagement() {
       name: newName || `Zone ${turfs.length + 1}`,
       geojson: pendingGeoJSON,
       status: 'unassigned',
+      priority: 'normal',
       color: COLORS[colorIdx],
     });
     setNamePrompt(false);
     setPendingGeoJSON(null);
+  };
+
+  const handleBulkAssign = (turfIds, team) => {
+    turfIds.forEach(id => {
+      updateTurf.mutate({
+        id,
+        data: {
+          assigned_team: team,
+          assigned_to: team[0],
+          status: 'assigned',
+        },
+      });
+    });
   };
 
   return (
@@ -164,6 +207,14 @@ export default function TurfManagement() {
         drawing={drawing}
         onSave={(id, data) => updateTurf.mutate({ id, data })}
         onDelete={(id) => deleteTurf.mutate(id)}
+        onBulkAssign={() => setShowBulkAssign(true)}
+      />
+
+      <BulkAssignDialog
+        open={showBulkAssign}
+        onClose={() => setShowBulkAssign(false)}
+        turfs={turfs}
+        onAssign={handleBulkAssign}
       />
 
       {/* Map area */}
@@ -231,8 +282,8 @@ export default function TurfManagement() {
           zoomControl={true}
         >
           <TileLayer
-            attribution='&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a>'
-            url="https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png"
+            attribution='&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a> &copy; <a href="https://carto.com/attributions">CartoDB</a>'
+            url="https://{s}.basemaps.cartocdn.com/light_all/{z}/{x}/{y}{r}.png"
           />
           <DrawControl onCreated={handleShapeCreated} drawing={drawing} setDrawing={setDrawing} />
           <TurfLayers turfs={turfs} selectedId={selectedId} onSelect={(id) => { setSelectedId(id); setShowRoute(false); setRouteCoords([]); }} />

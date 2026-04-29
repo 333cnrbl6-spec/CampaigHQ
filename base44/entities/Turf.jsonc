@@ -10,6 +10,13 @@
       "type": "string",
       "description": "Name or email of canvasser / team assigned to this turf"
     },
+    "assigned_team": {
+      "type": "array",
+      "items": {
+        "type": "string"
+      },
+      "description": "List of volunteer names/emails for bulk team assignment"
+    },
     "color": {
       "type": "string",
       "description": "Hex color for map display"
@@ -27,6 +34,30 @@
         "completed"
       ],
       "default": "unassigned"
+    },
+    "priority": {
+      "type": "string",
+      "enum": [
+        "normal",
+        "high",
+        "urgent"
+      ],
+      "default": "normal",
+      "description": "Priority level \u2014 urgent turfs appear prominently on the map"
+    },
+    "goal": {
+      "type": "string",
+      "description": "Specific goal for this turf, e.g. 'Contact all undecided voters', 'Leaflet drop only'"
+    },
+    "target_doors": {
+      "type": "number",
+      "default": 0,
+      "description": "Target number of doors to knock"
+    },
+    "doors_knocked": {
+      "type": "number",
+      "default": 0,
+      "description": "Doors knocked so far (for progress tracking)"
     },
     "notes": {
       "type": "string"
