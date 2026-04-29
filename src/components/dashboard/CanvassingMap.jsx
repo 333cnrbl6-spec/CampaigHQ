@@ -1,8 +1,12 @@
-import { useMemo, useState } from 'react';
-import { MapContainer, TileLayer, CircleMarker, Popup, LayerGroup, ZoomControl } from 'react-leaflet';
+import { useMemo, useState, useEffect, useRef } from 'react';
+import { MapContainer, TileLayer, CircleMarker, Popup, LayerGroup, ZoomControl, useMap } from 'react-leaflet';
+import L from 'leaflet';
 import 'leaflet/dist/leaflet.css';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
+import { base44 } from '@/api/base44Client';
+import { useQuery } from '@tanstack/react-query';
+import TurfOverlayControls from './TurfOverlayControls';
 
 // Real postcode coordinates for Tyldesley & Mosley Common ward (M29)
 const POSTCODE_COORDS = {
@@ -25,7 +29,6 @@ const POSTCODE_COORDS = {
   'M29 7AL': [53.5265, -2.4600], 'M29 7AN': [53.5040, -2.4440],
 };
 
-// Aggregate contacts by postcode
 function aggregateByPostcode(contacts) {
   const map = {};
   for (const c of contacts) {
@@ -42,7 +45,6 @@ function aggregateByPostcode(contacts) {
   return map;
 }
 
-// Interpolate between two hex colours by ratio 0-1
 function lerpColor(a, b, t) {
   const ah = parseInt(a.slice(1), 16), bh = parseInt(b.slice(1), 16);
   const ar = (ah >> 16) & 0xff, ag = (ah >> 8) & 0xff, ab = ah & 0xff;
@@ -56,10 +58,49 @@ function lerpColor(a, b, t) {
 function getCoords(postcode) {
   const pc = (postcode || '').trim().toUpperCase();
   if (POSTCODE_COORDS[pc]) return POSTCODE_COORDS[pc];
-  // Fallback: try base postcode (first part)
   const base = pc.split(' ')[0];
   const match = Object.keys(POSTCODE_COORDS).find(k => k.startsWith(base));
   if (match) return POSTCODE_COORDS[match];
+  return null;
+}
+
+// Renders turf GeoJSON overlays imperatively to avoid react-leaflet re-mount issues
+function TurfOverlays({ turfs, overlayStates }) {
+  const map = useMap();
+  const layersRef = useRef({});
+
+  useEffect(() => {
+    // Remove all existing overlay layers
+    Object.values(layersRef.current).forEach(l => { try { map.removeLayer(l); } catch {} });
+    layersRef.current = {};
+
+    turfs.forEach(turf => {
+      const state = overlayStates[turf.id];
+      if (!state?.visible || !turf.geojson) return;
+      try {
+        const geo = JSON.parse(turf.geojson);
+        const color = turf.color || '#16a34a';
+        const layer = L.geoJSON(geo, {
+          style: {
+            color,
+            fillColor: color,
+            fillOpacity: state.opacity,
+            weight: 2,
+            opacity: 0.7,
+          },
+        });
+        layer.bindTooltip(`<strong>${turf.name}</strong>`, { sticky: true });
+        layer.addTo(map);
+        layersRef.current[turf.id] = layer;
+      } catch {}
+    });
+
+    return () => {
+      Object.values(layersRef.current).forEach(l => { try { map.removeLayer(l); } catch {} });
+      layersRef.current = {};
+    };
+  }, [turfs, overlayStates, map]);
+
   return null;
 }
 
@@ -71,21 +112,24 @@ const MODES = [
 
 export default function CanvassingMap({ contacts = [] }) {
   const [mode, setMode] = useState('canvassing');
-  const aggregated = useMemo(() => aggregateByPostcode(contacts), [contacts]);
+  const [overlayStates, setOverlayStates] = useState({});
 
+  const { data: turfs = [] } = useQuery({
+    queryKey: ['turfs'],
+    queryFn: () => base44.entities.Turf.list('-created_date', 100),
+  });
+
+  const aggregated = useMemo(() => aggregateByPostcode(contacts), [contacts]);
   const totalContacts = contacts.length;
   const totalCanvassed = contacts.filter(c => c.canvassed).length;
   const pct = totalContacts > 0 ? Math.round((totalCanvassed / totalContacts) * 100) : 0;
-
   const entries = Object.values(aggregated);
-
-  // Max strong supporters across all postcodes (for normalising colour scale)
   const maxStrong = useMemo(() => Math.max(1, ...entries.map(e => e.strong)), [entries]);
   const maxUndecided = useMemo(() => Math.max(1, ...entries.map(e => e.undecided + e.opposed)), [entries]);
 
   function getMarkerProps(entry) {
     const canvassRatio = entry.total > 0 ? entry.canvassed / entry.total : 0;
-    const strongRatio = entry.strong / maxStrong;           // 0-1 relative
+    const strongRatio = entry.strong / maxStrong;
     const needRatio = (entry.undecided + entry.opposed) / maxUndecided;
 
     if (mode === 'canvassing') {
@@ -95,14 +139,10 @@ export default function CanvassingMap({ contacts = [] }) {
       else color = '#ef4444';
       return { color, fillOpacity: 0.75 };
     }
-
     if (mode === 'supporters') {
-      // Deep green = high strong supporters, grey = none
       const color = lerpColor('#94a3b8', '#15803d', strongRatio);
       return { color, fillOpacity: 0.5 + strongRatio * 0.45 };
     }
-
-    // outreach priority — needs-attention areas: undecided+opposed = red, low = blue
     const color = lerpColor('#3b82f6', '#ef4444', needRatio);
     return { color, fillOpacity: 0.5 + needRatio * 0.45 };
   }
@@ -123,6 +163,23 @@ export default function CanvassingMap({ contacts = [] }) {
       { color: '#a78bfa', label: 'Moderate need' },
       { color: '#3b82f6', label: 'Low need' },
     ],
+  };
+
+  const handleToggle = (turfId) => {
+    setOverlayStates(prev => ({
+      ...prev,
+      [turfId]: {
+        visible: !prev[turfId]?.visible,
+        opacity: prev[turfId]?.opacity ?? 0.4,
+      },
+    }));
+  };
+
+  const handleOpacityChange = (turfId, opacity) => {
+    setOverlayStates(prev => ({
+      ...prev,
+      [turfId]: { ...prev[turfId], opacity },
+    }));
   };
 
   return (
@@ -155,7 +212,6 @@ export default function CanvassingMap({ contacts = [] }) {
         ))}
       </div>
 
-      {/* Helper callout for outreach mode */}
       {mode === 'outreach' && (
         <p className="text-xs bg-red-50 text-red-700 border border-red-200 rounded-lg px-3 py-2">
           <strong>Outreach Priority:</strong> Red postcodes have the highest concentration of undecided &amp; opposed contacts — focus canvassing efforts here.
@@ -167,52 +223,71 @@ export default function CanvassingMap({ contacts = [] }) {
         </p>
       )}
 
-      {/* Map */}
-      <div className="rounded-lg overflow-hidden border border-border" style={{ height: 420 }}>
-        <MapContainer
-          center={[53.5141, -2.4675]}
-          zoom={13}
-          style={{ height: '100%', width: '100%' }}
-          zoomControl={false}
-        >
-          <ZoomControl position="bottomright" />
-          <TileLayer
-            attribution='&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a>'
-            url="https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png"
-          />
-          <LayerGroup>
-            {entries.map((entry) => {
-              const coords = getCoords(entry.postcode);
-              if (!coords) return null;
-              const { color, fillOpacity } = getMarkerProps(entry);
-              const radius = Math.max(7, Math.min(20, 7 + entry.total / 6));
-              const canvassRatio = entry.total > 0 ? entry.canvassed / entry.total : 0;
-              const strongPct = entry.total > 0 ? Math.round((entry.strong / entry.total) * 100) : 0;
+      {/* Map + overlay controls side by side on wider screens */}
+      <div className="flex flex-col lg:flex-row gap-3">
+        <div className="rounded-lg overflow-hidden border border-border flex-1" style={{ height: 420 }}>
+          <MapContainer
+            center={[53.5141, -2.4675]}
+            zoom={13}
+            style={{ height: '100%', width: '100%' }}
+            zoomControl={false}
+          >
+            <ZoomControl position="bottomright" />
+            <TileLayer
+              attribution='&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a>'
+              url="https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png"
+            />
+            {/* Turf overlays (imported / legacy map data) */}
+            <TurfOverlays turfs={turfs} overlayStates={overlayStates} />
+            <LayerGroup>
+              {entries.map((entry) => {
+                const coords = getCoords(entry.postcode);
+                if (!coords) return null;
+                const { color, fillOpacity } = getMarkerProps(entry);
+                const radius = Math.max(7, Math.min(20, 7 + entry.total / 6));
+                const canvassRatio = entry.total > 0 ? entry.canvassed / entry.total : 0;
+                const strongPct = entry.total > 0 ? Math.round((entry.strong / entry.total) * 100) : 0;
 
-              return (
-                <CircleMarker
-                  key={entry.postcode}
-                  center={coords}
-                  radius={radius}
-                  pathOptions={{ color, fillColor: color, fillOpacity, weight: 2, opacity: 0.9 }}
-                >
-                  <Popup>
-                    <div className="text-sm font-sans min-w-[180px] space-y-1">
-                      <p className="font-bold text-base">{entry.postcode}</p>
-                      <p>Total contacts: <strong>{entry.total}</strong></p>
-                      <p>Canvassed: <strong>{entry.canvassed}</strong> ({Math.round(canvassRatio * 100)}%)</p>
-                      <hr className="my-1" />
-                      <p>Strong Supporters: <strong className="text-green-700">{entry.strong}</strong> ({strongPct}%)</p>
-                      <p>Leaning: <strong>{entry.supporters - entry.strong}</strong></p>
-                      <p>Undecided: <strong className="text-amber-600">{entry.undecided}</strong></p>
-                      <p>Opposed: <strong className="text-red-600">{entry.opposed}</strong></p>
-                    </div>
-                  </Popup>
-                </CircleMarker>
-              );
-            })}
-          </LayerGroup>
-        </MapContainer>
+                return (
+                  <CircleMarker
+                    key={entry.postcode}
+                    center={coords}
+                    radius={radius}
+                    pathOptions={{ color, fillColor: color, fillOpacity, weight: 2, opacity: 0.9 }}
+                  >
+                    <Popup>
+                      <div className="text-sm font-sans min-w-[180px] space-y-1">
+                        <p className="font-bold text-base">{entry.postcode}</p>
+                        <p>Total contacts: <strong>{entry.total}</strong></p>
+                        <p>Canvassed: <strong>{entry.canvassed}</strong> ({Math.round(canvassRatio * 100)}%)</p>
+                        <hr className="my-1" />
+                        <p>Strong Supporters: <strong className="text-green-700">{entry.strong}</strong> ({strongPct}%)</p>
+                        <p>Leaning: <strong>{entry.supporters - entry.strong}</strong></p>
+                        <p>Undecided: <strong className="text-amber-600">{entry.undecided}</strong></p>
+                        <p>Opposed: <strong className="text-red-600">{entry.opposed}</strong></p>
+                      </div>
+                    </Popup>
+                  </CircleMarker>
+                );
+              })}
+            </LayerGroup>
+          </MapContainer>
+        </div>
+
+        {/* Overlay controls panel */}
+        <div className="lg:w-56 flex-shrink-0">
+          <TurfOverlayControls
+            turfs={turfs}
+            overlayStates={overlayStates}
+            onToggle={handleToggle}
+            onOpacityChange={handleOpacityChange}
+          />
+          {turfs.filter(t => t.geojson).length === 0 && (
+            <p className="text-xs text-muted-foreground p-2">
+              No map zones imported yet. Use <strong>Turf Management</strong> or <strong>Legacy Map Import</strong> to add zones.
+            </p>
+          )}
+        </div>
       </div>
     </div>
   );
