@@ -37,6 +37,7 @@ import OutreachAutomation from './pages/OutreachAutomation';
 import VolunteerCalendar from './pages/VolunteerCalendar';
 import ShiftManagement from './pages/ShiftManagement';
 import CanvassingScripts from './pages/CanvassingScripts';
+import LegacyMapImport from './pages/LegacyMapImport';
 
 const AuthenticatedApp = () => {
   const { isLoadingAuth, isLoadingPublicSettings, authError, navigateToLogin } = useAuth();
@@ -96,6 +97,7 @@ const AuthenticatedApp = () => {
         <Route path="/calendar" element={<VolunteerCalendar />} />
         <Route path="/shifts" element={<ShiftManagement />} />
         <Route path="/scripts" element={<CanvassingScripts />} />
+        <Route path="/legacy-import" element={<LegacyMapImport />} />
       </Route>
       <Route path="*" element={<PageNotFound />} />
     </Routes>
