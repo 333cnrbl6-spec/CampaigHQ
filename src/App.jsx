@@ -39,6 +39,7 @@ import ShiftManagement from './pages/ShiftManagement';
 import CanvassingScripts from './pages/CanvassingScripts';
 import LegacyMapImport from './pages/LegacyMapImport';
 import PermissionsManager from './pages/PermissionsManager';
+import CanvassingActivity from './pages/CanvassingActivity';
 
 const AuthenticatedApp = () => {
   const { isLoadingAuth, isLoadingPublicSettings, authError, navigateToLogin } = useAuth();
@@ -100,6 +101,7 @@ const AuthenticatedApp = () => {
         <Route path="/scripts" element={<CanvassingScripts />} />
         <Route path="/legacy-import" element={<LegacyMapImport />} />
         <Route path="/permissions" element={<PermissionsManager />} />
+        <Route path="/canvassing-activity" element={<CanvassingActivity />} />
       </Route>
       <Route path="*" element={<PageNotFound />} />
     </Routes>

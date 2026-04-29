@@ -25,6 +25,7 @@ const navSections = [
       { path: '/contact-history', label: 'Contact History', icon: History },
       { path: '/field-mode', label: 'Field Mode', icon: Zap },
       { path: '/gotv', label: 'GOTV Tracker', icon: Target },
+      { path: '/canvassing-activity', label: 'Session Activity', icon: ClipboardList },
       { path: '/scripts', label: 'Canvassing Scripts', icon: Wand2 },
     ],
   },

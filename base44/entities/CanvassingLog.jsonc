@@ -1,0 +1,74 @@
+{
+  "name": "CanvassingLog",
+  "type": "object",
+  "properties": {
+    "volunteer_name": {
+      "type": "string",
+      "description": "Name of the volunteer who did the session"
+    },
+    "volunteer_email": {
+      "type": "string",
+      "description": "Email of the volunteer"
+    },
+    "session_date": {
+      "type": "string",
+      "format": "date",
+      "description": "Date of the canvassing session"
+    },
+    "turf_id": {
+      "type": "string",
+      "description": "Associated turf ID (optional)"
+    },
+    "street_name": {
+      "type": "string",
+      "description": "Street or area covered"
+    },
+    "doors_knocked": {
+      "type": "number",
+      "default": 0,
+      "description": "Total number of doors knocked"
+    },
+    "positive_responses": {
+      "type": "number",
+      "default": 0,
+      "description": "Number of supportive / positive responses"
+    },
+    "negative_responses": {
+      "type": "number",
+      "default": 0,
+      "description": "Number of negative / opposed responses"
+    },
+    "no_answers": {
+      "type": "number",
+      "default": 0,
+      "description": "Number of doors with no answer"
+    },
+    "undecided_count": {
+      "type": "number",
+      "default": 0,
+      "description": "Number of undecided voters spoken to"
+    },
+    "leaflets_delivered": {
+      "type": "number",
+      "default": 0,
+      "description": "Leaflets delivered during this session"
+    },
+    "street_issues": {
+      "type": "string",
+      "description": "Notes on specific street issues raised by residents"
+    },
+    "general_notes": {
+      "type": "string",
+      "description": "General notes from the session"
+    },
+    "duration_minutes": {
+      "type": "number",
+      "description": "How long the session lasted (minutes)"
+    }
+  },
+  "required": [
+    "volunteer_name",
+    "session_date",
+    "doors_knocked"
+  ]
+}
