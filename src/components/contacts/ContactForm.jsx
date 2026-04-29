@@ -4,8 +4,7 @@ import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Textarea } from '@/components/ui/textarea';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
-import { X, CheckCircle2, Sparkles } from 'lucide-react';
-import ScriptGenerator from './ScriptGenerator';
+import { X, CheckCircle2 } from 'lucide-react';
 
 const SUPPORT_LEVELS = [
   { value: 'strong_supporter', label: 'Strong Supporter' },
@@ -20,7 +19,6 @@ export default function ContactForm({ contact, onSubmit, onCancel }) {
     name: '', address: '', postcode: '', phone: '', email: '',
     support_level: 'unknown', notes: '', canvassed: false, volunteer: false, registered_voter: false,
   });
-  const [scriptOpen, setScriptOpen] = useState(false);
 
   const handleSubmit = (e) => {
     e.preventDefault();
@@ -33,22 +31,9 @@ export default function ContactForm({ contact, onSubmit, onCancel }) {
         <h3 className="font-heading text-lg font-semibold">
           {contact ? 'Edit Contact' : 'Add Contact'}
         </h3>
-        <div className="flex items-center gap-2">
-          {contact && (
-            <Button
-              type="button"
-              variant="outline"
-              size="icon"
-              onClick={() => setScriptOpen(true)}
-              title="Generate canvassing script"
-            >
-              <Sparkles className="w-4 h-4" />
-            </Button>
-          )}
-          <Button variant="ghost" size="icon" onClick={onCancel}>
-            <X className="w-4 h-4" />
-          </Button>
-        </div>
+        <Button variant="ghost" size="icon" onClick={onCancel}>
+          <X className="w-4 h-4" />
+        </Button>
       </div>
       <form onSubmit={handleSubmit} className="space-y-4">
         <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
@@ -149,11 +134,6 @@ export default function ContactForm({ contact, onSubmit, onCancel }) {
           <Button type="submit">{contact ? 'Update' : 'Add Contact'}</Button>
         </div>
       </form>
-      </div>
-
-      {contact && (
-      <ScriptGenerator contact={contact} isOpen={scriptOpen} onClose={() => setScriptOpen(false)} />
-      )}
-      </div>
-      );
-      }
+    </div>
+  );
+}
