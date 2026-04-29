@@ -3,7 +3,7 @@ import { Link, useLocation } from 'react-router-dom';
 import { 
   LayoutDashboard, Users, Calendar, Leaf, ClipboardList, 
   MapPin, ChevronLeft, ChevronRight, LogOut, BarChart3, MessageSquare,
-  History, Zap, Printer, Send, Trophy, Target, Radio, Share2, Globe, Upload, Route, Wand2, FileText, Shield
+  History, Zap, Printer, Send, Trophy, Target, Radio, Share2, Globe, Upload, Route, Wand2, FileText, Shield, BookOpen
 } from 'lucide-react';
 import { base44 } from '@/api/base44Client';
 import { cn } from '@/lib/utils';
@@ -69,6 +69,7 @@ const navSections = [
       { path: '/legacy-import', label: 'Import Map Files', icon: FileText },
       { path: '/vote', label: 'Campaign Landing Page', icon: Globe },
       { path: '/permissions', label: 'Permissions', icon: Shield },
+      { path: '/manual', label: 'User Manual', icon: BookOpen },
     ],
   },
 ];

@@ -1,0 +1,682 @@
+import { useState } from 'react';
+import {
+  BookOpen, LayoutDashboard, Users, Zap, MapPin, Map, Printer,
+  Route, Newspaper, ClipboardList, Calendar, Send, BarChart3,
+  Upload, MessageSquare, FileText, ChevronRight, Search,
+  CheckCircle2, AlertCircle, Info, ThumbsUp, DoorOpen
+} from 'lucide-react';
+import { Input } from '@/components/ui/input';
+import { cn } from '@/lib/utils';
+
+// ─── Manual content ────────────────────────────────────────────────────────────
+
+const SECTIONS = [
+  {
+    id: 'getting-started',
+    icon: BookOpen,
+    title: 'Getting Started',
+    color: 'text-primary',
+    bg: 'bg-primary/10',
+    content: [
+      {
+        type: 'intro',
+        text: 'Welcome to the Paul Binns Green Party Campaign App — a complete campaign management platform for voter contact, leaflet tracking, volunteer coordination, and election day operations.',
+      },
+      {
+        type: 'steps',
+        heading: 'Logging In',
+        steps: [
+          'Visit the app URL in your browser and sign in with your campaign email.',
+          'First-time users: ask your campaign administrator to send you an invite.',
+          'Once logged in you\'ll land on the Dashboard — your campaign command centre.',
+        ],
+      },
+      {
+        type: 'steps',
+        heading: 'Navigating the App',
+        steps: [
+          'Use the sidebar on the left to move between sections.',
+          'The sidebar can be collapsed using the arrow at the bottom to give more screen space.',
+          'On mobile, the layout adjusts automatically — all features are accessible.',
+          'The green Olive bot (bottom right) is always available to answer questions.',
+        ],
+      },
+      {
+        type: 'tip',
+        text: 'Bookmark the app on your phone\'s home screen for quick access during canvassing sessions.',
+      },
+    ],
+  },
+  {
+    id: 'dashboard',
+    icon: LayoutDashboard,
+    title: 'Dashboard',
+    color: 'text-blue-600',
+    bg: 'bg-blue-50',
+    content: [
+      {
+        type: 'intro',
+        text: 'The Dashboard gives you a live overview of the whole campaign — doors knocked, support levels, upcoming events, and active tasks at a glance.',
+      },
+      {
+        type: 'list',
+        heading: 'What you can see',
+        items: [
+          'Total doors knocked and contacts made across the campaign',
+          'Support level breakdown — strong supporters, leaning, undecided, opposed',
+          'Upcoming events and deadlines',
+          'Active tasks and their priorities',
+          'Recent campaign activity',
+          'Canvassing coverage map',
+        ],
+      },
+      {
+        type: 'tip',
+        text: 'Check the Dashboard every morning during the campaign to stay on top of progress and spot any gaps in coverage.',
+      },
+    ],
+  },
+  {
+    id: 'contacts',
+    icon: Users,
+    title: 'Voter Contacts',
+    color: 'text-violet-600',
+    bg: 'bg-violet-50',
+    content: [
+      {
+        type: 'intro',
+        text: 'The Voter Contacts section is the central database for everyone you\'ve spoken to or plan to speak to across the ward.',
+      },
+      {
+        type: 'steps',
+        heading: 'Adding a New Contact',
+        steps: [
+          'Click "Voter Contacts" in the sidebar.',
+          'Click the "Add Contact" button (top right).',
+          'Enter name, address, postcode — these are the key fields.',
+          'Optionally add phone, email, support level, and notes.',
+          'Click Save.',
+        ],
+      },
+      {
+        type: 'steps',
+        heading: 'Searching & Filtering',
+        steps: [
+          'Use the search bar to search by name, address, or postcode.',
+          'Use the filter dropdowns to narrow by support level or canvassed status.',
+          'Check the "Volunteers only" filter to quickly find people who have offered to help.',
+        ],
+      },
+      {
+        type: 'steps',
+        heading: 'Bulk Tagging',
+        steps: [
+          'Select multiple contacts using the checkboxes on the left.',
+          'Click "Apply Tags".',
+          'Choose or type a tag (e.g. "Requires Follow-up", "Display Poster").',
+          'Click Apply — all selected contacts are tagged at once.',
+        ],
+      },
+      {
+        type: 'tip',
+        text: 'Focus canvassing effort on "Undecided" contacts first — they\'re the votes most likely to be won.',
+      },
+    ],
+  },
+  {
+    id: 'field-mode',
+    icon: Zap,
+    title: 'Field Mode',
+    color: 'text-amber-600',
+    bg: 'bg-amber-50',
+    content: [
+      {
+        type: 'intro',
+        text: 'Field Mode is the mobile-optimised door-knocking interface. It sorts contacts by proximity to your current location, works offline, and lets you log interactions instantly.',
+      },
+      {
+        type: 'steps',
+        heading: 'Starting a Session',
+        steps: [
+          'Click "Field Mode" in the sidebar.',
+          'Allow location access when prompted — this enables proximity sorting.',
+          'The contact list automatically orders by closest address first.',
+          'The status bar shows whether you\'re Online or Offline.',
+        ],
+      },
+      {
+        type: 'steps',
+        heading: 'Logging a Door Knock',
+        steps: [
+          'View the current contact\'s name and address on screen.',
+          'Click "Log Interaction".',
+          'Set the support level: Strong Supporter / Leaning / Undecided / Opposed / Unknown.',
+          'Set the outcome: Positive / Neutral / Negative / No Answer.',
+          'Add any notes about issues they raised.',
+          'Click "Save & Next" to move to the next contact.',
+          'If offline, the interaction is saved locally and syncs when you reconnect.',
+        ],
+      },
+      {
+        type: 'warning',
+        text: 'Always allow location permissions before heading out. Without them, contacts won\'t be sorted by proximity and you\'ll need to navigate manually.',
+      },
+    ],
+  },
+  {
+    id: 'canvassing-activity',
+    icon: DoorOpen,
+    title: 'Session Activity Log',
+    color: 'text-green-600',
+    bg: 'bg-green-50',
+    content: [
+      {
+        type: 'intro',
+        text: 'After a canvassing session, volunteers log a summary of their activity here — doors knocked, responses, issues raised. The Campaign Summary tab gives managers a complete picture of daily and weekly reach.',
+      },
+      {
+        type: 'steps',
+        heading: 'Logging a Session (Volunteers)',
+        steps: [
+          'Click "Session Activity" in the Contacts section of the sidebar.',
+          'Select the "Log a Session" tab.',
+          'Enter your name, the date, and the street or area you covered.',
+          'Fill in doors knocked, positive responses, negative responses, and no answers.',
+          'Add any street issues residents mentioned in the "Street Issues Raised" box.',
+          'Click Submit Session Log.',
+        ],
+      },
+      {
+        type: 'steps',
+        heading: 'Viewing the Campaign Summary (Managers)',
+        steps: [
+          'Click the "Campaign Summary" tab.',
+          'Use the range buttons (Today / Last 7 Days / Last 14 Days / All Time) to filter.',
+          'See total doors knocked, volunteer count, support rates, leaflets delivered, and hours volunteered.',
+          'The bar chart shows daily doors knocked over time.',
+          'Scroll down to see all recent sessions and a feed of street issues raised by residents.',
+        ],
+      },
+      {
+        type: 'tip',
+        text: 'Street issues logged here can be fed directly into Paul\'s policy position and used in canvassing conversations.',
+      },
+    ],
+  },
+  {
+    id: 'turf',
+    icon: Map,
+    title: 'Turf Management',
+    color: 'text-teal-600',
+    bg: 'bg-teal-50',
+    content: [
+      {
+        type: 'intro',
+        text: 'Turf Management lets you draw, assign, and track geographic canvassing zones on a live map. Each turf can be assigned to a volunteer or team with a target number of doors.',
+      },
+      {
+        type: 'steps',
+        heading: 'Creating a Turf',
+        steps: [
+          'Click "Turf Management" in the sidebar.',
+          'Use the drawing tools (top right of the map) to draw a polygon over your chosen area.',
+          'Give the turf a name and assign it to a volunteer.',
+          'Set a priority level and door target if needed.',
+          'Save — the turf appears on the map with its colour.',
+        ],
+      },
+      {
+        type: 'steps',
+        heading: 'Importing from Legacy DOCX Files',
+        steps: [
+          'Click "Import Map Files" in the Admin section of the sidebar.',
+          'Drag and drop your DOCX round files into the upload zone.',
+          'The system automatically reads the street list and draws a map boundary using the embedded map image.',
+          'Review the extracted streets and confirm the import.',
+          'The turf and its streets will appear on the map and in the Leaflet Tracker.',
+        ],
+      },
+      {
+        type: 'tip',
+        text: 'Use the map overview to see at a glance which areas are covered, in progress, and still unassigned — especially useful in the final days before polling.',
+      },
+    ],
+  },
+  {
+    id: 'leaflets',
+    icon: Newspaper,
+    title: 'Leaflet Distribution',
+    color: 'text-rose-600',
+    bg: 'bg-rose-50',
+    content: [
+      {
+        type: 'intro',
+        text: 'The Leaflet Distribution tracker manages three rounds of leafleting across all streets in the ward — tracking which streets are done, which are in progress, and which still need covering.',
+      },
+      {
+        type: 'list',
+        heading: 'The Three Rounds',
+        items: [
+          'Round 1 — All households: every house gets a leaflet.',
+          'Round 2 — Postal voters only: targeted delivery to postal voter addresses.',
+          'Round 3 — All households except postal voters: completes the round 2 exclusions.',
+        ],
+      },
+      {
+        type: 'steps',
+        heading: 'Marking a Street as Done',
+        steps: [
+          'Click "Leaflet Distribution" in the sidebar.',
+          'Find the street using the search or filter.',
+          'Click the tick button for the relevant round (R1, R2, or R3).',
+          'The progress bars update automatically.',
+        ],
+      },
+      {
+        type: 'steps',
+        heading: 'Printing Volunteer Sheets',
+        steps: [
+          'Click "Turf Sheets" in the sidebar.',
+          'Select a turf to print, or filter by area.',
+          'Click "Print Sheet" — a clean per-street table is generated with house counts, postal voter numbers, and tick columns.',
+          'Hand the printed sheet to volunteers at the start of a session.',
+        ],
+      },
+    ],
+  },
+  {
+    id: 'route',
+    icon: Route,
+    title: 'Route Optimiser',
+    color: 'text-indigo-600',
+    bg: 'bg-indigo-50',
+    content: [
+      {
+        type: 'intro',
+        text: 'The Route Optimiser builds efficient walking routes for volunteers — minimising backtracking and maximising the number of doors covered per hour.',
+      },
+      {
+        type: 'steps',
+        heading: 'Building a Route',
+        steps: [
+          'Click "Route Optimizer" in the Maps & Routes section.',
+          'Select a starting point and the streets or turf you want to cover.',
+          'The optimiser calculates the most efficient walking order.',
+          'View the route on the map with turn-by-turn directions.',
+          'Share the route with volunteers or print it as a reference sheet.',
+        ],
+      },
+      {
+        type: 'tip',
+        text: 'With limited volunteer hours remaining before polling day, using the route optimiser can meaningfully increase the number of doors covered per session.',
+      },
+    ],
+  },
+  {
+    id: 'events',
+    icon: Calendar,
+    title: 'Events & Shifts',
+    color: 'text-orange-600',
+    bg: 'bg-orange-50',
+    content: [
+      {
+        type: 'intro',
+        text: 'Create and manage campaign events — canvassing days, hustings, fundraisers, and team meetings. The Shift Management section handles structured volunteer sessions with sign-ups.',
+      },
+      {
+        type: 'steps',
+        heading: 'Creating an Event',
+        steps: [
+          'Click "Events" in the sidebar.',
+          'Click "Add Event".',
+          'Set the title, type, date, time, location, and description.',
+          'Invite volunteers by email.',
+          'Track RSVPs and send reminders.',
+        ],
+      },
+      {
+        type: 'steps',
+        heading: 'Managing Canvassing Shifts',
+        steps: [
+          'Click "Shift Management" in the sidebar.',
+          'Create a shift with a date, time, meeting location, and capacity.',
+          'Volunteers sign up and are tracked.',
+          'Assign specific streets or turfs to each volunteer on the day.',
+        ],
+      },
+    ],
+  },
+  {
+    id: 'outreach',
+    icon: Send,
+    title: 'Outreach & Comms',
+    color: 'text-cyan-600',
+    bg: 'bg-cyan-50',
+    content: [
+      {
+        type: 'intro',
+        text: 'Send bulk emails to contacts, automate follow-up sequences, and manage social media content — all from within the app.',
+      },
+      {
+        type: 'steps',
+        heading: 'Sending a Bulk Email',
+        steps: [
+          'Click "Bulk Outreach" in the sidebar.',
+          'Choose your audience — filter by support level, tag, or postcode.',
+          'Write your message and subject line.',
+          'Preview before sending.',
+          'Click Send.',
+        ],
+      },
+      {
+        type: 'steps',
+        heading: 'Outreach Automation',
+        steps: [
+          'Click "Outreach Automation" in the sidebar.',
+          'Create a sequence triggered by a specific event (e.g. new contact added, support level changed).',
+          'Add messages with time delays between them.',
+          'Activate the sequence — it runs automatically.',
+        ],
+      },
+    ],
+  },
+  {
+    id: 'reports',
+    icon: BarChart3,
+    title: 'Reports',
+    color: 'text-slate-600',
+    bg: 'bg-slate-100',
+    content: [
+      {
+        type: 'intro',
+        text: 'The Reports section provides detailed analytics on canvassing coverage, support levels, interaction trends, and volunteer activity.',
+      },
+      {
+        type: 'list',
+        heading: 'Available Reports',
+        items: [
+          'Canvassing progress by area and street',
+          'Support level breakdown across the ward',
+          'Interaction outcomes over time',
+          'Volunteer activity summary',
+          'Leaflet round completion rates',
+          'Issues most frequently raised by residents',
+        ],
+      },
+      {
+        type: 'tip',
+        text: 'Use the 7-day trend chart to see whether campaign momentum is building — and share it with volunteers to keep morale high.',
+      },
+    ],
+  },
+  {
+    id: 'import',
+    icon: Upload,
+    title: 'Data Import',
+    color: 'text-emerald-600',
+    bg: 'bg-emerald-50',
+    content: [
+      {
+        type: 'intro',
+        text: 'Import bulk voter contact lists from CSV, Excel, or Word files. The AI automatically detects field structure and maps columns to the correct fields.',
+      },
+      {
+        type: 'steps',
+        heading: 'Importing a Contact List',
+        steps: [
+          'Click "Import Data" in the Admin section.',
+          'Drag and drop your file into the upload zone (CSV, Excel, JSON, PDF, Word).',
+          'The AI detects the field structure and suggests mappings.',
+          'Review and adjust the column mapping if needed.',
+          'Validation runs automatically — review any flagged records.',
+          'Confirm and import.',
+          'The import log is saved so you can roll back if needed.',
+        ],
+      },
+      {
+        type: 'warning',
+        text: 'Always review the validation report before confirming an import — duplicate addresses or missing postcodes will be flagged for your attention.',
+      },
+    ],
+  },
+  {
+    id: 'troubleshooting',
+    icon: AlertCircle,
+    title: 'Troubleshooting',
+    color: 'text-red-600',
+    bg: 'bg-red-50',
+    content: [
+      {
+        type: 'intro',
+        text: 'Solutions to the most common issues volunteers and organisers encounter.',
+      },
+      {
+        type: 'faq',
+        items: [
+          {
+            q: 'Field Mode shows "Offline" and won\'t sync',
+            a: 'Check your internet connection. Wait a moment, then try clicking "Sync Now". Interactions logged offline are saved locally and will sync automatically when connection returns — no data is lost.',
+          },
+          {
+            q: 'A contact isn\'t appearing in search',
+            a: 'Try searching by a different field (name vs address vs postcode). Check the spelling. Refresh the page (Ctrl+R / Cmd+R) and try again.',
+          },
+          {
+            q: 'Location services aren\'t working on my phone',
+            a: 'Go to your phone Settings > Location and make sure location services are enabled. When the app asks for permission, choose "Allow". Then refresh Field Mode.',
+          },
+          {
+            q: 'The map boundary looks wrong after a DOCX import',
+            a: 'The boundary is generated from the map image embedded in the DOCX file. If the boundary is off, you can manually redraw it in Turf Management by selecting the turf and using the drawing tool.',
+          },
+          {
+            q: 'Can\'t log in',
+            a: 'Check caps lock is off and your email address is correct. Ask your campaign administrator to resend your invite if you\'ve not logged in before.',
+          },
+          {
+            q: 'Data looks wrong after an import',
+            a: 'Go to the import log in Data Import and use the rollback option to undo the import. Then correct your source file and re-import.',
+          },
+        ],
+      },
+    ],
+  },
+];
+
+// ─── Renderers ─────────────────────────────────────────────────────────────────
+
+function ContentBlock({ block }) {
+  switch (block.type) {
+    case 'intro':
+      return <p className="text-muted-foreground leading-relaxed">{block.text}</p>;
+
+    case 'steps':
+      return (
+        <div>
+          {block.heading && <h4 className="font-semibold text-sm mb-3">{block.heading}</h4>}
+          <ol className="space-y-2">
+            {block.steps.map((s, i) => (
+              <li key={i} className="flex gap-3 text-sm">
+                <span className="w-6 h-6 rounded-full bg-primary/15 text-primary text-xs font-bold flex items-center justify-center flex-shrink-0 mt-0.5">{i + 1}</span>
+                <span className="text-foreground/80 leading-relaxed">{s}</span>
+              </li>
+            ))}
+          </ol>
+        </div>
+      );
+
+    case 'list':
+      return (
+        <div>
+          {block.heading && <h4 className="font-semibold text-sm mb-3">{block.heading}</h4>}
+          <ul className="space-y-2">
+            {block.items.map((item, i) => (
+              <li key={i} className="flex gap-2 text-sm text-foreground/80">
+                <CheckCircle2 className="w-4 h-4 text-primary flex-shrink-0 mt-0.5" />
+                {item}
+              </li>
+            ))}
+          </ul>
+        </div>
+      );
+
+    case 'tip':
+      return (
+        <div className="flex gap-3 bg-primary/8 border border-primary/20 rounded-xl p-4">
+          <Info className="w-4 h-4 text-primary flex-shrink-0 mt-0.5" />
+          <p className="text-sm text-foreground/80 leading-relaxed">{block.text}</p>
+        </div>
+      );
+
+    case 'warning':
+      return (
+        <div className="flex gap-3 bg-amber-50 border border-amber-200 rounded-xl p-4">
+          <AlertCircle className="w-4 h-4 text-amber-600 flex-shrink-0 mt-0.5" />
+          <p className="text-sm text-foreground/80 leading-relaxed">{block.text}</p>
+        </div>
+      );
+
+    case 'faq':
+      return (
+        <div className="space-y-4">
+          {block.items.map((item, i) => (
+            <div key={i} className="border border-border/60 rounded-xl p-4 space-y-1.5">
+              <p className="font-semibold text-sm">{item.q}</p>
+              <p className="text-sm text-muted-foreground leading-relaxed">{item.a}</p>
+            </div>
+          ))}
+        </div>
+      );
+
+    default:
+      return null;
+  }
+}
+
+// ─── Page ──────────────────────────────────────────────────────────────────────
+
+export default function UserManual() {
+  const [activeId, setActiveId] = useState('getting-started');
+  const [search, setSearch] = useState('');
+
+  const filteredSections = search.trim()
+    ? SECTIONS.filter(s =>
+        s.title.toLowerCase().includes(search.toLowerCase()) ||
+        s.content.some(b =>
+          JSON.stringify(b).toLowerCase().includes(search.toLowerCase())
+        )
+      )
+    : SECTIONS;
+
+  const activeSection = SECTIONS.find(s => s.id === activeId);
+
+  return (
+    <div className="flex h-[calc(100vh-0px)] overflow-hidden">
+      {/* Sidebar nav */}
+      <aside className="w-64 flex-shrink-0 border-r border-border/60 bg-muted/30 flex flex-col overflow-hidden">
+        <div className="p-4 border-b border-border/60">
+          <div className="flex items-center gap-2 mb-3">
+            <BookOpen className="w-5 h-5 text-primary" />
+            <h2 className="font-heading font-bold text-base">User Manual</h2>
+          </div>
+          <div className="relative">
+            <Search className="w-3.5 h-3.5 absolute left-2.5 top-1/2 -translate-y-1/2 text-muted-foreground" />
+            <Input
+              placeholder="Search manual..."
+              value={search}
+              onChange={e => setSearch(e.target.value)}
+              className="pl-8 h-8 text-xs"
+            />
+          </div>
+        </div>
+        <nav className="flex-1 overflow-y-auto py-2">
+          {(search ? filteredSections : SECTIONS).map(({ id, icon: Icon, title, color }) => (
+            <button
+              key={id}
+              onClick={() => { setActiveId(id); setSearch(''); }}
+              className={cn(
+                'w-full flex items-center gap-2.5 px-4 py-2.5 text-sm font-medium transition-colors text-left',
+                activeId === id
+                  ? 'bg-primary/10 text-primary border-r-2 border-primary'
+                  : 'text-foreground/70 hover:bg-muted hover:text-foreground'
+              )}
+            >
+              <Icon className={cn('w-4 h-4 flex-shrink-0', activeId === id ? 'text-primary' : 'text-muted-foreground')} />
+              {title}
+              {activeId === id && <ChevronRight className="w-3 h-3 ml-auto text-primary" />}
+            </button>
+          ))}
+        </nav>
+      </aside>
+
+      {/* Content */}
+      <main className="flex-1 overflow-y-auto">
+        {search && filteredSections.length === 0 ? (
+          <div className="flex flex-col items-center justify-center h-full text-muted-foreground gap-3">
+            <Search className="w-10 h-10 opacity-30" />
+            <p>No results for "{search}"</p>
+          </div>
+        ) : search ? (
+          <div className="p-8 max-w-3xl space-y-10">
+            {filteredSections.map(section => (
+              <div key={section.id}>
+                <div className="flex items-center gap-3 mb-6">
+                  <div className={cn('w-10 h-10 rounded-xl flex items-center justify-center', section.bg)}>
+                    <section.icon className={cn('w-5 h-5', section.color)} />
+                  </div>
+                  <h2 className="font-heading text-xl font-bold">{section.title}</h2>
+                </div>
+                <div className="space-y-5">
+                  {section.content.map((block, i) => <ContentBlock key={i} block={block} />)}
+                </div>
+              </div>
+            ))}
+          </div>
+        ) : activeSection ? (
+          <div className="p-8 max-w-3xl">
+            {/* Header */}
+            <div className="flex items-center gap-4 mb-8 pb-6 border-b border-border/60">
+              <div className={cn('w-14 h-14 rounded-2xl flex items-center justify-center', activeSection.bg)}>
+                <activeSection.icon className={cn('w-7 h-7', activeSection.color)} />
+              </div>
+              <div>
+                <h1 className="font-heading text-3xl font-bold">{activeSection.title}</h1>
+                <p className="text-muted-foreground text-sm mt-0.5">Campaign App User Manual</p>
+              </div>
+            </div>
+
+            {/* Content blocks */}
+            <div className="space-y-7">
+              {activeSection.content.map((block, i) => (
+                <ContentBlock key={i} block={block} />
+              ))}
+            </div>
+
+            {/* Navigation footer */}
+            <div className="flex justify-between mt-12 pt-6 border-t border-border/60">
+              {(() => {
+                const idx = SECTIONS.findIndex(s => s.id === activeId);
+                const prev = SECTIONS[idx - 1];
+                const next = SECTIONS[idx + 1];
+                return (
+                  <>
+                    {prev ? (
+                      <button onClick={() => setActiveId(prev.id)} className="flex items-center gap-2 text-sm text-muted-foreground hover:text-foreground transition-colors">
+                        <ChevronRight className="w-4 h-4 rotate-180" /> {prev.title}
+                      </button>
+                    ) : <span />}
+                    {next && (
+                      <button onClick={() => setActiveId(next.id)} className="flex items-center gap-2 text-sm text-muted-foreground hover:text-foreground transition-colors ml-auto">
+                        {next.title} <ChevronRight className="w-4 h-4" />
+                      </button>
+                    )}
+                  </>
+                );
+              })()}
+            </div>
+          </div>
+        ) : null}
+      </main>
+    </div>
+  );
+}
