@@ -154,17 +154,53 @@ export default function CampaignHelperBot() {
     }
   }, [conversationId]);
 
+  const [showNudge, setShowNudge] = useState(true);
+
+  // Hide nudge after user opens chat once, or after 12 seconds
+  useEffect(() => {
+    if (isOpen) setShowNudge(false);
+  }, [isOpen]);
+  useEffect(() => {
+    const t = setTimeout(() => setShowNudge(false), 12000);
+    return () => clearTimeout(t);
+  }, []);
+
   return (
     <>
+      {/* Animated speech bubble nudge */}
+      <AnimatePresence>
+        {showNudge && !isOpen && (
+          <motion.div
+            initial={{ opacity: 0, scale: 0.8, y: 10, x: 10 }}
+            animate={{ opacity: 1, scale: 1, y: 0, x: 0 }}
+            exit={{ opacity: 0, scale: 0.8, y: 10 }}
+            transition={{ delay: 1.5 }}
+            className="fixed bottom-24 right-20 z-40 max-w-[200px] pointer-events-none"
+          >
+            <div className="bg-white border border-border shadow-lg rounded-2xl rounded-br-sm px-3 py-2 text-xs text-foreground leading-snug">
+              👋 Hi! I'm <strong>Olive</strong> — need help setting up your rounds or importing your maps?
+              <div className="absolute bottom-0 right-[-8px] w-0 h-0 border-t-[8px] border-t-transparent border-l-[8px] border-l-white" />
+            </div>
+          </motion.div>
+        )}
+      </AnimatePresence>
+
       {/* Chat bubble toggle */}
       <motion.button
         initial={{ scale: 0 }}
         animate={{ scale: 1 }}
         whileHover={{ scale: 1.1 }}
-        onClick={() => setIsOpen(!isOpen)}
+        onClick={() => { setIsOpen(!isOpen); setShowNudge(false); }}
         className="fixed bottom-6 right-6 z-40 w-14 h-14 rounded-full bg-primary hover:bg-primary/90 text-white shadow-lg flex items-center justify-center transition-colors"
         aria-label="Open campaign helper"
       >
+        {!isOpen && (
+          <motion.span
+            className="absolute top-0 right-0 w-3.5 h-3.5 bg-accent rounded-full border-2 border-white"
+            animate={{ scale: [1, 1.3, 1] }}
+            transition={{ repeat: Infinity, duration: 1.8, ease: 'easeInOut' }}
+          />
+        )}
         <OliveAvatar size="md" animated={!isOpen} />
       </motion.button>
 

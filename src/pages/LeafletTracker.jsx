@@ -5,8 +5,15 @@ import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Badge } from '@/components/ui/badge';
-import { Plus, CheckCircle2, Clock, Loader2, MapPin, User, Home } from 'lucide-react';
+import { Plus, CheckCircle2, Clock, Loader2, MapPin, User, Home, Printer, ChevronDown, ChevronUp } from 'lucide-react';
 import LeafletRunForm from '../components/leaflet/LeafletRunForm';
+import RoundProgressCard from '../components/leaflet/RoundProgressCard';
+
+const ROUND_CONFIG = {
+  1: { label: 'Round 1 — All Households', color: 'bg-blue-100 text-blue-800 border-blue-200', dot: 'bg-blue-500', description: 'Leaflet to every household' },
+  2: { label: 'Round 2 — Postal Voters Only', color: 'bg-purple-100 text-purple-800 border-purple-200', dot: 'bg-purple-500', description: 'Postal voter addresses only (list from council)' },
+  3: { label: 'Round 3 — Non-Postal Households', color: 'bg-amber-100 text-amber-800 border-amber-200', dot: 'bg-amber-500', description: 'All households EXCEPT postal voters' },
+};
 
 const statusConfig = {
   not_started: { label: 'Not Started', color: 'bg-muted text-muted-foreground', icon: Clock },
@@ -14,16 +21,35 @@ const statusConfig = {
   completed: { label: 'Completed', color: 'bg-green-100 text-green-700', icon: CheckCircle2 },
 };
 
+function RoundBadge({ run, round }) {
+  const done = run[`round_${round}_done`];
+  return (
+    <span className={`inline-flex items-center gap-1 text-[10px] px-1.5 py-0.5 rounded-full border font-medium ${
+      done ? 'bg-green-100 text-green-700 border-green-200' : 'bg-muted text-muted-foreground border-border'
+    }`}>
+      {done ? '✓' : '○'} R{round}
+    </span>
+  );
+}
+
 export default function LeafletTracker() {
   const [showForm, setShowForm] = useState(false);
   const [editing, setEditing] = useState(null);
   const [filterArea, setFilterArea] = useState('all');
   const [filterStatus, setFilterStatus] = useState('all');
+  const [filterTurf, setFilterTurf] = useState('all');
+  const [activeRound, setActiveRound] = useState(0); // 0 = all rounds view
+  const [expandedStreet, setExpandedStreet] = useState(null);
   const queryClient = useQueryClient();
 
   const { data: runs = [], isLoading } = useQuery({
     queryKey: ['leaflet-runs'],
-    queryFn: () => base44.entities.LeafletRun.list('-created_date', 200),
+    queryFn: () => base44.entities.LeafletRun.list('-created_date', 500),
+  });
+
+  const { data: turfs = [] } = useQuery({
+    queryKey: ['turfs'],
+    queryFn: () => base44.entities.Turf.list('-created_date', 100),
   });
 
   const createMutation = useMutation({
@@ -49,69 +75,95 @@ export default function LeafletTracker() {
     }
   };
 
+  const toggleRoundDone = (run, round) => {
+    const key = `round_${round}_done`;
+    updateMutation.mutate({ id: run.id, data: { [key]: !run[key] } });
+  };
+
   const quickStatus = (run, status) => {
     const update = { status };
     if (status === 'completed') update.completed_date = new Date().toISOString().split('T')[0];
     updateMutation.mutate({ id: run.id, data: { ...run, ...update } });
   };
 
+  // Filtering
   const filtered = runs.filter(r => {
     const areaMatch = filterArea === 'all' || r.area === filterArea;
     const statusMatch = filterStatus === 'all' || r.status === filterStatus;
-    return areaMatch && statusMatch;
+    const turfMatch = filterTurf === 'all' || r.turf_id === filterTurf;
+    return areaMatch && statusMatch && turfMatch;
   });
 
+  // Summary stats across all runs
   const total = runs.length;
-  const completed = runs.filter(r => r.status === 'completed').length;
-  const inProgress = runs.filter(r => r.status === 'in_progress').length;
-  const totalLeaflets = runs.reduce((sum, r) => sum + (r.leaflets_delivered || 0), 0);
-  const pct = total > 0 ? Math.round((completed / total) * 100) : 0;
+  const totalHouses = runs.reduce((s, r) => s + (r.total_houses || 0), 0);
+  const r1Done = runs.filter(r => r.round_1_done).length;
+  const r2Done = runs.filter(r => r.round_2_done).length;
+  const r3Done = runs.filter(r => r.round_3_done).length;
+  const totalPostalHouses = runs.reduce((s, r) => s + (r.postal_voter_houses || 0), 0);
+
+  const handlePrint = (turfId) => {
+    const url = `/turf-sheets?turf_id=${turfId}`;
+    window.open(url, '_blank');
+  };
 
   return (
     <div className="p-6 lg:p-10 max-w-[1200px] mx-auto">
       <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 mb-8">
         <div>
-          <h1 className="font-heading text-3xl font-bold">Leaflet Distribution Tracker</h1>
-          <p className="text-muted-foreground mt-1">Track leafleting progress across Tyldesley & Mosley Common</p>
+          <h1 className="font-heading text-3xl font-bold">Leaflet Rounds Tracker</h1>
+          <p className="text-muted-foreground mt-1">Manage up to 3 rounds of leafleting — track postal voters separately</p>
         </div>
         <Button onClick={() => { setEditing(null); setShowForm(true); }} className="gap-2">
           <Plus className="w-4 h-4" /> Add Street
         </Button>
       </div>
 
-      {/* Summary Cards */}
+      {/* Round Progress Summary */}
+      <div className="grid grid-cols-1 md:grid-cols-3 gap-4 mb-6">
+        {[1, 2, 3].map(round => (
+          <RoundProgressCard
+            key={round}
+            round={round}
+            config={ROUND_CONFIG[round]}
+            done={round === 1 ? r1Done : round === 2 ? r2Done : r3Done}
+            total={total}
+            isActive={activeRound === round}
+            onClick={() => setActiveRound(activeRound === round ? 0 : round)}
+          />
+        ))}
+      </div>
+
+      {/* Summary Stats */}
       <div className="grid grid-cols-2 md:grid-cols-4 gap-4 mb-6">
         <div className="bg-card border border-border/50 rounded-xl p-4 text-center">
           <p className="text-2xl font-bold text-foreground">{total}</p>
           <p className="text-xs text-muted-foreground mt-1">Streets Total</p>
         </div>
         <div className="bg-card border border-border/50 rounded-xl p-4 text-center">
-          <p className="text-2xl font-bold text-green-600">{completed}</p>
-          <p className="text-xs text-muted-foreground mt-1">Completed</p>
+          <p className="text-2xl font-bold text-primary">{totalHouses.toLocaleString()}</p>
+          <p className="text-xs text-muted-foreground mt-1">Total Households</p>
         </div>
         <div className="bg-card border border-border/50 rounded-xl p-4 text-center">
-          <p className="text-2xl font-bold text-amber-600">{inProgress}</p>
-          <p className="text-xs text-muted-foreground mt-1">In Progress</p>
+          <p className="text-2xl font-bold text-purple-600">{totalPostalHouses.toLocaleString()}</p>
+          <p className="text-xs text-muted-foreground mt-1">Postal Voter Addresses</p>
         </div>
         <div className="bg-card border border-border/50 rounded-xl p-4 text-center">
-          <p className="text-2xl font-bold text-primary">{totalLeaflets.toLocaleString()}</p>
-          <p className="text-xs text-muted-foreground mt-1">Leaflets Delivered</p>
+          <p className="text-2xl font-bold text-amber-600">{(totalHouses - totalPostalHouses).toLocaleString()}</p>
+          <p className="text-xs text-muted-foreground mt-1">Non-Postal Households</p>
         </div>
       </div>
 
-      {/* Progress Bar */}
-      {total > 0 && (
-        <div className="bg-card border border-border/50 rounded-xl p-4 mb-6">
-          <div className="flex justify-between text-sm mb-2">
-            <span className="font-medium">Overall Progress</span>
-            <span className="text-muted-foreground">{completed}/{total} streets completed ({pct}%)</span>
+      {/* Active round banner */}
+      {activeRound > 0 && (
+        <div className={`rounded-xl border p-4 mb-5 flex items-start justify-between gap-3 ${ROUND_CONFIG[activeRound].color}`}>
+          <div>
+            <p className="font-semibold text-sm">{ROUND_CONFIG[activeRound].label}</p>
+            <p className="text-xs mt-0.5 opacity-75">{ROUND_CONFIG[activeRound].description}</p>
+            {activeRound === 2 && <p className="text-xs mt-0.5 font-medium">Only streets with postal voter addresses are shown below.</p>}
+            {activeRound === 3 && <p className="text-xs mt-0.5 font-medium">Postal-voter-only houses ({totalPostalHouses.toLocaleString()}) will be skipped on this round.</p>}
           </div>
-          <div className="w-full bg-muted rounded-full h-3">
-            <div
-              className="bg-primary h-3 rounded-full transition-all duration-500"
-              style={{ width: `${pct}%` }}
-            />
-          </div>
+          <button onClick={() => setActiveRound(0)} className="text-xs underline opacity-75 hover:opacity-100 flex-shrink-0">Clear filter</button>
         </div>
       )}
 
@@ -119,6 +171,7 @@ export default function LeafletTracker() {
         <div className="mb-6">
           <LeafletRunForm
             run={editing}
+            turfs={turfs}
             onSubmit={handleSubmit}
             onCancel={() => { setShowForm(false); setEditing(null); }}
           />
@@ -150,6 +203,19 @@ export default function LeafletTracker() {
             <SelectItem value="completed">Completed</SelectItem>
           </SelectContent>
         </Select>
+        {turfs.length > 0 && (
+          <Select value={filterTurf} onValueChange={setFilterTurf}>
+            <SelectTrigger className="w-[200px]">
+              <SelectValue placeholder="All Rounds/Turfs" />
+            </SelectTrigger>
+            <SelectContent>
+              <SelectItem value="all">All Rounds/Turfs</SelectItem>
+              {turfs.map(t => (
+                <SelectItem key={t.id} value={t.id}>{t.name}</SelectItem>
+              ))}
+            </SelectContent>
+          </Select>
+        )}
       </div>
 
       {/* Street List */}
@@ -160,58 +226,117 @@ export default function LeafletTracker() {
       ) : filtered.length === 0 ? (
         <div className="text-center py-16 text-muted-foreground">
           <MapPin className="w-10 h-10 mx-auto mb-3 opacity-30" />
-          <p>No streets added yet. Add your first street to get started!</p>
+          <p>No streets match these filters.</p>
         </div>
       ) : (
-        <div className="grid gap-3">
-          {filtered.map((run) => {
-            const sc = statusConfig[run.status] || statusConfig.not_started;
-            const StatusIcon = sc.icon;
-            const progress = run.total_houses > 0 ? Math.round((run.leaflets_delivered / run.total_houses) * 100) : null;
-            return (
-              <div key={run.id} className="bg-card border border-border/50 rounded-xl p-4 flex flex-col sm:flex-row sm:items-center gap-3">
-                <div className="flex-1 min-w-0">
-                  <div className="flex items-center gap-2 flex-wrap">
-                    <p className="font-semibold">{run.street_name}</p>
-                    <Badge variant="secondary" className="text-xs">{run.area}</Badge>
-                    {run.postcode && <span className="text-xs text-muted-foreground">{run.postcode}</span>}
+        <div className="grid gap-2">
+          {filtered
+            .filter(r => {
+              if (activeRound === 2) return (r.postal_voter_houses || 0) > 0;
+              return true;
+            })
+            .map((run) => {
+              const sc = statusConfig[run.status] || statusConfig.not_started;
+              const StatusIcon = sc.icon;
+              const isExpanded = expandedStreet === run.id;
+              const turfName = turfs.find(t => t.id === run.turf_id)?.name;
+              const deliverCount = activeRound === 2
+                ? (run.postal_voter_houses || 0)
+                : activeRound === 3
+                ? (run.total_houses || 0) - (run.postal_voter_houses || 0)
+                : (run.total_houses || 0);
+
+              return (
+                <div key={run.id} className="bg-card border border-border/50 rounded-xl overflow-hidden">
+                  <div
+                    className="p-4 flex flex-col sm:flex-row sm:items-center gap-3 cursor-pointer hover:bg-muted/20"
+                    onClick={() => setExpandedStreet(isExpanded ? null : run.id)}
+                  >
+                    <div className="flex-1 min-w-0">
+                      <div className="flex items-center gap-2 flex-wrap">
+                        <p className="font-semibold">{run.street_name}</p>
+                        <Badge variant="secondary" className="text-xs">{run.area}</Badge>
+                        {run.turf_part && <Badge variant="outline" className="text-xs">Part {run.turf_part}</Badge>}
+                        {run.postcode && <span className="text-xs text-muted-foreground">{run.postcode}</span>}
+                        {turfName && <span className="text-xs text-muted-foreground">· {turfName}</span>}
+                      </div>
+                      <div className="flex items-center gap-3 mt-1.5 text-xs text-muted-foreground flex-wrap">
+                        {run.assigned_to && (
+                          <span className="flex items-center gap-1"><User className="w-3 h-3" />{run.assigned_to}</span>
+                        )}
+                        {run.total_houses > 0 && (
+                          <span className="flex items-center gap-1">
+                            <Home className="w-3 h-3" />
+                            {activeRound > 0 ? `${deliverCount} to deliver` : `${run.total_houses} houses`}
+                            {run.postal_voter_houses > 0 && activeRound === 0 && (
+                              <span className="text-purple-600">({run.postal_voter_houses} postal)</span>
+                            )}
+                          </span>
+                        )}
+                        <RoundBadge run={run} round={1} />
+                        <RoundBadge run={run} round={2} />
+                        <RoundBadge run={run} round={3} />
+                      </div>
+                    </div>
+                    <div className="flex items-center gap-2 flex-shrink-0">
+                      <Badge className={`text-xs gap-1 ${sc.color} border-0`}>
+                        <StatusIcon className="w-3 h-3" />
+                        {sc.label}
+                      </Badge>
+                      {isExpanded ? <ChevronUp className="w-4 h-4 text-muted-foreground" /> : <ChevronDown className="w-4 h-4 text-muted-foreground" />}
+                    </div>
                   </div>
-                  <div className="flex items-center gap-4 mt-1.5 text-xs text-muted-foreground flex-wrap">
-                    {run.assigned_to && (
-                      <span className="flex items-center gap-1"><User className="w-3 h-3" />{run.assigned_to}</span>
-                    )}
-                    {run.total_houses > 0 && (
-                      <span className="flex items-center gap-1"><Home className="w-3 h-3" />{run.leaflets_delivered || 0}/{run.total_houses} houses</span>
-                    )}
-                    {progress !== null && <span className="text-primary font-medium">{progress}%</span>}
-                    {run.notes && <span className="italic truncate max-w-[200px]">{run.notes}</span>}
-                  </div>
-                </div>
-                <div className="flex items-center gap-2 flex-shrink-0">
-                  <Badge className={`text-xs gap-1 ${sc.color} border-0`}>
-                    <StatusIcon className="w-3 h-3" />
-                    {sc.label}
-                  </Badge>
-                  {run.status !== 'in_progress' && run.status !== 'completed' && (
-                    <Button size="sm" variant="outline" className="text-xs h-7" onClick={() => quickStatus(run, 'in_progress')}>
-                      Start
-                    </Button>
+
+                  {/* Expanded round controls */}
+                  {isExpanded && (
+                    <div className="border-t border-border/40 p-4 bg-muted/10 space-y-3">
+                      <p className="text-xs font-semibold text-muted-foreground uppercase tracking-wide">Round Completion</p>
+                      <div className="grid grid-cols-1 sm:grid-cols-3 gap-2">
+                        {[1, 2, 3].map(r => {
+                          const done = run[`round_${r}_done`];
+                          return (
+                            <button
+                              key={r}
+                              onClick={() => toggleRoundDone(run, r)}
+                              className={`text-left px-3 py-2.5 rounded-lg border text-xs transition-all ${
+                                done
+                                  ? 'bg-green-50 border-green-300 text-green-800'
+                                  : 'bg-card border-border hover:border-primary/50'
+                              }`}
+                            >
+                              <div className="flex items-center gap-2">
+                                <span className={`w-5 h-5 rounded-full flex items-center justify-center text-[10px] font-bold ${
+                                  done ? 'bg-green-500 text-white' : 'bg-muted text-muted-foreground'
+                                }`}>{done ? '✓' : r}</span>
+                                <span className="font-medium">{r === 1 ? 'All HH' : r === 2 ? 'Postal Only' : 'Non-Postal'}</span>
+                              </div>
+                              <p className="text-[10px] text-muted-foreground mt-1 pl-7">
+                                {r === 1 && `${run.total_houses || 0} households`}
+                                {r === 2 && `${run.postal_voter_houses || 0} postal addresses`}
+                                {r === 3 && `${(run.total_houses || 0) - (run.postal_voter_houses || 0)} non-postal`}
+                              </p>
+                            </button>
+                          );
+                        })}
+                      </div>
+                      <div className="flex items-center gap-2 pt-1">
+                        <Button size="sm" variant="outline" className="text-xs h-7 gap-1" onClick={() => { setEditing(run); setShowForm(true); setExpandedStreet(null); }}>
+                          Edit
+                        </Button>
+                        <Button size="sm" variant="ghost" className="text-xs h-7 text-destructive" onClick={() => deleteMutation.mutate(run.id)}>
+                          Remove
+                        </Button>
+                        {run.turf_id && (
+                          <Button size="sm" variant="outline" className="text-xs h-7 gap-1 ml-auto" onClick={() => handlePrint(run.turf_id)}>
+                            <Printer className="w-3 h-3" /> Print Sheet
+                          </Button>
+                        )}
+                      </div>
+                    </div>
                   )}
-                  {run.status !== 'completed' && (
-                    <Button size="sm" className="text-xs h-7 bg-green-600 hover:bg-green-700 text-white" onClick={() => quickStatus(run, 'completed')}>
-                      Done ✓
-                    </Button>
-                  )}
-                  <Button size="sm" variant="ghost" className="text-xs h-7" onClick={() => { setEditing(run); setShowForm(true); }}>
-                    Edit
-                  </Button>
-                  <Button size="sm" variant="ghost" className="text-xs h-7 text-destructive" onClick={() => deleteMutation.mutate(run.id)}>
-                    ✕
-                  </Button>
                 </div>
-              </div>
-            );
-          })}
+              );
+            })}
         </div>
       )}
     </div>

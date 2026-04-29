@@ -4,13 +4,16 @@ import { Input } from '@/components/ui/input';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Label } from '@/components/ui/label';
 
-export default function LeafletRunForm({ run, onSubmit, onCancel }) {
+export default function LeafletRunForm({ run, turfs = [], onSubmit, onCancel }) {
   const [form, setForm] = useState({
     street_name: run?.street_name || '',
     area: run?.area || 'Tyldesley',
     postcode: run?.postcode || '',
+    turf_id: run?.turf_id || '',
+    turf_part: run?.turf_part || '',
     assigned_to: run?.assigned_to || '',
     total_houses: run?.total_houses || '',
+    postal_voter_houses: run?.postal_voter_houses || 0,
     leaflets_delivered: run?.leaflets_delivered || 0,
     status: run?.status || 'not_started',
     notes: run?.notes || '',
@@ -23,6 +26,7 @@ export default function LeafletRunForm({ run, onSubmit, onCancel }) {
     onSubmit({
       ...form,
       total_houses: Number(form.total_houses) || 0,
+      postal_voter_houses: Number(form.postal_voter_houses) || 0,
       leaflets_delivered: Number(form.leaflets_delivered) || 0,
     });
   };
@@ -60,8 +64,34 @@ export default function LeafletRunForm({ run, onSubmit, onCancel }) {
           <Input type="number" min="0" value={form.total_houses} onChange={e => set('total_houses', e.target.value)} placeholder="e.g. 45" />
         </div>
         <div className="space-y-1.5">
-          <Label>Leaflets Delivered</Label>
-          <Input type="number" min="0" value={form.leaflets_delivered} onChange={e => set('leaflets_delivered', e.target.value)} placeholder="0" />
+          <Label>Postal Voter Addresses</Label>
+          <Input type="number" min="0" value={form.postal_voter_houses} onChange={e => set('postal_voter_houses', e.target.value)} placeholder="0 — skip on Round 3" />
+        </div>
+        {turfs.length > 0 && (
+          <div className="space-y-1.5">
+            <Label>Round/Turf</Label>
+            <Select value={form.turf_id} onValueChange={v => set('turf_id', v)}>
+              <SelectTrigger><SelectValue placeholder="Select turf..." /></SelectTrigger>
+              <SelectContent>
+                <SelectItem value={null}>— None —</SelectItem>
+                {turfs.map(t => (
+                  <SelectItem key={t.id} value={t.id}>{t.name}</SelectItem>
+                ))}
+              </SelectContent>
+            </Select>
+          </div>
+        )}
+        <div className="space-y-1.5">
+          <Label>Turf Part (if split)</Label>
+          <Select value={form.turf_part} onValueChange={v => set('turf_part', v)}>
+            <SelectTrigger><SelectValue placeholder="Not split" /></SelectTrigger>
+            <SelectContent>
+              <SelectItem value={null}>Not split</SelectItem>
+              <SelectItem value="A">Part A</SelectItem>
+              <SelectItem value="B">Part B</SelectItem>
+              <SelectItem value="C">Part C</SelectItem>
+            </SelectContent>
+          </Select>
         </div>
         <div className="space-y-1.5">
           <Label>Status</Label>
@@ -76,7 +106,7 @@ export default function LeafletRunForm({ run, onSubmit, onCancel }) {
         </div>
         <div className="space-y-1.5 sm:col-span-2">
           <Label>Notes</Label>
-          <Input value={form.notes} onChange={e => set('notes', e.target.value)} placeholder="Any notes (e.g. flats only, no access)" />
+          <Input value={form.notes} onChange={e => set('notes', e.target.value)} placeholder="e.g. flats only, no access, house range 1-50 odd" />
         </div>
       </div>
       <div className="flex justify-end gap-3 pt-2">

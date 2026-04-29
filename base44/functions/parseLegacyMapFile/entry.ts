@@ -79,7 +79,9 @@ Deno.serve(async (req) => {
       const run = await base44.asServiceRole.entities.LeafletRun.create({
         street_name: street.street_name,
         area: meta.area,
+        turf_id: turf.id,
         total_houses: street.num_households || 0,
+        postal_voter_houses: street.postal_voter_houses || 0,
         leaflets_delivered: 0,
         status: 'not_started',
         notes: street.house_range ? `Houses: ${street.house_range}` : '',

@@ -19,6 +19,39 @@
     "postcode": {
       "type": "string"
     },
+    "turf_id": {
+      "type": "string",
+      "description": "ID of the parent Turf record this street belongs to"
+    },
+    "turf_part": {
+      "type": "string",
+      "description": "Sub-division of the turf if split, e.g. 'A', 'B', 'C'"
+    },
+    "round_number": {
+      "type": "number",
+      "description": "Which leaflet round this is for (1, 2, or 3). 0 = all rounds.",
+      "default": 0
+    },
+    "round_1_done": {
+      "type": "boolean",
+      "default": false,
+      "description": "Round 1 (all households) completed on this street"
+    },
+    "round_2_done": {
+      "type": "boolean",
+      "default": false,
+      "description": "Round 2 (postal voters only) completed on this street"
+    },
+    "round_3_done": {
+      "type": "boolean",
+      "default": false,
+      "description": "Round 3 (all except postal voters) completed on this street"
+    },
+    "postal_voter_houses": {
+      "type": "number",
+      "default": 0,
+      "description": "Number of postal voter addresses on this street (skip on round 3)"
+    },
     "assigned_to": {
       "type": "string",
       "description": "Volunteer name assigned to this street"
@@ -35,7 +68,7 @@
     "leaflets_delivered": {
       "type": "number",
       "default": 0,
-      "description": "Number of leaflets delivered on this street"
+      "description": "Number of leaflets delivered on this street (all rounds combined)"
     },
     "total_houses": {
       "type": "number",

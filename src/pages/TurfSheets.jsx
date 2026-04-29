@@ -1,4 +1,4 @@
-import { useState, useMemo, useRef } from 'react';
+import { useState, useMemo } from 'react';
 import { useQuery } from '@tanstack/react-query';
 import { base44 } from '@/api/base44Client';
 import { Button } from '@/components/ui/button';
@@ -6,8 +6,9 @@ import { Input } from '@/components/ui/input';
 import { Badge } from '@/components/ui/badge';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Checkbox } from '@/components/ui/checkbox';
-import { Search, Printer, Users, MapPin, ChevronDown, ChevronRight, CheckCircle2 } from 'lucide-react';
+import { Search, Printer, Users, MapPin, ChevronDown, ChevronRight, CheckCircle2, ArrowLeft } from 'lucide-react';
 import TurfSheetPrint from '../components/turf/TurfSheetPrint';
+import LeafletRunSheet from '../components/leaflet/LeafletRunSheet';
 
 const supportBadge = {
   strong_supporter: { label: 'Strong', cls: 'bg-green-100 text-green-800 border-green-200' },
@@ -25,6 +26,10 @@ function extractStreet(address = '') {
 }
 
 export default function TurfSheets() {
+  // Support direct /turf-sheets?turf_id=xxx for leaflet-run-based sheet
+  const urlParams = new URLSearchParams(window.location.search);
+  const turfIdParam = urlParams.get('turf_id');
+
   const [search, setSearch] = useState('');
   const [filterSupport, setFilterSupport] = useState('all');
   const [selectedIds, setSelectedIds] = useState(new Set());
@@ -37,6 +42,29 @@ export default function TurfSheets() {
     queryKey: ['contacts'],
     queryFn: () => base44.entities.Contact.list('-created_date', 1000),
   });
+
+  const { data: turfs = [] } = useQuery({
+    queryKey: ['turfs'],
+    queryFn: () => base44.entities.Turf.list('-created_date', 100),
+  });
+
+  const { data: leafletRuns = [] } = useQuery({
+    queryKey: ['leaflet-runs'],
+    queryFn: () => base44.entities.LeafletRun.list('-created_date', 500),
+  });
+
+  // If turf_id is in URL, show the leaflet-run based sheet
+  if (turfIdParam) {
+    const turf = turfs.find(t => t.id === turfIdParam);
+    const streets = leafletRuns.filter(r => r.turf_id === turfIdParam);
+    return (
+      <LeafletRunSheet
+        turf={turf}
+        streets={streets}
+        onBack={() => window.history.back()}
+      />
+    );
+  }
 
   const filtered = useMemo(() => contacts.filter(c => {
     const matchesSearch =

@@ -6,6 +6,14 @@
       "type": "string",
       "description": "Name of this turf area (e.g. 'North Tyldesley Block A')"
     },
+    "parent_turf_id": {
+      "type": "string",
+      "description": "If this is a split part, the ID of the original/parent turf"
+    },
+    "part_label": {
+      "type": "string",
+      "description": "Sub-division label when a turf has been split, e.g. 'Part A', 'Part B'"
+    },
     "assigned_to": {
       "type": "string",
       "description": "Name or email of canvasser / team assigned to this turf"
