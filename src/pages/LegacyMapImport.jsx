@@ -193,11 +193,11 @@ export default function LegacyMapImport() {
                         <div className="mt-2 grid grid-cols-1 sm:grid-cols-3 gap-2">
                           <div className="flex items-center gap-1.5 text-xs text-muted-foreground">
                             <Layers className="w-3.5 h-3.5 text-primary" />
-                            <span>Turf: <strong className="text-foreground">{item.result.meta.turfName} ({item.result.meta.routeLabel})</strong></span>
+                            <span>Turf: <strong className="text-foreground">{item.result.meta.turf_name} ({item.result.meta.route_label})</strong></span>
                           </div>
                           <div className="flex items-center gap-1.5 text-xs text-muted-foreground">
                             <Home className="w-3.5 h-3.5 text-primary" />
-                            <span><strong className="text-foreground">{item.result.meta.totalHouseholds}</strong> households</span>
+                            <span><strong className="text-foreground">{item.result.meta.total_households}</strong> households</span>
                           </div>
                           <div className="flex items-center gap-1.5 text-xs text-muted-foreground">
                             <MapPin className="w-3.5 h-3.5 text-primary" />

@@ -37,8 +37,9 @@ Deno.serve(async (req) => {
       return Response.json({ processed: 0 });
     }
 
-    // Fetch the contact
-    const contact = await base44.asServiceRole.entities.Contact.get(contact_id);
+    // Fetch the contact — list all and find by id (SDK doesn't support id filter directly)
+    const allContacts = await base44.asServiceRole.entities.Contact.list();
+    const contact = allContacts.find(c => c.id === contact_id);
     if (!contact) {
       return Response.json({ error: 'Contact not found' }, { status: 404 });
     }

@@ -108,9 +108,9 @@ export default function FieldMode() {
     );
   }
 
-  const currentContact = searchMode ? filteredContacts[currentIndex] : contacts[currentIndex];
   const displayContacts = searchMode ? filteredContacts : contacts;
-  const progress = Math.round((currentIndex / displayContacts.length) * 100);
+  const currentContact = displayContacts[currentIndex] || displayContacts[0];
+  const progress = displayContacts.length > 0 ? Math.round((currentIndex / displayContacts.length) * 100) : 0;
 
   const handleLogInteraction = async () => {
     const interactionPayload = {
@@ -235,10 +235,13 @@ export default function FieldMode() {
           </div>
         )}
 
-        {/* Contact Card */}
-        <Card>
+        {/* Contact Card — only render when we have a valid contact */}
+        {!currentContact && searchMode && (
+          <div className="text-center py-8 text-muted-foreground text-sm">Select a contact from the search results above.</div>
+        )}
+        {currentContact && <Card>
           <CardHeader>
-            <CardTitle className="text-xl">{currentContact.name}</CardTitle>
+            <CardTitle className="text-xl">{currentContact?.name}</CardTitle>
           </CardHeader>
           <CardContent className="space-y-4">
             {/* Contact Info */}
@@ -321,10 +324,10 @@ export default function FieldMode() {
               </div>
             )}
           </CardContent>
-        </Card>
+        </Card>}
 
         {/* Action Buttons */}
-        {!searchMode && (
+        {currentContact && !searchMode && (
           <div className="space-y-3">
             <Button className="w-full h-12 text-base gap-2" onClick={() => setShowInteractionDialog(true)}>
               <Check className="w-5 h-5" /> Log Interaction
@@ -347,7 +350,7 @@ export default function FieldMode() {
         <Dialog open={showInteractionDialog} onOpenChange={setShowInteractionDialog}>
           <DialogContent>
             <DialogHeader>
-              <DialogTitle>Log Interaction — {currentContact.name}</DialogTitle>
+              <DialogTitle>Log Interaction — {currentContact?.name}</DialogTitle>
             </DialogHeader>
             <div className="space-y-4">
               <div>

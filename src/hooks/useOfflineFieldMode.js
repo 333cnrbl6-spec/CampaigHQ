@@ -1,4 +1,4 @@
-import { useState, useEffect, useCallback } from 'react';
+import { useState, useEffect, useCallback, useRef } from 'react';
 import { base44 } from '@/api/base44Client';
 
 const CONTACTS_KEY = 'offline_contacts_cache';
@@ -17,6 +17,7 @@ export function useOfflineFieldMode() {
   const [contacts, setContacts] = useState([]);
   const [queue, setQueue] = useState(() => loadCache(QUEUE_KEY));
   const [isSyncing, setIsSyncing] = useState(false);
+  const isSyncingRef = useRef(false);
   const [syncResult, setSyncResult] = useState(null); // { synced, failed }
   const [isLoadingContacts, setIsLoadingContacts] = useState(true);
 
@@ -62,7 +63,7 @@ export function useOfflineFieldMode() {
     if (isOnline && queue.length > 0) {
       syncQueue();
     }
-  }, [isOnline]);
+  }, [isOnline]); // eslint-disable-line react-hooks/exhaustive-deps
 
   const enqueue = useCallback((action) => {
     const item = { ...action, _id: Date.now() + Math.random() };
@@ -79,10 +80,11 @@ export function useOfflineFieldMode() {
   }, []);
 
   const syncQueue = useCallback(async () => {
-    if (isSyncing) return;
+    if (isSyncingRef.current) return;
     const current = loadCache(QUEUE_KEY);
     if (current.length === 0) return;
 
+    isSyncingRef.current = true;
     setIsSyncing(true);
     let synced = 0;
     let failed = 0;
@@ -104,11 +106,11 @@ export function useOfflineFieldMode() {
 
     setQueue(remaining);
     saveCache(QUEUE_KEY, remaining);
+    isSyncingRef.current = false;
     setIsSyncing(false);
     setSyncResult({ synced, failed });
-    // Clear result after 4s
     setTimeout(() => setSyncResult(null), 4000);
-  }, [isSyncing]);
+  }, []);
 
   const logInteraction = useCallback((interactionPayload, contactUpdatePayload) => {
     if (isOnline) {
