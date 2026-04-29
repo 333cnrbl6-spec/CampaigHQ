@@ -53,19 +53,6 @@ export default function TurfSheets() {
     queryFn: () => base44.entities.LeafletRun.list('-created_date', 500),
   });
 
-  // If turf_id is in URL, show the leaflet-run based sheet
-  if (turfIdParam) {
-    const turf = turfs.find(t => t.id === turfIdParam);
-    const streets = leafletRuns.filter(r => r.turf_id === turfIdParam);
-    return (
-      <LeafletRunSheet
-        turf={turf}
-        streets={streets}
-        onBack={() => window.history.back()}
-      />
-    );
-  }
-
   const filtered = useMemo(() => contacts.filter(c => {
     const matchesSearch =
       c.name?.toLowerCase().includes(search.toLowerCase()) ||
@@ -130,6 +117,19 @@ export default function TurfSheets() {
 
   const selectAll = () => setSelectedIds(new Set(filtered.map(c => c.id)));
   const clearAll = () => setSelectedIds(new Set());
+
+  // If turf_id is in URL, show the leaflet-run based sheet
+  if (turfIdParam) {
+    const turf = turfs.find(t => t.id === turfIdParam);
+    const streets = leafletRuns.filter(r => r.turf_id === turfIdParam);
+    return (
+      <LeafletRunSheet
+        turf={turf}
+        streets={streets}
+        onBack={() => window.history.back()}
+      />
+    );
+  }
 
   if (showPrint) {
     return (
