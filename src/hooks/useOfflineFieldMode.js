@@ -33,24 +33,32 @@ export function useOfflineFieldMode() {
     };
   }, []);
 
-  // Load contacts: from network if online, fallback to cache
+  // Load contacts once on mount, fallback to cache if offline
   useEffect(() => {
     async function fetchContacts() {
       setIsLoadingContacts(true);
-      if (isOnline) {
-        try {
-          const data = await base44.entities.Contact.list();
-          setContacts(data);
-          saveCache(CONTACTS_KEY, data);
-        } catch {
-          setContacts(loadCache(CONTACTS_KEY));
-        }
-      } else {
+      try {
+        const data = await base44.entities.Contact.list();
+        setContacts(data);
+        saveCache(CONTACTS_KEY, data);
+      } catch {
         setContacts(loadCache(CONTACTS_KEY));
       }
       setIsLoadingContacts(false);
     }
     fetchContacts();
+  }, []); // only on mount
+
+  // Re-fetch contacts when coming back online (not on every isOnline toggle)
+  const prevOnlineRef = useRef(null);
+  useEffect(() => {
+    if (prevOnlineRef.current === false && isOnline) {
+      // came back online — refresh contacts
+      base44.entities.Contact.list()
+        .then(data => { setContacts(data); saveCache(CONTACTS_KEY, data); })
+        .catch(() => {});
+    }
+    prevOnlineRef.current = isOnline;
   }, [isOnline]);
 
   // Persist queue to localStorage whenever it changes
