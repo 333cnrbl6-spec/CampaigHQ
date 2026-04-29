@@ -282,9 +282,13 @@ export default function CanvassingMap({ contacts = [] }) {
             onToggle={handleToggle}
             onOpacityChange={handleOpacityChange}
           />
-          {turfs.filter(t => t.geojson).length === 0 && (
+          {turfs.length === 0 ? (
             <p className="text-xs text-muted-foreground p-2">
-              No map zones imported yet. Use <strong>Turf Management</strong> or <strong>Legacy Map Import</strong> to add zones.
+              No zones yet. Create zones in <strong>Turf Management</strong>.
+            </p>
+          ) : turfs.filter(t => t.geojson).length === 0 && (
+            <p className="text-xs text-muted-foreground p-2">
+              {turfs.length} zone{turfs.length > 1 ? 's' : ''} found but none have map shapes drawn. Open <strong>Turf Management</strong> and draw a polygon on each zone to enable overlays.
             </p>
           )}
         </div>
