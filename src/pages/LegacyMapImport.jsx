@@ -1,4 +1,5 @@
 import { useState, useRef } from 'react';
+import mammoth from 'mammoth';
 import { base44 } from '@/api/base44Client';
 import { useQueryClient } from '@tanstack/react-query';
 import { Button } from '@/components/ui/button';
@@ -40,10 +41,33 @@ function FileDropZone({ onFile }) {
   );
 }
 
+function parseStreetsFromText(text) {
+  const streets = [];
+  const lines = text.split('\n').map(l => l.trim()).filter(Boolean);
+  let inTable = false;
+
+  for (const line of lines) {
+    if (/road name|house number|households/i.test(line)) { inTable = true; continue; }
+    if (inTable) {
+      // Tab-separated or multi-space columns
+      const cols = line.split(/\t{1,}|\s{2,}/).map(c => c.trim()).filter(Boolean);
+      if (cols.length >= 1) {
+        const streetName = cols[0];
+        const houseRange = cols[1] || '';
+        const numHH = parseInt(cols[2]) || 0;
+        if (streetName.length > 2 && !/^\d+$/.test(streetName)) {
+          streets.push({ street_name: streetName, house_range: houseRange, num_households: numHH });
+        }
+      }
+    }
+  }
+  return streets;
+}
+
 const STATUS = {
   pending: { icon: FileText, color: 'text-muted-foreground', label: 'Queued' },
-  uploading: { icon: Loader2, color: 'text-blue-500', label: 'Uploading...', spin: true },
-  processing: { icon: Loader2, color: 'text-amber-500', label: 'Processing...', spin: true },
+  uploading: { icon: Loader2, color: 'text-blue-500', label: 'Reading file...', spin: true },
+  processing: { icon: Loader2, color: 'text-amber-500', label: 'Importing...', spin: true },
   done: { icon: CheckCircle2, color: 'text-green-600', label: 'Imported' },
   error: { icon: AlertCircle, color: 'text-destructive', label: 'Failed' },
 };
@@ -70,15 +94,20 @@ export default function LegacyMapImport() {
 
     for (const item of pending) {
       try {
-        // Step 1: Upload the file
+        // Step 1: Extract text from DOCX client-side using mammoth
         updateItem(item.id, { status: 'uploading' });
-        const { file_url } = await base44.integrations.Core.UploadFile({ file: item.file });
+        const arrayBuffer = await item.file.arrayBuffer();
+        const { value: rawText } = await mammoth.extractRawText({ arrayBuffer });
 
-        // Step 2: Parse & import via backend function
+        // Step 2: Parse streets from the extracted text
         updateItem(item.id, { status: 'processing' });
+        const streets = parseStreetsFromText(rawText);
+
+        // Step 3: Send parsed data to backend for entity creation
         const res = await base44.functions.invoke('parseLegacyMapFile', {
-          file_url,
           filename: item.file.name,
+          text_content: rawText,
+          streets,
         });
 
         if (!res.data?.success) throw new Error(res.data?.error || 'Import failed');
