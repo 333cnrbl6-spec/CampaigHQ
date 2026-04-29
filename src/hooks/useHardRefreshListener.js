@@ -22,7 +22,7 @@ export function useHardRefreshListener() {
     };
 
     checkRefresh();
-    const interval = setInterval(checkRefresh, 2000); // Check every 2 seconds
+    const interval = setInterval(checkRefresh, 30000); // Check every 30 seconds
 
     return () => clearInterval(interval);
   }, []);

@@ -65,7 +65,7 @@ export default function ContactHistory() {
     : [];
 
   const handleAddInteraction = () => {
-    if (selectedContact && formData.type && formData.notes) {
+    if (selectedContact && formData.type) {
       createInteractionMutation.mutate({
         contact_id: selectedContact.id,
         type: formData.type,
@@ -197,7 +197,7 @@ export default function ContactHistory() {
                                   <Badge className={OUTCOME_COLORS[interaction.outcome]}>{interaction.outcome}</Badge>
                                 </div>
                                 <p className="text-xs text-muted-foreground mt-1">
-                                  {format(new Date(interaction.date), 'MMM d, yyyy')} at {interaction.time}
+                                  {format(new Date(interaction.date), 'MMM d, yyyy')}{interaction.time ? ` at ${interaction.time}` : ''}
                                 </p>
                                 <p className="text-sm mt-1">{interaction.notes}</p>
                               </div>

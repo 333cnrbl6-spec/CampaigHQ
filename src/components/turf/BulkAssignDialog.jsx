@@ -1,4 +1,4 @@
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/components/ui/dialog';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
@@ -21,11 +21,18 @@ export default function BulkAssignDialog({ open, onClose, turfs, onAssign }) {
     setTeamInput('');
   };
 
+  // Reset state when dialog opens/closes
+  useEffect(() => {
+    if (!open) {
+      setSelectedTurfs([]);
+      setTeam([]);
+      setTeamInput('');
+    }
+  }, [open]);
+
   const handleAssign = () => {
     if (selectedTurfs.length === 0 || team.length === 0) return;
     onAssign(selectedTurfs, team);
-    setSelectedTurfs([]);
-    setTeam([]);
     onClose();
   };
 
