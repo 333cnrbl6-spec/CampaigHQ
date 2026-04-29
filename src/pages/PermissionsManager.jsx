@@ -2,7 +2,7 @@ import React, { useState } from 'react';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { base44 } from '@/api/base44Client';
 import { usePermissions } from '@/hooks/usePermissions';
-import { PERMISSIONS, ROLES, ROLE_LABELS, ROLE_DESCRIPTIONS, ROLE_DEFAULTS, resolvePermissions } from '@/lib/permissions';
+import { PERMISSIONS, ROLES, ROLE_LABELS, ROLE_DESCRIPTIONS, resolvePermissions } from '@/lib/permissions';
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
