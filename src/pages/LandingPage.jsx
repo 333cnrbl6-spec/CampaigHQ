@@ -138,9 +138,17 @@ function NavBar({ scrolled }) {
             <a key={href} href={href} className={`text-sm font-medium transition-colors hover:text-primary ${scrolled ? 'text-foreground/80' : 'text-white/90'}`}>{label}</a>
           ))}
         </nav>
-        <a href="#contact" className="bg-primary hover:bg-primary/90 text-white text-sm font-semibold px-4 py-2 rounded-full transition-colors">
-          Vote Paul — 7 May
-        </a>
+        <div className="flex items-center gap-3">
+          <a href="#contact" className="bg-primary hover:bg-primary/90 text-white text-sm font-semibold px-4 py-2 rounded-full transition-colors">
+            Vote Paul — 7 May
+          </a>
+          <a
+            href="/dashboard"
+            className={`text-xs font-medium transition-colors hover:text-primary ${scrolled ? 'text-muted-foreground' : 'text-white/60 hover:text-white'}`}
+          >
+            Team Login
+          </a>
+        </div>
       </div>
     </header>
   );
