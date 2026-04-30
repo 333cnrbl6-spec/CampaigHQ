@@ -81,11 +81,15 @@ export default function DataImport() {
         setExtractedText(extractRes.output.content);
         markStageComplete(1);
         setTextConfirmed(true);
+        setLoading(false);
+        setLoadingStep(null);
         await runStructureAnalysis(log.file_url);
+      } else {
+        setLoading(false);
+        setLoadingStep(null);
       }
     } catch (err) {
       setError(err.message || 'Failed to load file');
-    } finally {
       setLoading(false);
       setLoadingStep(null);
     }
@@ -129,15 +133,18 @@ export default function DataImport() {
       if (extractRes.status === 'success' && extractRes.output?.content) {
         setExtractedText(extractRes.output.content);
         markStageComplete(1);
-        // Auto-proceed to stage 2 (AI structure analysis) — no manual confirmation needed
+        // Auto-proceed to stage 2 — do NOT reset loading here, runStructureAnalysis takes over
         setTextConfirmed(true);
+        setLoading(false);
+        setLoadingStep(null);
         await runStructureAnalysis(uploadRes.file_url);
       } else {
         setError(extractRes.details || 'Failed to extract document content');
+        setLoading(false);
+        setLoadingStep(null);
       }
     } catch (err) {
       setError(err.message || 'Failed to upload and extract file');
-    } finally {
       setLoading(false);
       setLoadingStep(null);
     }
