@@ -439,7 +439,7 @@ Map each source column to its corresponding target field. Return ALL records as 
           )}
 
           {/* Error */}
-          {error && (
+          {error && !loading && (
             <div className="flex items-start gap-3 text-sm text-destructive bg-destructive/5 rounded-xl p-4 border border-destructive/20">
               <AlertTriangle className="w-5 h-5 flex-shrink-0 mt-0.5" />
               <div>
