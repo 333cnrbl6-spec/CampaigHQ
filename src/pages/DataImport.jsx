@@ -138,22 +138,33 @@ Return JSON with:
     try {
       const uploadRes = await base44.integrations.Core.UploadFile({ file });
       const uploadedUrl = uploadRes.file_url;
-      update({ fileUrl: uploadedUrl, loadingStep: { step: 2, total: 2, label: 'Reading and extracting content…', detail: 'AI is scanning your file to pull out all text and data — please keep this tab open.' } });
 
-      const extractRes = await base44.integrations.Core.ExtractDataFromUploadedFile({
-        file_url: uploadedUrl,
-        json_schema: {
-          type: 'object',
-          properties: { content: { type: 'string', description: 'All text and content from the file' } },
-        },
-      });
+      const ext = file.name.split('.').pop()?.toLowerCase() || '';
+      const isStructuredFile = ['xlsx', 'xls', 'csv'].includes(ext);
 
-      if (extractRes.status === 'success' && extractRes.output?.content) {
+      if (isStructuredFile) {
+        // For spreadsheet files, skip text extraction and go straight to AI analysis
         markStageComplete(1);
-        update({ extractedText: extractRes.output.content, loading: false, loadingStep: null });
+        update({ extractedText: '(spreadsheet)', fileUrl: uploadedUrl, loading: false, loadingStep: null });
         await runStructureAnalysis(uploadedUrl);
       } else {
-        update({ error: extractRes.details || 'Failed to extract document content', loading: false, loadingStep: null });
+        update({ fileUrl: uploadedUrl, loadingStep: { step: 2, total: 2, label: 'Reading and extracting content…', detail: 'AI is scanning your file to pull out all text and data — please keep this tab open.' } });
+
+        const extractRes = await base44.integrations.Core.ExtractDataFromUploadedFile({
+          file_url: uploadedUrl,
+          json_schema: {
+            type: 'object',
+            properties: { content: { type: 'string', description: 'All text and content from the file' } },
+          },
+        });
+
+        if (extractRes.status === 'success' && extractRes.output?.content) {
+          markStageComplete(1);
+          update({ extractedText: extractRes.output.content, loading: false, loadingStep: null });
+          await runStructureAnalysis(uploadedUrl);
+        } else {
+          update({ error: extractRes.details || 'Failed to extract document content', loading: false, loadingStep: null });
+        }
       }
     } catch (err) {
       update({ error: err.message || 'Failed to upload and extract file', loading: false, loadingStep: null });
@@ -176,20 +187,29 @@ Return JSON with:
     });
 
     try {
-      const extractRes = await base44.integrations.Core.ExtractDataFromUploadedFile({
-        file_url: log.file_url,
-        json_schema: {
-          type: 'object',
-          properties: { content: { type: 'string', description: 'All text and content from the file' } },
-        },
-      });
+      const ext = log.file_name?.split('.').pop()?.toLowerCase() || '';
+      const isStructuredFile = ['xlsx', 'xls', 'csv'].includes(ext);
 
-      if (extractRes.status === 'success' && extractRes.output?.content) {
+      if (isStructuredFile) {
         markStageComplete(1);
-        update({ extractedText: extractRes.output.content, loading: false, loadingStep: null });
+        update({ extractedText: '(spreadsheet)', loading: false, loadingStep: null });
         await runStructureAnalysis(log.file_url);
       } else {
-        update({ error: 'Could not re-extract file content. Please re-upload the file.', loading: false, loadingStep: null });
+        const extractRes = await base44.integrations.Core.ExtractDataFromUploadedFile({
+          file_url: log.file_url,
+          json_schema: {
+            type: 'object',
+            properties: { content: { type: 'string', description: 'All text and content from the file' } },
+          },
+        });
+
+        if (extractRes.status === 'success' && extractRes.output?.content) {
+          markStageComplete(1);
+          update({ extractedText: extractRes.output.content, loading: false, loadingStep: null });
+          await runStructureAnalysis(log.file_url);
+        } else {
+          update({ error: 'Could not re-extract file content. Please re-upload the file.', loading: false, loadingStep: null });
+        }
       }
     } catch (err) {
       update({ error: err.message || 'Failed to load last file', loading: false, loadingStep: null });
