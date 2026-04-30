@@ -35,6 +35,7 @@ const navSections = [
     items: [
       { path: '/map', label: 'Ward Map', icon: MapPin },
       { path: '/turf', label: 'Turf Management', icon: MapPin },
+      { path: '/turf-density', label: 'Contact Density Map', icon: Users },
       { path: '/polling-map', label: 'Polling Districts', icon: MapPin },
       { path: '/turf-sheets', label: 'Turf Sheets', icon: Printer },
       { path: '/route', label: 'Route Optimizer', icon: Route },
