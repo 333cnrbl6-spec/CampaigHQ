@@ -208,7 +208,7 @@ Return JSON with:
     });
 
     try {
-      const fieldMapping = state.assessment.fields.reduce((acc, field) => {
+      const fieldMapping = (state.assessment.fields || []).reduce((acc, field) => {
         const override = fieldOverrides?.[field.name];
         acc[field.name] = override?.name || field.name;
         return acc;
@@ -240,7 +240,9 @@ Map each source column to its corresponding target field. Return ALL records as 
         loadingStep: { step: 2, total: 2, label: 'Validating records…', detail: `Checking all ${records.length} records against the database schema.` },
       });
 
-      const entityName = state.assessment.suggestedEntity || 'Contact';
+      const VALID_ENTITIES = ['Contact', 'LeafletRun', 'Turf', 'Issue', 'Task', 'CanvassingLog'];
+      const rawSuggested = state.assessment.suggestedEntity || 'Contact';
+      const entityName = VALID_ENTITIES.includes(rawSuggested) ? rawSuggested : 'Contact';
       const entitySchema = await base44.entities[entityName].schema();
 
       const validationErrors = [];

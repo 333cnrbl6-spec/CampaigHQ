@@ -42,7 +42,7 @@ export default function DatabaseAssessment({ assessment, onConfirm, loading }) {
           </div>
           <div className="bg-blue-50 rounded-lg p-4 text-center">
             <p className="text-sm text-muted-foreground">Fields Detected</p>
-            <p className="text-2xl font-bold text-primary">{assessment.fields.length}</p>
+            <p className="text-2xl font-bold text-primary">{(assessment.fields || []).length}</p>
           </div>
           <div className="bg-blue-50 rounded-lg p-4 text-center">
             <p className="text-sm text-muted-foreground">Confidence</p>
@@ -60,7 +60,7 @@ export default function DatabaseAssessment({ assessment, onConfirm, loading }) {
       <div className="space-y-3">
         <h4 className="font-semibold text-sm">Detected Fields</h4>
         <div className="space-y-2">
-          {assessment.fields.map((field) => {
+          {(assessment.fields || []).map((field) => {
             const config = getFieldConfig(field);
             const isExpanded = expandedFields[field.name];
             const isEditing = editingField === field.name;
@@ -74,10 +74,10 @@ export default function DatabaseAssessment({ assessment, onConfirm, loading }) {
                   <div className="flex items-center gap-3 flex-1">
                     <span className="font-medium text-sm">{config.name}</span>
                     <span className="text-xs bg-primary/10 text-primary px-2 py-1 rounded">
-                      {config.type}
+                      {config.type || 'string'}
                     </span>
                     <span className="text-xs text-muted-foreground">
-                      {field.samples.length} samples
+                      {(field.samples || []).length} samples
                     </span>
                   </div>
                   {isExpanded ? (
@@ -92,23 +92,23 @@ export default function DatabaseAssessment({ assessment, onConfirm, loading }) {
                     <div className="space-y-2">
                       <p className="text-xs font-semibold text-muted-foreground">Sample Values</p>
                       <div className="bg-white rounded p-3 text-xs space-y-1 max-h-32 overflow-auto">
-                        {field.samples.map((sample, i) => (
+                        {(field.samples || []).length > 0 ? (field.samples).map((sample, i) => (
                           <div key={i} className="text-slate-600">
                             • {String(sample).substring(0, 60)}
                             {String(sample).length > 60 ? '...' : ''}
                           </div>
-                        ))}
+                        )) : <div className="text-slate-400 italic">No samples available</div>}
                       </div>
                     </div>
 
                     <div className="space-y-2">
                       <p className="text-xs font-semibold text-muted-foreground">Data Quality</p>
                       <div className="text-xs space-y-1">
-                        <div>Filled: {field.filledPercentage}%</div>
+                        <div>Filled: {field.filledPercentage ?? '?'}%</div>
                         <div className="w-full bg-slate-200 rounded h-2">
                           <div
                             className="bg-green-600 h-2 rounded"
-                            style={{ width: `${field.filledPercentage}%` }}
+                            style={{ width: `${field.filledPercentage ?? 0}%` }}
                           />
                         </div>
                       </div>
