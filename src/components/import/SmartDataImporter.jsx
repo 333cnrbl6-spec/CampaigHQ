@@ -152,7 +152,7 @@ Example format:
       const remappedRecords = records.map((record) => {
         const remapped = {};
         for (const [sourceField, targetField] of Object.entries(userMapping)) {
-          if (record[sourceField] !== undefined && targetField) {
+          if (record[sourceField] !== undefined && targetField && targetField !== '__skip__') {
             remapped[targetField] = record[sourceField];
           }
         }
@@ -340,7 +340,7 @@ Example format:
                           <SelectValue placeholder="Select field..." />
                         </SelectTrigger>
                         <SelectContent>
-                          <SelectItem value={null}>Skip this field</SelectItem>
+                          <SelectItem value="__skip__">Skip this field</SelectItem>
                           {schema?.properties &&
                             Object.entries(schema.properties).map(([fieldName]) => (
                               <SelectItem key={fieldName} value={fieldName}>
