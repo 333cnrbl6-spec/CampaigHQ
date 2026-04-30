@@ -40,7 +40,7 @@ function parseSheet(sheet, sheetName, isPostal = false) {
     // Skip if it looks like a header (same as turf code) or is empty
     if (!addr || addr.toUpperCase().startsWith('TYL') || addr.toUpperCase() === turf) continue;
     const tags = isPostal ? [turf, 'Postal Voter'] : [turf];
-    addresses.push({ address: addr, tags, registered_voter: isPostal });
+    addresses.push({ name: addr, address: addr, tags, registered_voter: isPostal });
   }
   return addresses;
 }
