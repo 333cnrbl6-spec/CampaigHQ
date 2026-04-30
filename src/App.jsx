@@ -41,6 +41,7 @@ import LegacyMapImport from './pages/LegacyMapImport';
 import PermissionsManager from './pages/PermissionsManager';
 import CanvassingActivity from './pages/CanvassingActivity';
 import UserManual from './pages/UserManual';
+import VoterListImport from './pages/VoterListImport';
 
 const AuthenticatedApp = () => {
   const { isLoadingAuth, isLoadingPublicSettings, authError, navigateToLogin } = useAuth();
@@ -104,6 +105,7 @@ const AuthenticatedApp = () => {
         <Route path="/permissions" element={<PermissionsManager />} />
         <Route path="/canvassing-activity" element={<CanvassingActivity />} />
         <Route path="/manual" element={<UserManual />} />
+        <Route path="/voter-import" element={<VoterListImport />} />
       </Route>
       <Route path="*" element={<PageNotFound />} />
     </Routes>
