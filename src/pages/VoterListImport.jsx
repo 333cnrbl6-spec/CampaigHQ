@@ -27,10 +27,9 @@ function isPostalVoterSheet(sheetName) {
   return false;
 }
 
-function parseSheet(sheet, sheetName) {
+function parseSheet(sheet, sheetName, isPostal = false) {
   const rows = XLSX.utils.sheet_to_json(sheet, { header: 1, defval: null });
   const turf = parseTurfZone(sheetName);
-  const isPostal = isPostalVoterSheet(sheetName);
 
   const addresses = [];
   for (const row of rows) {
@@ -50,6 +49,8 @@ export default function VoterListImport() {
   const queryClient = useQueryClient();
   const inputRef = useRef();
   const [file, setFile] = useState(null);
+  const [voterType, setVoterType] = useState(null); // 'postal' | 'registered'
+  const [pendingFile, setPendingFile] = useState(null); // file waiting for type confirmation
   const [preview, setPreview] = useState(null); // { sheets: [{name, count, turf}], total }
   const [status, setStatus] = useState(null); // 'importing' | 'done' | 'error'
   const [progress, setProgress] = useState({ done: 0, total: 0 });
@@ -64,8 +65,10 @@ export default function VoterListImport() {
     return () => clearInterval(interval);
   }, [status]);
 
-  const handleFile = (f) => {
+  const processFile = (f, isPostal) => {
     setFile(f);
+    setPendingFile(null);
+    setVoterType(isPostal ? 'postal' : 'registered');
     setPreview(null);
     setStatus(null);
     setError(null);
@@ -74,13 +77,20 @@ export default function VoterListImport() {
     reader.onload = (e) => {
       const workbook = XLSX.read(e.target.result, { type: 'array' });
       const sheets = workbook.SheetNames.map((name) => {
-        const records = parseSheet(workbook.Sheets[name], name);
-        return { name, turf: parseTurfZone(name), count: records.length, isPostal: isPostalVoterSheet(name) };
+        const records = parseSheet(workbook.Sheets[name], name, isPostal);
+        return { name, turf: parseTurfZone(name), count: records.length, isPostal };
       });
       const total = sheets.reduce((s, sh) => s + sh.count, 0);
       setPreview({ sheets, total });
     };
     reader.readAsArrayBuffer(f);
+  };
+
+  const handleFile = (f) => {
+    setPendingFile(f);
+    setPreview(null);
+    setStatus(null);
+    setError(null);
   };
 
   const handleDrop = (e) => {
@@ -97,9 +107,10 @@ export default function VoterListImport() {
     const reader = new FileReader();
     reader.onload = async (e) => {
       const workbook = XLSX.read(e.target.result, { type: 'array' });
+      const isPostal = voterType === 'postal';
       let allRecords = [];
       for (const name of workbook.SheetNames) {
-        allRecords = allRecords.concat(parseSheet(workbook.Sheets[name], name));
+        allRecords = allRecords.concat(parseSheet(workbook.Sheets[name], name, isPostal));
       }
 
       setProgress({ done: 0, total: allRecords.length, currentBatch: 1, totalBatches: Math.ceil(allRecords.length / BATCH_SIZE) });
@@ -137,6 +148,8 @@ export default function VoterListImport() {
 
   const reset = () => {
     setFile(null);
+    setPendingFile(null);
+    setVoterType(null);
     setPreview(null);
     setStatus(null);
     setError(null);
@@ -153,7 +166,7 @@ export default function VoterListImport() {
       </div>
 
       {/* Drop zone */}
-      {!file && (
+      {!file && !pendingFile && (
         <div
           onDrop={handleDrop}
           onDragOver={(e) => e.preventDefault()}
@@ -164,6 +177,41 @@ export default function VoterListImport() {
           <p className="font-semibold text-sm">Drop your XLSX file here</p>
           <p className="text-xs text-muted-foreground mt-1">or click to browse</p>
           <input ref={inputRef} type="file" accept=".xlsx,.xls" className="hidden" onChange={(e) => e.target.files[0] && handleFile(e.target.files[0])} />
+        </div>
+      )}
+
+      {/* Voter type confirmation prompt */}
+      {pendingFile && !file && (
+        <div className="bg-card border border-border rounded-xl p-6 space-y-4">
+          <div className="flex items-center gap-3 mb-1">
+            <FileSpreadsheet className="w-5 h-5 text-primary" />
+            <div>
+              <p className="font-semibold text-sm">{pendingFile.name}</p>
+              <p className="text-xs text-muted-foreground">Please confirm what type of voters are in this file</p>
+            </div>
+            <button onClick={reset} className="ml-auto text-muted-foreground hover:text-foreground">
+              <X className="w-4 h-4" />
+            </button>
+          </div>
+          <p className="text-sm font-medium">What type of voter list is this?</p>
+          <div className="grid grid-cols-2 gap-3">
+            <button
+              onClick={() => processFile(pendingFile, true)}
+              className="flex flex-col items-center gap-2 rounded-xl border-2 border-blue-200 bg-blue-50 hover:border-blue-400 hover:bg-blue-100 transition-colors p-5 text-left"
+            >
+              <span className="text-2xl">📬</span>
+              <span className="font-semibold text-sm text-blue-800">Postal Voters</span>
+              <span className="text-xs text-blue-600 text-center">Marks contacts as registered voters with a "Postal Voter" tag</span>
+            </button>
+            <button
+              onClick={() => processFile(pendingFile, false)}
+              className="flex flex-col items-center gap-2 rounded-xl border-2 border-primary/20 bg-primary/5 hover:border-primary/50 hover:bg-primary/10 transition-colors p-5 text-left"
+            >
+              <span className="text-2xl">🗳️</span>
+              <span className="font-semibold text-sm text-primary">Registered (Non-Postal)</span>
+              <span className="text-xs text-primary/70 text-center">Standard registered voters, tagged with their turf zone only</span>
+            </button>
+          </div>
         </div>
       )}
 
