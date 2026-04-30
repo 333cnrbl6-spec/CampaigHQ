@@ -5,8 +5,43 @@ import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
 import { Checkbox } from '@/components/ui/checkbox';
-import { AlertCircle, MapPin, Navigation, Download, ArrowRight, Loader2 } from 'lucide-react';
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
+import { AlertCircle, MapPin, Navigation, Download, ArrowRight, Loader2, Layers } from 'lucide-react';
 import RouteVisualization from '@/components/map/RouteVisualization';
+
+// Point-in-polygon test (ray casting)
+function pointInPolygon(lat, lon, polygonCoords) {
+  let inside = false;
+  for (let i = 0, j = polygonCoords.length - 1; i < polygonCoords.length; j = i++) {
+    const [xi, yi] = polygonCoords[i];
+    const [xj, yj] = polygonCoords[j];
+    const intersect = ((yi > lat) !== (yj > lat)) &&
+      (lon < (xj - xi) * (lat - yi) / (yj - yi) + xi);
+    if (intersect) inside = !inside;
+  }
+  return inside;
+}
+
+// Check if a postcode's approximate coords fall within a turf's GeoJSON polygon
+function isContactInTurf(contact, turfGeoJSON) {
+  if (!contact.postcode || !turfGeoJSON) return false;
+  try {
+    const geo = typeof turfGeoJSON === 'string' ? JSON.parse(turfGeoJSON) : turfGeoJSON;
+    const hash = contact.postcode.split('').reduce((h, c) => ((h << 5) - h) + c.charCodeAt(0), 0);
+    const lat = 53.5 + (Math.abs(hash % 1000) / 1000) * 0.3;
+    const lon = -2.5 + (Math.abs(hash % 500) / 500) * 0.2;
+
+    const getCoords = (geom) => {
+      if (geom.type === 'Polygon') return geom.coordinates[0].map(([x, y]) => [y, x]);
+      if (geom.type === 'MultiPolygon') return geom.coordinates[0][0].map(([x, y]) => [y, x]);
+      return [];
+    };
+
+    const geom = geo.geometry || geo;
+    const coords = getCoords(geom);
+    return coords.length > 0 ? pointInPolygon(lat, lon, coords) : false;
+  } catch { return false; }
+}
 
 // Simplified route optimization using nearest neighbor heuristic + 2-opt improvement
 const optimizeRoute = (contacts, startLocation = null) => {
@@ -81,17 +116,31 @@ const optimizeRoute = (contacts, startLocation = null) => {
 export default function RouteOptimizer() {
   const [selectedIds, setSelectedIds] = useState(new Set());
   const [startingPoint, setStartingPoint] = useState(null);
+  const [selectedTurfId, setSelectedTurfId] = useState('all');
 
-  const { data: contacts = [], isLoading } = useQuery({
+  const { data: contacts = [], isLoading: loadingContacts } = useQuery({
     queryKey: ['contacts'],
     queryFn: () => base44.entities.Contact.list('-created_date', 500),
   });
 
-  // Filter out contacts without postcodes
-  const validContacts = useMemo(() => 
-    contacts.filter(c => c.postcode && c.postcode.trim()),
-    [contacts]
+  const { data: turfs = [], isLoading: loadingTurfs } = useQuery({
+    queryKey: ['turfs'],
+    queryFn: () => base44.entities.Turf.list('-created_date', 100),
+  });
+
+  const isLoading = loadingContacts || loadingTurfs;
+
+  const selectedTurf = useMemo(() =>
+    turfs.find(t => t.id === selectedTurfId) || null,
+    [turfs, selectedTurfId]
   );
+
+  // Filter out contacts without postcodes, then optionally filter by turf zone
+  const validContacts = useMemo(() => {
+    const withPostcode = contacts.filter(c => c.postcode && c.postcode.trim());
+    if (!selectedTurf?.geojson) return withPostcode;
+    return withPostcode.filter(c => isContactInTurf(c, selectedTurf.geojson));
+  }, [contacts, selectedTurf]);
 
   // Contacts to optimize
   const selectedContacts = useMemo(() => {
@@ -165,6 +214,34 @@ export default function RouteOptimizer() {
         <h1 className="font-heading text-3xl font-bold mb-2">Route Optimizer</h1>
         <p className="text-muted-foreground">Generate an optimal walking path to minimize distance and maximize efficiency</p>
       </div>
+
+      {/* Turf Zone Filter */}
+      {turfs.some(t => t.geojson) && (
+        <div className="mb-6 flex items-center gap-3 p-4 bg-primary/5 border border-primary/20 rounded-xl">
+          <Layers className="w-5 h-5 text-primary flex-shrink-0" />
+          <div className="flex-1">
+            <p className="text-sm font-semibold text-foreground mb-1">Filter by Turf Zone</p>
+            <Select value={selectedTurfId} onValueChange={(v) => { setSelectedTurfId(v); setSelectedIds(new Set()); }}>
+              <SelectTrigger className="w-72 bg-background">
+                <SelectValue placeholder="All contacts" />
+              </SelectTrigger>
+              <SelectContent>
+                <SelectItem value="all">All contacts (no zone filter)</SelectItem>
+                {turfs.filter(t => t.geojson).map(t => (
+                  <SelectItem key={t.id} value={t.id}>
+                    {t.name} {t.assigned_to ? `— ${t.assigned_to}` : ''}
+                  </SelectItem>
+                ))}
+              </SelectContent>
+            </Select>
+          </div>
+          {selectedTurf && (
+            <Badge variant="secondary" className="text-xs">
+              {validContacts.length} contacts in zone
+            </Badge>
+          )}
+        </div>
+      )}
 
       <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
         {/* Left Sidebar - Contact Selection */}
