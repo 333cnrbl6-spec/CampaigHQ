@@ -6,9 +6,10 @@ import { PERMISSIONS, ROLES, ROLE_LABELS, ROLE_DESCRIPTIONS, resolvePermissions 
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
+import { Input } from '@/components/ui/input';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Switch } from '@/components/ui/switch';
-import { Shield, ChevronDown, ChevronUp, Save, User } from 'lucide-react';
+import { Shield, ChevronDown, ChevronUp, Save, User, UserPlus, Mail } from 'lucide-react';
 import { useToast } from '@/components/ui/use-toast';
 
 // Group permissions for display
@@ -222,6 +223,70 @@ function UserRow({ user, onSaved }) {
   );
 }
 
+function InviteUserPanel() {
+  const [email, setEmail] = useState('');
+  const [role, setRole] = useState('user');
+  const [sending, setSending] = useState(false);
+  const { toast } = useToast();
+
+  const handleInvite = async () => {
+    if (!email.trim()) return;
+    setSending(true);
+    try {
+      await base44.users.inviteUser(email.trim(), role);
+      toast({ title: 'Invite sent!', description: `An invitation has been sent to ${email}.` });
+      setEmail('');
+      setRole('user');
+    } catch (err) {
+      toast({ title: 'Error', description: err.message || 'Failed to send invite.', variant: 'destructive' });
+    }
+    setSending(false);
+  };
+
+  return (
+    <Card className="mb-8 border-primary/20 bg-primary/5">
+      <CardHeader className="pb-2">
+        <div className="flex items-center gap-2">
+          <UserPlus className="w-5 h-5 text-primary" />
+          <CardTitle className="text-base">Invite New User</CardTitle>
+        </div>
+        <CardDescription>Send an invitation email — they'll set their own password on first login.</CardDescription>
+      </CardHeader>
+      <CardContent>
+        <div className="flex flex-col sm:flex-row gap-3">
+          <div className="flex-1 relative">
+            <Mail className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-muted-foreground" />
+            <Input
+              type="email"
+              placeholder="email@example.com"
+              value={email}
+              onChange={e => setEmail(e.target.value)}
+              onKeyDown={e => e.key === 'Enter' && handleInvite()}
+              className="pl-9"
+            />
+          </div>
+          <Select value={role} onValueChange={setRole}>
+            <SelectTrigger className="w-full sm:w-44">
+              <SelectValue />
+            </SelectTrigger>
+            <SelectContent>
+              <SelectItem value="user">User</SelectItem>
+              <SelectItem value="admin">Admin</SelectItem>
+              {Object.entries(ROLE_LABELS).filter(([k]) => k !== 'admin').map(([k, v]) => (
+                <SelectItem key={k} value={k}>{v}</SelectItem>
+              ))}
+            </SelectContent>
+          </Select>
+          <Button onClick={handleInvite} disabled={sending || !email.trim()} className="gap-2 sm:w-auto w-full">
+            <UserPlus className="w-4 h-4" />
+            {sending ? 'Sending…' : 'Send Invite'}
+          </Button>
+        </div>
+      </CardContent>
+    </Card>
+  );
+}
+
 export default function PermissionsManager() {
   const { isAdmin } = usePermissions();
   const queryClient = useQueryClient();
@@ -251,6 +316,8 @@ export default function PermissionsManager() {
         </div>
         <p className="text-muted-foreground">Assign roles and customise individual permissions for each team member.</p>
       </div>
+
+      <InviteUserPanel />
 
       {/* Role reference */}
       <div className="grid grid-cols-2 lg:grid-cols-4 gap-3 mb-8">
