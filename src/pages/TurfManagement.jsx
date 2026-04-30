@@ -28,6 +28,15 @@ function DrawControl({ onCreated, drawing, setDrawing }) {
   const map = useMap();
   const drawControlRef = useRef(null);
   const drawnLayersRef = useRef(new L.FeatureGroup());
+  const activeHandlerRef = useRef(null);
+
+  const stopDrawing = () => {
+    if (activeHandlerRef.current) {
+      try { activeHandlerRef.current.disable(); } catch {}
+      activeHandlerRef.current = null;
+    }
+    setDrawing(false);
+  };
 
   useEffect(() => {
     map.addLayer(drawnLayersRef.current);
@@ -48,22 +57,49 @@ function DrawControl({ onCreated, drawing, setDrawing }) {
       drawnLayersRef.current.addLayer(e.layer);
       const geojson = JSON.stringify(e.layer.toGeoJSON());
       onCreated(geojson);
+      // Explicitly disable handler and stop drawing
+      if (activeHandlerRef.current) {
+        try { activeHandlerRef.current.disable(); } catch {}
+        activeHandlerRef.current = null;
+      }
       setDrawing(false);
     });
+
+    // Also catch the draw:drawstop event as a safety net
+    map.on(L.Draw.Event.DRAWSTOP, () => {
+      activeHandlerRef.current = null;
+    });
+
+    // Escape key handler for Mac compatibility
+    const handleKeyDown = (e) => {
+      if (e.key === 'Escape') {
+        stopDrawing();
+      }
+    };
+    document.addEventListener('keydown', handleKeyDown);
 
     return () => {
       map.removeLayer(drawnLayersRef.current);
       map.off(L.Draw.Event.CREATED);
-      if (drawControlRef.current) map.removeControl(drawControlRef.current);
+      map.off(L.Draw.Event.DRAWSTOP);
+      document.removeEventListener('keydown', handleKeyDown);
+      if (drawControlRef.current) try { map.removeControl(drawControlRef.current); } catch {}
     };
   }, []);
 
   useEffect(() => {
     if (drawing) {
       map.addControl(drawControlRef.current);
-      // Auto-start polygon draw
-      new L.Draw.Polygon(map, drawControlRef.current.options.draw.polygon).enable();
+      // Auto-start polygon draw and store handler reference
+      const handler = new L.Draw.Polygon(map, drawControlRef.current.options.draw.polygon);
+      handler.enable();
+      activeHandlerRef.current = handler;
     } else {
+      // Ensure handler is disabled when drawing is cancelled
+      if (activeHandlerRef.current) {
+        try { activeHandlerRef.current.disable(); } catch {}
+        activeHandlerRef.current = null;
+      }
       try { map.removeControl(drawControlRef.current); } catch {}
     }
   }, [drawing]);
