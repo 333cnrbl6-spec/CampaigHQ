@@ -80,11 +80,14 @@ export default function DataImport() {
       if (extractRes.status === 'success' && extractRes.output?.content) {
         setExtractedText(extractRes.output.content);
         markStageComplete(1);
+        setTextConfirmed(true);
+        await runStructureAnalysis(log.file_url);
       }
     } catch (err) {
       setError(err.message || 'Failed to load file');
     } finally {
       setLoading(false);
+      setLoadingStep(null);
     }
   };
 
@@ -126,6 +129,9 @@ export default function DataImport() {
       if (extractRes.status === 'success' && extractRes.output?.content) {
         setExtractedText(extractRes.output.content);
         markStageComplete(1);
+        // Auto-proceed to stage 2 (AI structure analysis) — no manual confirmation needed
+        setTextConfirmed(true);
+        await runStructureAnalysis(uploadRes.file_url);
       } else {
         setError(extractRes.details || 'Failed to extract document content');
       }
@@ -137,9 +143,10 @@ export default function DataImport() {
     }
   };
 
-  // Stage 2: Analyze Structure
-  const handleTextConfirmed = async () => {
-    if (!fileUrl) return;
+  // Stage 2: Analyze Structure — called automatically after extraction
+  const runStructureAnalysis = async (resolvedFileUrl) => {
+    const url = resolvedFileUrl || fileUrl;
+    if (!url) return;
 
     setCurrentStage(2);
     setLoading(true);
@@ -147,7 +154,6 @@ export default function DataImport() {
     setLoadingStep({ step: 1, total: 1, label: 'AI is analysing your data structure…', detail: 'This usually takes 15–30 seconds. AI is working out what fields, data types and records are in your file.' });
 
     try {
-      // AI analyzes the data structure and suggests database schema
       const analysisRes = await base44.integrations.Core.InvokeLLM({
         prompt: `Analyze this dataset and provide a comprehensive assessment:
 
@@ -164,7 +170,7 @@ Return a structured JSON assessment with:
 - explanation (paragraph describing what the data represents)
 - suggestedEntity (best matching entity type)
 - confidence (0-100 confidence score)`,
-        file_urls: [fileUrl],
+        file_urls: [url],
         response_json_schema: {
           type: 'object',
           properties: {
@@ -202,6 +208,8 @@ Return a structured JSON assessment with:
       setLoadingStep(null);
     }
   };
+
+  const handleTextConfirmed = () => runStructureAnalysis();
 
   // Stage 4: Extract & Validate Records
   const handleConfirmImport = async (fieldOverrides) => {
