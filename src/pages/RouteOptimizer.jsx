@@ -1,12 +1,13 @@
 import React, { useState, useMemo } from 'react';
 import { base44 } from '@/api/base44Client';
 import { useQuery } from '@tanstack/react-query';
+import { useNavigate } from 'react-router-dom';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
 import { Checkbox } from '@/components/ui/checkbox';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
-import { AlertCircle, MapPin, Navigation, Download, ArrowRight, Loader2, Layers } from 'lucide-react';
+import { AlertCircle, MapPin, Navigation, Download, ArrowRight, Loader2, Layers, Mail, Map } from 'lucide-react';
 import RouteVisualization from '@/components/map/RouteVisualization';
 
 // Point-in-polygon test (ray casting)
@@ -114,9 +115,13 @@ const optimizeRoute = (contacts, startLocation = null) => {
 };
 
 export default function RouteOptimizer() {
+  const navigate = useNavigate();
+  const urlParams = new URLSearchParams(window.location.search);
+  const initialTurfId = urlParams.get('turf_id') || 'all';
+
   const [selectedIds, setSelectedIds] = useState(new Set());
   const [startingPoint, setStartingPoint] = useState(null);
-  const [selectedTurfId, setSelectedTurfId] = useState('all');
+  const [selectedTurfId, setSelectedTurfId] = useState(initialTurfId);
 
   const { data: contacts = [], isLoading: loadingContacts } = useQuery({
     queryKey: ['contacts'],
@@ -217,28 +222,45 @@ export default function RouteOptimizer() {
 
       {/* Turf Zone Filter */}
       {turfs.some(t => t.geojson) && (
-        <div className="mb-6 flex items-center gap-3 p-4 bg-primary/5 border border-primary/20 rounded-xl">
-          <Layers className="w-5 h-5 text-primary flex-shrink-0" />
-          <div className="flex-1">
-            <p className="text-sm font-semibold text-foreground mb-1">Filter by Turf Zone</p>
-            <Select value={selectedTurfId} onValueChange={(v) => { setSelectedTurfId(v); setSelectedIds(new Set()); }}>
-              <SelectTrigger className="w-72 bg-background">
-                <SelectValue placeholder="All contacts" />
-              </SelectTrigger>
-              <SelectContent>
-                <SelectItem value="all">All contacts (no zone filter)</SelectItem>
-                {turfs.filter(t => t.geojson).map(t => (
-                  <SelectItem key={t.id} value={t.id}>
-                    {t.name} {t.assigned_to ? `— ${t.assigned_to}` : ''}
-                  </SelectItem>
-                ))}
-              </SelectContent>
-            </Select>
+        <div className="mb-6 p-4 bg-primary/5 border border-primary/20 rounded-xl space-y-3">
+          <div className="flex items-center gap-3 flex-wrap">
+            <Layers className="w-5 h-5 text-primary flex-shrink-0" />
+            <div className="flex-1 min-w-0">
+              <p className="text-sm font-semibold text-foreground mb-1">Filter by Turf Zone</p>
+              <Select value={selectedTurfId} onValueChange={(v) => { setSelectedTurfId(v); setSelectedIds(new Set()); }}>
+                <SelectTrigger className="w-72 bg-background">
+                  <SelectValue placeholder="All contacts" />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="all">All contacts (no zone filter)</SelectItem>
+                  {turfs.filter(t => t.geojson).map(t => (
+                    <SelectItem key={t.id} value={t.id}>
+                      {t.name} {t.assigned_to ? `— ${t.assigned_to}` : ''}
+                    </SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
+            </div>
+            {selectedTurf && (
+              <Badge variant="secondary" className="text-xs">
+                {validContacts.length} contacts in zone
+              </Badge>
+            )}
           </div>
           {selectedTurf && (
-            <Badge variant="secondary" className="text-xs">
-              {validContacts.length} contacts in zone
-            </Badge>
+            <div className="flex gap-2 flex-wrap pt-1 border-t border-primary/10">
+              <Button size="sm" variant="outline" className="text-xs gap-1.5 h-7" onClick={() => navigate(`/leaflets?turf_id=${selectedTurf.id}`)}>
+                <Mail className="w-3.5 h-3.5 text-amber-600" /> View Leaflet Runs for Zone
+              </Button>
+              <Button size="sm" variant="outline" className="text-xs gap-1.5 h-7" onClick={() => navigate(`/turf`)}>
+                <Map className="w-3.5 h-3.5 text-primary" /> Back to Turf Map
+              </Button>
+              {selectedTurf.assigned_to && (
+                <Badge variant="outline" className="text-xs h-7 px-2 flex items-center gap-1">
+                  <MapPin className="w-3 h-3" /> {selectedTurf.assigned_to}
+                </Badge>
+              )}
+            </div>
           )}
         </div>
       )}

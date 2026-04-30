@@ -1,11 +1,12 @@
 import React, { useState } from 'react';
 import { base44 } from '@/api/base44Client';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
+import { useNavigate } from 'react-router-dom';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Badge } from '@/components/ui/badge';
-import { Plus, CheckCircle2, Clock, Loader2, MapPin, User, Home, Printer, ChevronDown, ChevronUp } from 'lucide-react';
+import { Plus, CheckCircle2, Clock, Loader2, MapPin, User, Home, Printer, ChevronDown, ChevronUp, Navigation, X } from 'lucide-react';
 import LeafletRunForm from '../components/leaflet/LeafletRunForm';
 import RoundProgressCard from '../components/leaflet/RoundProgressCard';
 
@@ -33,11 +34,15 @@ function RoundBadge({ run, round }) {
 }
 
 export default function LeafletTracker() {
+  const navigate = useNavigate();
+  const urlParams = new URLSearchParams(window.location.search);
+  const initialTurf = urlParams.get('turf_id') || 'all';
+
   const [showForm, setShowForm] = useState(false);
   const [editing, setEditing] = useState(null);
   const [filterArea, setFilterArea] = useState('all');
   const [filterStatus, setFilterStatus] = useState('all');
-  const [filterTurf, setFilterTurf] = useState('all');
+  const [filterTurf, setFilterTurf] = useState(initialTurf);
   const [activeRound, setActiveRound] = useState(0); // 0 = all rounds view
   const [expandedStreet, setExpandedStreet] = useState(null);
   const queryClient = useQueryClient();
@@ -118,6 +123,27 @@ export default function LeafletTracker() {
           <Plus className="w-4 h-4" /> Add Street
         </Button>
       </div>
+
+      {/* Turf zone context banner */}
+      {filterTurf !== 'all' && (() => {
+        const turf = turfs.find(t => t.id === filterTurf);
+        if (!turf) return null;
+        return (
+          <div className="mb-6 flex items-center gap-3 p-3 bg-primary/5 border border-primary/20 rounded-xl">
+            <MapPin className="w-4 h-4 text-primary flex-shrink-0" />
+            <div className="flex-1 min-w-0">
+              <p className="text-sm font-semibold truncate">Filtered to zone: {turf.name}</p>
+              {turf.assigned_to && <p className="text-xs text-muted-foreground">Assigned to: {turf.assigned_to}</p>}
+            </div>
+            <Button size="sm" variant="outline" className="gap-1.5 text-xs flex-shrink-0" onClick={() => navigate(`/route?turf_id=${turf.id}`)}>
+              <Navigation className="w-3.5 h-3.5" /> Optimise Route
+            </Button>
+            <button onClick={() => setFilterTurf('all')} className="text-muted-foreground hover:text-foreground flex-shrink-0">
+              <X className="w-4 h-4" />
+            </button>
+          </div>
+        );
+      })()}
 
       {/* Round Progress Summary */}
       <div className="grid grid-cols-1 md:grid-cols-3 gap-4 mb-6">
