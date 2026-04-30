@@ -122,14 +122,9 @@ Return JSON with:
       return;
     }
 
-    update({
+    setState({
+      ...INITIAL_STATE,
       currentStage: 1,
-      error: null,
-      extractedText: null,
-      assessment: null,
-      extractedRecords: null,
-      validationResult: null,
-      importStatus: null,
       currentFile: file,
       loading: true,
       loadingStep: { step: 1, total: 2, label: 'Uploading your file…', detail: 'Sending to secure storage — may take a moment for large files.' },
