@@ -14,7 +14,9 @@ function parseTurfZone(sheetName) {
 }
 
 function isPostalVoterSheet(sheetName) {
-  return /no\s*header/i.test(sheetName);
+  // Only the first upload ("no header" file) contains postal voters.
+  // All subsequent uploads are non-postal voters.
+  return false;
 }
 
 function parseSheet(sheet, sheetName) {
