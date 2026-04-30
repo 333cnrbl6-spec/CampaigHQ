@@ -2,7 +2,7 @@ import React, { useState, useEffect } from 'react';
 import { base44 } from '@/api/base44Client';
 import { useQueryClient, useQuery } from '@tanstack/react-query';
 import { useNavigate } from 'react-router-dom';
-import { Loader2, AlertTriangle, Repeat2, FileText, ArrowRight } from 'lucide-react';
+import { Loader2, AlertTriangle, Repeat2, FileText, ArrowRight, CheckCircle2 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import SmartDropZone from '@/components/import/SmartDropZone';
 import ImportProgress from '@/components/import/ImportProgress';
@@ -426,7 +426,7 @@ Map each source column to its corresponding target field. Return ALL records as 
             </div>
           )}
 
-          {/* Stage 1: Show extraction preview */}
+          {/* Stage 1: Show extraction preview (only if not yet auto-confirmed) */}
           {currentStage === 1 && extractedText && !textConfirmed && (
             <ExtractionPreview
               extractedText={extractedText}
@@ -436,6 +436,19 @@ Map each source column to its corresponding target field. Return ALL records as 
                 handleTextConfirmed();
               }}
             />
+          )}
+
+          {/* Stage 1 complete banner — visible while stage 2 is loading */}
+          {currentStage === 2 && extractedText && (
+            <div className="bg-green-50 border border-green-200 rounded-xl p-4 flex items-center gap-3">
+              <CheckCircle2 className="w-5 h-5 text-green-600 flex-shrink-0" />
+              <div>
+                <p className="text-sm font-semibold text-green-800">✓ Stage 1 complete — file extracted successfully</p>
+                <p className="text-xs text-green-700 mt-0.5">
+                  AI is now analysing the data structure to identify fields and record types. This usually takes 20–40 seconds…
+                </p>
+              </div>
+            </div>
           )}
 
           {/* Stage 3: Database Assessment */}
@@ -478,22 +491,26 @@ Map each source column to its corresponding target field. Return ALL records as 
             </div>
           )}
 
-          {/* Loading state — detailed human-readable progress */}
-          {loading && loadingStep && (
+          {/* Loading state — always shown when loading */}
+          {loading && (
             <div className="bg-primary/5 border border-primary/20 rounded-xl p-5 space-y-3">
               <div className="flex items-center gap-3">
                 <Loader2 className="w-5 h-5 animate-spin text-primary flex-shrink-0" />
                 <div className="flex-1 min-w-0">
-                  <p className="text-sm font-semibold text-primary">{loadingStep.label}</p>
-                  <p className="text-xs text-muted-foreground mt-0.5">{loadingStep.detail}</p>
+                  <p className="text-sm font-semibold text-primary">
+                    {loadingStep?.label || 'Working…'}
+                  </p>
+                  <p className="text-xs text-muted-foreground mt-0.5">
+                    {loadingStep?.detail || 'Please wait — do not close this tab.'}
+                  </p>
                 </div>
-                {loadingStep.total > 1 && (
+                {loadingStep?.total > 1 && (
                   <span className="text-xs font-medium text-muted-foreground flex-shrink-0">
                     Step {loadingStep.step}/{loadingStep.total}
                   </span>
                 )}
               </div>
-              {loadingStep.total > 1 && (
+              {loadingStep?.total > 1 && (
                 <div className="w-full bg-primary/10 rounded-full h-1.5">
                   <div
                     className="bg-primary h-1.5 rounded-full transition-all duration-500"
@@ -501,13 +518,19 @@ Map each source column to its corresponding target field. Return ALL records as 
                   />
                 </div>
               )}
+              {/* Stage-specific hint */}
+              {currentStage === 2 && (
+                <div className="text-xs text-muted-foreground bg-white/60 rounded-lg px-3 py-2 border border-primary/10 space-y-1">
+                  <p>📋 <strong>What's happening:</strong> AI is reading all {extractedText ? `the extracted content` : 'your file'} to identify columns, data types and which database entity best matches your data.</p>
+                  <p>⏱ This step typically takes <strong>20–40 seconds</strong> for large files. Stage 3 (field mapping) will appear automatically when it's done.</p>
+                </div>
+              )}
+              {currentStage === 4 && (
+                <div className="text-xs text-muted-foreground bg-white/60 rounded-lg px-3 py-2 border border-primary/10">
+                  <p>🔄 <strong>What's happening:</strong> AI is extracting every row and validating it against the database schema. Large files with 1000+ records can take 60–90 seconds.</p>
+                </div>
+              )}
               <p className="text-xs text-muted-foreground italic">⏳ Please keep this tab open — do not navigate away.</p>
-            </div>
-          )}
-          {loading && !loadingStep && (
-            <div className="flex items-center gap-3 text-sm text-primary bg-primary/5 rounded-lg p-4 border border-primary/20">
-              <Loader2 className="w-5 h-5 animate-spin" />
-              Processing… please wait.
             </div>
           )}
         </div>
