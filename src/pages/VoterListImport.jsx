@@ -13,9 +13,14 @@ function parseTurfZone(sheetName) {
   return match ? match[1].trim().replace(/\s+/g, '') : sheetName.trim();
 }
 
+function isPostalVoterSheet(sheetName) {
+  return /no\s*header/i.test(sheetName);
+}
+
 function parseSheet(sheet, sheetName) {
   const rows = XLSX.utils.sheet_to_json(sheet, { header: 1, defval: null });
   const turf = parseTurfZone(sheetName);
+  const isPostal = isPostalVoterSheet(sheetName);
 
   const addresses = [];
   for (const row of rows) {
@@ -25,7 +30,8 @@ function parseSheet(sheet, sheetName) {
     const addr = String(raw).trim();
     // Skip if it looks like a header (same as turf code) or is empty
     if (!addr || addr.toUpperCase().startsWith('TYL') || addr.toUpperCase() === turf) continue;
-    addresses.push({ address: addr, tags: [turf] });
+    const tags = isPostal ? [turf, 'Postal Voter'] : [turf];
+    addresses.push({ address: addr, tags, registered_voter: isPostal });
   }
   return addresses;
 }
@@ -50,7 +56,7 @@ export default function VoterListImport() {
       const workbook = XLSX.read(e.target.result, { type: 'array' });
       const sheets = workbook.SheetNames.map((name) => {
         const records = parseSheet(workbook.Sheets[name], name);
-        return { name, turf: parseTurfZone(name), count: records.length };
+        return { name, turf: parseTurfZone(name), count: records.length, isPostal: isPostalVoterSheet(name) };
       });
       const total = sheets.reduce((s, sh) => s + sh.count, 0);
       setPreview({ sheets, total });
@@ -162,6 +168,7 @@ export default function VoterListImport() {
                 <div>
                   <span className="font-medium text-sm">{sh.name}</span>
                   <span className="ml-2 text-xs bg-primary/10 text-primary px-2 py-0.5 rounded">{sh.turf}</span>
+                  {sh.isPostal && <span className="ml-1 text-xs bg-blue-100 text-blue-700 px-2 py-0.5 rounded">Postal Voters</span>}
                 </div>
                 <span className="text-sm text-muted-foreground">{sh.count.toLocaleString()} addresses</span>
               </div>
