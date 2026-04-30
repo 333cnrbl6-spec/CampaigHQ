@@ -66,6 +66,7 @@ const navSections = [
       { path: '/tasks', label: 'Tasks', icon: ClipboardList },
       { path: '/materials', label: 'Campaign Materials', icon: Printer },
       { path: '/import', label: 'Import Data', icon: Upload },
+      { path: '/voter-import', label: 'Import Voter List', icon: Users },
       { path: '/legacy-import', label: 'Import Map Files', icon: FileText },
       { path: '/vote', label: 'Campaign Landing Page', icon: Globe },
       { path: '/permissions', label: 'Permissions', icon: Shield },
