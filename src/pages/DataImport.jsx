@@ -42,6 +42,7 @@ export default function DataImport() {
 
   // Processing
   const [loading, setLoading] = useState(false);
+  const [loadingStep, setLoadingStep] = useState(null); // human-readable current action
 
   // Auto-load last import on mount
   useEffect(() => {
@@ -105,11 +106,13 @@ export default function DataImport() {
     try {
       setCurrentFile(file);
 
-      // Upload file
+      // Step 1: Upload
+      setLoadingStep({ step: 1, total: 2, label: 'Uploading your file…', detail: 'Sending file to secure storage — this may take a moment for larger files.' });
       const uploadRes = await base44.integrations.Core.UploadFile({ file });
       setFileUrl(uploadRes.file_url);
 
-      // Extract text from all file types
+      // Step 2: Extract text
+      setLoadingStep({ step: 2, total: 2, label: 'Reading and extracting content…', detail: 'AI is scanning your file to pull out all text, rows and data — please keep this tab open.' });
       const extractRes = await base44.integrations.Core.ExtractDataFromUploadedFile({
         file_url: uploadRes.file_url,
         json_schema: {
@@ -130,6 +133,7 @@ export default function DataImport() {
       setError(err.message || 'Failed to upload and extract file');
     } finally {
       setLoading(false);
+      setLoadingStep(null);
     }
   };
 
@@ -140,6 +144,7 @@ export default function DataImport() {
     setCurrentStage(2);
     setLoading(true);
     setError(null);
+    setLoadingStep({ step: 1, total: 1, label: 'AI is analysing your data structure…', detail: 'This usually takes 15–30 seconds. AI is working out what fields, data types and records are in your file.' });
 
     try {
       // AI analyzes the data structure and suggests database schema
@@ -194,6 +199,7 @@ Return a structured JSON assessment with:
       setError(err.message || 'Failed to analyze file');
     } finally {
       setLoading(false);
+      setLoadingStep(null);
     }
   };
 
@@ -204,6 +210,7 @@ Return a structured JSON assessment with:
     setCurrentStage(4);
     setLoading(true);
     setError(null);
+    setLoadingStep({ step: 1, total: 2, label: 'Extracting all records from your file…', detail: 'AI is reading every row and mapping it to the correct fields. Large files can take up to a minute — please wait.' });
 
     try {
       // Build field mapping instructions with any user overrides
@@ -240,7 +247,8 @@ Map each source column to its corresponding target field. Return ALL records as 
       }
 
       setExtractedRecords(records);
-      
+      setLoadingStep({ step: 2, total: 2, label: 'Validating records…', detail: `Checking all ${records.length} extracted records against the database schema for errors.` });
+
       // Validate records against entity schema
       const entityName = assessment.suggestedEntity || 'Contact';
       const entitySchema = await base44.entities[entityName].schema();
@@ -298,6 +306,7 @@ Map each source column to its corresponding target field. Return ALL records as 
       setError(err.message || 'Failed to extract and validate records');
     } finally {
       setLoading(false);
+      setLoadingStep(null);
     }
   };
 
@@ -461,11 +470,36 @@ Map each source column to its corresponding target field. Return ALL records as 
             </div>
           )}
 
-          {/* Loading state */}
-          {loading && (
+          {/* Loading state — detailed human-readable progress */}
+          {loading && loadingStep && (
+            <div className="bg-primary/5 border border-primary/20 rounded-xl p-5 space-y-3">
+              <div className="flex items-center gap-3">
+                <Loader2 className="w-5 h-5 animate-spin text-primary flex-shrink-0" />
+                <div className="flex-1 min-w-0">
+                  <p className="text-sm font-semibold text-primary">{loadingStep.label}</p>
+                  <p className="text-xs text-muted-foreground mt-0.5">{loadingStep.detail}</p>
+                </div>
+                {loadingStep.total > 1 && (
+                  <span className="text-xs font-medium text-muted-foreground flex-shrink-0">
+                    Step {loadingStep.step}/{loadingStep.total}
+                  </span>
+                )}
+              </div>
+              {loadingStep.total > 1 && (
+                <div className="w-full bg-primary/10 rounded-full h-1.5">
+                  <div
+                    className="bg-primary h-1.5 rounded-full transition-all duration-500"
+                    style={{ width: `${(loadingStep.step / loadingStep.total) * 100}%` }}
+                  />
+                </div>
+              )}
+              <p className="text-xs text-muted-foreground italic">⏳ Please keep this tab open — do not navigate away.</p>
+            </div>
+          )}
+          {loading && !loadingStep && (
             <div className="flex items-center gap-3 text-sm text-primary bg-primary/5 rounded-lg p-4 border border-primary/20">
               <Loader2 className="w-5 h-5 animate-spin" />
-              Processing...
+              Processing… please wait.
             </div>
           )}
         </div>

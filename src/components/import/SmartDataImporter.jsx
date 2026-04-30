@@ -19,6 +19,7 @@ export default function SmartDataImporter({ entityName, onComplete, trigger }) {
   const [extractedData, setExtractedData] = useState([]);
   const [issues, setIssues] = useState([]);
   const [importedCount, setImportedCount] = useState(0);
+  const [processingStep, setProcessingStep] = useState(null);
 
   const handleDrag = (e) => {
     e.preventDefault();
@@ -33,15 +34,18 @@ export default function SmartDataImporter({ entityName, onComplete, trigger }) {
     setProcessing(true);
 
     try {
-      // Upload file to get URL
+      // Step 1: Upload
+      setProcessingStep({ step: 1, total: 3, label: 'Uploading your file…', detail: 'Sending to secure storage — may take a moment for larger files.' });
       const uploadRes = await base44.integrations.Core.UploadFile({ file: selectedFile });
       const fileUrl = uploadRes.file_url;
 
-      // Get schema for the entity
+      // Step 2: Get schema
+      setProcessingStep({ step: 2, total: 3, label: 'Reading database structure…', detail: `Loading the ${entityName} schema so AI knows which fields to map to.` });
       const entitySchema = await base44.entities[entityName].schema();
       setSchema(entitySchema);
 
-      // Use AI to analyze file structure and propose mapping
+      // Step 3: AI analysis
+      setProcessingStep({ step: 3, total: 3, label: 'AI is analysing your file…', detail: 'Detecting columns and proposing field mappings — usually 15–30 seconds.' });
       const analysisRes = await base44.integrations.Core.InvokeLLM({
         prompt: `You are a data mapping assistant. Analyze this file and identify the data structure and fields present.
         
@@ -93,6 +97,7 @@ Example format:
       setStep('review');
     } finally {
       setProcessing(false);
+      setProcessingStep(null);
     }
   }, [entityName]);
 
@@ -106,9 +111,11 @@ Example format:
 
   const handleExtractAndValidate = async () => {
     setProcessing(true);
+    setProcessingStep({ step: 1, total: 2, label: 'Re-uploading and extracting records…', detail: 'AI is pulling every row out of your file using the confirmed field mapping.' });
     try {
       const uploadRes = await base44.integrations.Core.UploadFile({ file });
       const fileUrl = uploadRes.file_url;
+      setProcessingStep({ step: 2, total: 2, label: 'Validating against database schema…', detail: 'Checking data types, required fields and enums. Nearly done!' });
 
       // Extract with the confirmed mapping
       const extractRes = await base44.integrations.Core.ExtractDataFromUploadedFile({
@@ -208,6 +215,7 @@ Example format:
       setStep('review');
     } finally {
       setProcessing(false);
+      setProcessingStep(null);
     }
   };
 
@@ -267,12 +275,32 @@ Example format:
         )}
 
         {step === 'processing' && (
-          <div className="flex flex-col items-center justify-center py-12">
-            <Loader2 className="w-8 h-8 animate-spin text-primary mb-3" />
-            <p className="text-sm font-medium">Analyzing your file...</p>
-            <p className="text-xs text-muted-foreground mt-1">
-              AI is examining the structure and proposing field mappings
-            </p>
+          <div className="py-8 space-y-4">
+            <div className="flex items-start gap-3 p-4 bg-primary/5 border border-primary/20 rounded-xl">
+              <Loader2 className="w-5 h-5 animate-spin text-primary flex-shrink-0 mt-0.5" />
+              <div className="flex-1 min-w-0">
+                <p className="text-sm font-semibold text-primary">
+                  {processingStep?.label || 'Working…'}
+                </p>
+                <p className="text-xs text-muted-foreground mt-0.5">
+                  {processingStep?.detail || 'Please wait, this may take up to 30 seconds.'}
+                </p>
+              </div>
+              {processingStep && (
+                <span className="text-xs font-medium text-muted-foreground flex-shrink-0">
+                  {processingStep.step}/{processingStep.total}
+                </span>
+              )}
+            </div>
+            {processingStep && (
+              <div className="w-full bg-primary/10 rounded-full h-1.5">
+                <div
+                  className="bg-primary h-1.5 rounded-full transition-all duration-500"
+                  style={{ width: `${(processingStep.step / processingStep.total) * 100}%` }}
+                />
+              </div>
+            )}
+            <p className="text-xs text-center text-muted-foreground italic">⏳ Please keep this window open — do not close it.</p>
           </div>
         )}
 
@@ -330,6 +358,22 @@ Example format:
               </div>
             </div>
 
+            {processing && processingStep && (
+              <div className="bg-primary/5 border border-primary/20 rounded-lg p-3 space-y-2">
+                <div className="flex items-center gap-2">
+                  <Loader2 className="w-4 h-4 animate-spin text-primary flex-shrink-0" />
+                  <div className="flex-1">
+                    <p className="text-xs font-semibold text-primary">{processingStep.label}</p>
+                    <p className="text-xs text-muted-foreground">{processingStep.detail}</p>
+                  </div>
+                  <span className="text-xs text-muted-foreground">{processingStep.step}/{processingStep.total}</span>
+                </div>
+                <div className="w-full bg-primary/10 rounded-full h-1">
+                  <div className="bg-primary h-1 rounded-full transition-all duration-500" style={{ width: `${(processingStep.step / processingStep.total) * 100}%` }} />
+                </div>
+              </div>
+            )}
+
             <div className="flex justify-end gap-3 pt-4">
               <Button variant="outline" onClick={closeDialog}>
                 Cancel
@@ -337,7 +381,7 @@ Example format:
               <Button onClick={handleExtractAndValidate} disabled={processing}>
                 {processing ? (
                   <>
-                    <Loader2 className="w-4 h-4 animate-spin mr-2" /> Processing...
+                    <Loader2 className="w-4 h-4 animate-spin mr-2" /> Working…
                   </>
                 ) : (
                   'Extract & Validate'
