@@ -1,9 +1,17 @@
-import React, { useState, useRef } from 'react';
+import React, { useState, useRef, useEffect } from 'react';
 import * as XLSX from 'xlsx';
 import { base44 } from '@/api/base44Client';
 import { useQueryClient } from '@tanstack/react-query';
 import { Upload, CheckCircle2, AlertTriangle, Loader2, FileSpreadsheet, X } from 'lucide-react';
 import { Button } from '@/components/ui/button';
+
+const REASSURANCE_MESSAGES = [
+  "Working through the list — this is completely normal for large files.",
+  "Still going! Each batch of 200 contacts is sent one at a time.",
+  "Hang in there — the database is accepting the records as fast as it can.",
+  "More than halfway there! Keep this tab open and we'll get there.",
+  "Almost done — the last batches are being written now.",
+];
 
 const BATCH_SIZE = 200;
 
@@ -46,6 +54,15 @@ export default function VoterListImport() {
   const [status, setStatus] = useState(null); // 'importing' | 'done' | 'error'
   const [progress, setProgress] = useState({ done: 0, total: 0 });
   const [error, setError] = useState(null);
+  const [reassuranceIdx, setReassuranceIdx] = useState(0);
+
+  useEffect(() => {
+    if (status !== 'importing') return;
+    const interval = setInterval(() => {
+      setReassuranceIdx(i => (i + 1) % REASSURANCE_MESSAGES.length);
+    }, 7000);
+    return () => clearInterval(interval);
+  }, [status]);
 
   const handleFile = (f) => {
     setFile(f);
@@ -180,7 +197,7 @@ export default function VoterListImport() {
           </div>
 
           {status === 'importing' ? (
-            <div className="bg-primary/5 border border-primary/20 rounded-xl p-5 space-y-3">
+            <div className="bg-primary/5 border border-primary/20 rounded-xl p-5 space-y-4">
               <div className="flex items-center gap-3">
                 <Loader2 className="w-5 h-5 animate-spin text-primary flex-shrink-0" />
                 <div className="flex-1 min-w-0">
@@ -188,18 +205,24 @@ export default function VoterListImport() {
                     Saving batch {progress.currentBatch} of {progress.totalBatches}…
                   </p>
                   <p className="text-xs text-muted-foreground mt-0.5">
-                    {progress.done.toLocaleString()} of {progress.total.toLocaleString()} contacts saved — please keep this tab open
+                    {progress.done.toLocaleString()} of {progress.total.toLocaleString()} contacts saved
                   </p>
                 </div>
+                <span className="text-xs font-semibold text-primary flex-shrink-0">
+                  {progress.total ? Math.round((progress.done / progress.total) * 100) : 0}%
+                </span>
               </div>
-              <div className="w-full bg-primary/10 rounded-full h-2.5">
+              <div className="w-full bg-primary/10 rounded-full h-3 overflow-hidden">
                 <div
-                  className="bg-primary h-2.5 rounded-full transition-all duration-500"
+                  className="bg-primary h-3 rounded-full transition-all duration-500"
                   style={{ width: progress.total ? `${Math.max(5, (progress.done / progress.total) * 100)}%` : '5%' }}
                 />
               </div>
-              <p className="text-xs text-muted-foreground italic text-center">
-                ⏳ Large files can take 1–2 minutes — this is normal
+              <div className="bg-white/70 border border-primary/10 rounded-lg px-4 py-3 text-xs text-muted-foreground leading-relaxed transition-all duration-700">
+                💬 <em>{REASSURANCE_MESSAGES[reassuranceIdx]}</em>
+              </div>
+              <p className="text-xs text-muted-foreground text-center">
+                ⏳ Please keep this tab open — do not navigate away
               </p>
             </div>
           ) : (
