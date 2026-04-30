@@ -85,15 +85,17 @@ export default function VoterListImport() {
         allRecords = allRecords.concat(parseSheet(workbook.Sheets[name], name));
       }
 
-      setProgress({ done: 0, total: allRecords.length });
+      setProgress({ done: 0, total: allRecords.length, currentBatch: 1, totalBatches: Math.ceil(allRecords.length / BATCH_SIZE) });
 
       // Import in batches
       const createdIds = [];
       for (let i = 0; i < allRecords.length; i += BATCH_SIZE) {
+        const batchNum = Math.floor(i / BATCH_SIZE) + 1;
+        setProgress(p => ({ ...p, currentBatch: batchNum }));
         const batch = allRecords.slice(i, i + BATCH_SIZE);
         const created = await base44.entities.Contact.bulkCreate(batch);
         createdIds.push(...(created || []).map(r => r.id));
-        setProgress({ done: Math.min(i + BATCH_SIZE, allRecords.length), total: allRecords.length });
+        setProgress({ done: Math.min(i + BATCH_SIZE, allRecords.length), total: allRecords.length, currentBatch: batchNum, totalBatches: Math.ceil(allRecords.length / BATCH_SIZE) });
       }
 
       // Log the import
@@ -180,17 +182,25 @@ export default function VoterListImport() {
           {status === 'importing' ? (
             <div className="bg-primary/5 border border-primary/20 rounded-xl p-5 space-y-3">
               <div className="flex items-center gap-3">
-                <Loader2 className="w-5 h-5 animate-spin text-primary" />
-                <p className="text-sm font-semibold text-primary">
-                  Importing… {progress.done.toLocaleString()} / {progress.total.toLocaleString()}
-                </p>
+                <Loader2 className="w-5 h-5 animate-spin text-primary flex-shrink-0" />
+                <div className="flex-1 min-w-0">
+                  <p className="text-sm font-semibold text-primary">
+                    Saving batch {progress.currentBatch} of {progress.totalBatches}…
+                  </p>
+                  <p className="text-xs text-muted-foreground mt-0.5">
+                    {progress.done.toLocaleString()} of {progress.total.toLocaleString()} contacts saved — please keep this tab open
+                  </p>
+                </div>
               </div>
-              <div className="w-full bg-primary/10 rounded-full h-2">
+              <div className="w-full bg-primary/10 rounded-full h-2.5">
                 <div
-                  className="bg-primary h-2 rounded-full transition-all duration-300"
-                  style={{ width: progress.total ? `${(progress.done / progress.total) * 100}%` : '0%' }}
+                  className="bg-primary h-2.5 rounded-full transition-all duration-500"
+                  style={{ width: progress.total ? `${Math.max(5, (progress.done / progress.total) * 100)}%` : '5%' }}
                 />
               </div>
+              <p className="text-xs text-muted-foreground italic text-center">
+                ⏳ Large files can take 1–2 minutes — this is normal
+              </p>
             </div>
           ) : (
             <Button onClick={handleImport} className="w-full" size="lg">
