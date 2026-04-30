@@ -7,6 +7,7 @@ import {
 } from 'lucide-react';
 import { base44 } from '@/api/base44Client';
 import { cn } from '@/lib/utils';
+// All nav items are shown to every logged-in user regardless of role
 
 const navSections = [
   {
