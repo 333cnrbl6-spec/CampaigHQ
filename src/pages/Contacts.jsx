@@ -5,8 +5,9 @@ import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Badge } from '@/components/ui/badge';
-import { Plus, Search, Pencil, Trash2, Phone, Mail, MapPin, CheckCircle2, Tag, GitMerge, Loader2 } from 'lucide-react';
+import { Plus, Search, Pencil, Trash2, Phone, Mail, MapPin, CheckCircle2, Tag, GitMerge, Loader2, Navigation } from 'lucide-react';
 import { AnimatePresence, motion } from 'framer-motion';
+import { useNavigate } from 'react-router-dom';
 import ContactForm from '../components/contacts/ContactForm';
 import BulkTagDialog from '../components/contacts/BulkTagDialog';
 
@@ -30,6 +31,7 @@ export default function Contacts() {
   const [page, setPage] = useState(1);
   const PAGE_SIZE = 100;
   const queryClient = useQueryClient();
+  const navigate = useNavigate();
 
   const { data: contacts = [], isLoading } = useQuery({
     queryKey: ['contacts'],
@@ -219,6 +221,13 @@ export default function Contacts() {
           >
             {deduping ? <Loader2 className="w-4 h-4 animate-spin" /> : <GitMerge className="w-4 h-4" />}
             {deduping ? 'Merging…' : 'Deduplicate'}
+          </Button>
+          <Button
+            variant="outline"
+            className="gap-2"
+            onClick={() => navigate(`/route${turfFilter !== 'all' ? `?turf=${encodeURIComponent(turfFilter)}` : ''}`)}
+          >
+            <Navigation className="w-4 h-4" /> Plan Route
           </Button>
           <Button onClick={() => { setEditing(null); setShowForm(true); }} className="gap-2">
             <Plus className="w-4 h-4" /> Add Contact
