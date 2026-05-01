@@ -111,25 +111,11 @@ export default function Contacts() {
   };
 
   const handleReprocessImports = async () => {
-    if (!confirm('Re-extract TYL zone codes from the imported Excel file? This may take a minute.')) return;
+    if (!confirm('Re-analyze recent import files to recover zone data? This may take a few minutes.')) return;
     setReprocessing(true);
     setReprocessResult(null);
     try {
-      // Get the last import log with a file URL
-      const importLogs = await base44.entities.ImportLog.filter(
-        { entity_type: 'Contact' },
-        '-created_date',
-        5
-      );
-      const logWithUrl = importLogs.find(l => l.file_url);
-
-      if (!logWithUrl) {
-        setReprocessResult({ error: 'No import file found. Please re-import your Excel file with the TYL data.' });
-        setReprocessing(false);
-        return;
-      }
-
-      const response = await base44.functions.invoke('reprocessImportsForTurfTags', { file_url: logWithUrl.file_url });
+      const response = await base44.functions.invoke('reprocessImportsForTurfTags', {});
       queryClient.invalidateQueries({ queryKey: ['contacts'] });
       setReprocessResult(response.data);
     } finally {
