@@ -7,7 +7,7 @@ import { Badge } from '@/components/ui/badge';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import {
   MapPin, Navigation, Download, ArrowRight, Loader2,
-  Search, XCircle, RotateCcw, Map, Footprints, Printer, ClipboardList, Info, FileText, RefreshCw
+  Search, XCircle, RotateCcw, Map, Footprints, Printer, ClipboardList, Info, FileText, RefreshCw, FileText as FilePdf
 } from 'lucide-react';
 import CanvassingRouteMap from '@/components/map/CanvassingRouteMap';
 import WalkSheetPrint from '@/components/canvassing/WalkSheetPrint';
@@ -196,6 +196,7 @@ export default function RouteOptimizer() {
   const [route, setRoute] = useState(null);
   const [noPostcodeCount, setNoPostcodeCount] = useState(0);
   const [showWalkSheet, setShowWalkSheet] = useState(false);
+  const [exportingPDF, setExportingPDF] = useState(false);
 
   const { data: contacts = [], isLoading, refetch: refetchContacts } = useQuery({
     queryKey: ['contacts'],
@@ -268,6 +269,37 @@ export default function RouteOptimizer() {
     el.click();
   };
 
+  const handleExportPDF = async () => {
+    if (!route) return;
+    setExportingPDF(true);
+    try {
+      const contactMap = {};
+      route.forEach(s => {
+        contactMap[s.contact.id] = s.contact;
+      });
+
+      const response = await base44.functions.invoke('generateRoutePDF', {
+        route: route.map((s, i) => ({ ...s.contact, stop_number: i + 1, id: s.contact.id })),
+        turf_name: turfFilter !== 'all' ? turfFilter : 'Generated Route',
+        contact_details: contactMap,
+      });
+
+      // Get the PDF data from the response
+      const pdfBlob = new Blob([response.data], { type: 'application/pdf' });
+      const url = window.URL.createObjectURL(pdfBlob);
+      const el = document.createElement('a');
+      el.href = url;
+      el.download = `route-${turfFilter !== 'all' ? turfFilter.replace(/\s+/g, '-') : 'export'}-${new Date().toISOString().split('T')[0]}.pdf`;
+      el.click();
+      window.URL.revokeObjectURL(url);
+    } catch (err) {
+      console.error('PDF export failed:', err);
+      alert('Failed to generate PDF. Please try again.');
+    } finally {
+      setExportingPDF(false);
+    }
+  };
+
   const totalDist = route ? totalRouteDistance(route) : 0;
   const uniquePostcodesInRoute = route ? new Set(route.map(s => s.contact.postcode)).size : 0;
 
@@ -292,6 +324,24 @@ export default function RouteOptimizer() {
                </Badge>
                <Button variant="outline" size="sm" className="gap-1.5" onClick={handleDownload}>
                  <Download className="w-4 h-4" /> Export CSV
+               </Button>
+               <Button 
+                 variant="outline" 
+                 size="sm" 
+                 className="gap-1.5" 
+                 onClick={handleExportPDF}
+                 disabled={exportingPDF}
+               >
+                 {exportingPDF ? (
+                   <>
+                     <Loader2 className="w-4 h-4 animate-spin" />
+                     Generating...
+                   </>
+                 ) : (
+                   <>
+                     <FileText className="w-4 h-4" /> Export PDF
+                   </>
+                 )}
                </Button>
                <Button variant="outline" size="sm" className="gap-1.5" onClick={() => setShowWalkSheet(true)}>
                  <FileText className="w-4 h-4" /> Walk Sheet
