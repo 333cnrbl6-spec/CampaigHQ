@@ -71,6 +71,7 @@ const navSections = [
       { path: '/voter-import', label: 'Import Voter List', icon: Users },
       { path: '/legacy-import', label: 'Import Map Files', icon: FileText },
       { path: '/vote', label: 'Campaign Landing Page', icon: Globe },
+      { path: '/gdpr', label: 'GDPR Compliance', icon: Shield },
       { path: '/permissions', label: 'Permissions', icon: Shield },
       { path: '/manual', label: 'User Manual', icon: BookOpen },
     ],

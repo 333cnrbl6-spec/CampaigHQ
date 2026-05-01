@@ -63,6 +63,44 @@
         "type": "string"
       },
       "description": "Organizational tags (e.g. 'Requires Follow-up', 'Display Poster')"
+    },
+    "consent_given": {
+      "type": "boolean",
+      "default": false,
+      "description": "Whether the contact has given explicit data processing consent"
+    },
+    "consent_date": {
+      "type": "string",
+      "format": "date",
+      "description": "Date consent was recorded"
+    },
+    "consent_method": {
+      "type": "string",
+      "enum": [
+        "door_knock",
+        "phone",
+        "email",
+        "online_form",
+        "electoral_roll",
+        "unknown"
+      ],
+      "default": "unknown",
+      "description": "How consent was obtained"
+    },
+    "data_retention_exempt": {
+      "type": "boolean",
+      "default": false,
+      "description": "If true, this contact is exempt from automated data retention deletion"
+    },
+    "deletion_requested": {
+      "type": "boolean",
+      "default": false,
+      "description": "Right to be forgotten request pending"
+    },
+    "deletion_requested_date": {
+      "type": "string",
+      "format": "date",
+      "description": "When the deletion was requested"
     }
   },
   "required": [

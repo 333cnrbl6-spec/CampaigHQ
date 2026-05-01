@@ -1,0 +1,53 @@
+{
+  "name": "GdprRequest",
+  "type": "object",
+  "properties": {
+    "request_type": {
+      "type": "string",
+      "enum": [
+        "right_to_be_forgotten",
+        "data_access",
+        "consent_withdrawal"
+      ],
+      "description": "Type of GDPR request"
+    },
+    "contact_id": {
+      "type": "string",
+      "description": "ID of the affected Contact record"
+    },
+    "contact_name": {
+      "type": "string",
+      "description": "Name of the contact for reference"
+    },
+    "contact_email": {
+      "type": "string",
+      "description": "Email of the contact for reference"
+    },
+    "requested_by": {
+      "type": "string",
+      "description": "Email of the user who logged the request"
+    },
+    "status": {
+      "type": "string",
+      "enum": [
+        "pending",
+        "completed",
+        "rejected"
+      ],
+      "default": "pending"
+    },
+    "notes": {
+      "type": "string",
+      "description": "Admin notes on this request"
+    },
+    "completed_date": {
+      "type": "string",
+      "format": "date"
+    }
+  },
+  "required": [
+    "request_type",
+    "contact_id",
+    "contact_name"
+  ]
+}
