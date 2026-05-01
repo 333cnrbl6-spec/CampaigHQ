@@ -11,6 +11,7 @@ import {
 } from 'lucide-react';
 import CanvassingRouteMap from '@/components/map/CanvassingRouteMap';
 import ContactsZoneMap from '@/components/map/ContactsZoneMap';
+import TurfBoundaryMap from '@/components/map/TurfBoundaryMap';
 import WalkSheetPrint from '@/components/canvassing/WalkSheetPrint';
 import { useNavigate } from 'react-router-dom';
 
@@ -198,6 +199,7 @@ export default function RouteOptimizer() {
   const [noPostcodeCount, setNoPostcodeCount] = useState(0);
   const [showWalkSheet, setShowWalkSheet] = useState(false);
   const [exportingPDF, setExportingPDF] = useState(false);
+  const [showTurfBoundaries, setShowTurfBoundaries] = useState(false);
 
   const { data: contacts = [], isLoading, refetch: refetchContacts } = useQuery({
     queryKey: ['contacts'],
@@ -503,6 +505,21 @@ export default function RouteOptimizer() {
 
         {/* Map area */}
         <div className="flex-1 relative overflow-hidden">
+          {/* Show boundaries button */}
+          {!route && (
+            <button
+              onClick={() => setShowTurfBoundaries(!showTurfBoundaries)}
+              className="absolute top-4 right-4 z-10 px-3 py-2 rounded-lg bg-primary text-primary-foreground text-sm font-medium hover:bg-primary/90 transition-colors flex items-center gap-2"
+            >
+              <Map className="w-4 h-4" />
+              {showTurfBoundaries ? 'Hide Boundaries' : 'Show Boundaries'}
+            </button>
+          )}
+
+          {showTurfBoundaries && !route && (
+            <TurfBoundaryMap turfs={turfs} contacts={filteredContacts} highlightAssigned={false} />
+          )}
+
           {route ? (
             <CanvassingRouteMap route={route} />
           ) : geocoding ? (
@@ -511,7 +528,7 @@ export default function RouteOptimizer() {
               <p className="font-medium">Looking up postcodes…</p>
               <p className="text-sm">{geocodeProgress.done} of {geocodeProgress.total} unique postcodes resolved</p>
             </div>
-          ) : filteredContacts.length > 0 ? (
+          ) : !showTurfBoundaries && filteredContacts.length > 0 ? (
             <ContactsZoneMap contacts={filteredContacts} selectedIds={selectedIds} />
           ) : (
             <div className="flex flex-col items-center justify-center h-full gap-4 text-muted-foreground">

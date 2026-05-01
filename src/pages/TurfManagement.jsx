@@ -9,8 +9,10 @@ import 'leaflet-draw';
 import TurfSidebar from '../components/turf/TurfSidebar';
 import TurfRoutePanel from '../components/turf/TurfRoutePanel';
 import BulkAssignDialog from '../components/turf/BulkAssignDialog';
+import TurfBoundaryMap from '../components/map/TurfBoundaryMap';
+import UnassignedStreetsOverlay from '../components/map/UnassignedStreetsOverlay';
 import { Button } from '@/components/ui/button';
-import { Pencil, Trash2, Layers, Route, Wand2 } from 'lucide-react';
+import { Pencil, Trash2, Layers, Route, Wand2, Map, Eye, EyeOff } from 'lucide-react';
 
 // Fix leaflet default marker icons
 delete L.Icon.Default.prototype._getIconUrl;
@@ -182,10 +184,17 @@ export default function TurfManagement() {
   const [routeCoords, setRouteCoords] = useState([]);
   const [showBulkAssign, setShowBulkAssign] = useState(false);
   const [autoDrawing, setAutoDrawing] = useState(false);
+  const [showBoundaryMap, setShowBoundaryMap] = useState(false);
+  const [showUnassignedPanel, setShowUnassignedPanel] = useState(false);
 
   const { data: turfs = [] } = useQuery({
     queryKey: ['turfs'],
     queryFn: () => base44.entities.Turf.list('-created_date', 100),
+  });
+
+  const { data: contacts = [] } = useQuery({
+    queryKey: ['contacts'],
+    queryFn: () => base44.entities.Contact.list('name', 5000),
   });
 
   const createTurf = useMutation({
@@ -296,6 +305,24 @@ export default function TurfManagement() {
             <Pencil className="w-4 h-4" />
             {drawing ? 'Cancel Draw' : 'Draw Zone'}
           </Button>
+          <Button
+            size="sm"
+            variant={showBoundaryMap ? 'default' : 'outline'}
+            className="gap-2"
+            onClick={() => setShowBoundaryMap(b => !b)}
+          >
+            <Map className="w-4 h-4" />
+            {showBoundaryMap ? 'Hide Boundaries' : 'Show Boundaries'}
+          </Button>
+          <Button
+            size="sm"
+            variant={showUnassignedPanel ? 'default' : 'outline'}
+            className="gap-2"
+            onClick={() => setShowUnassignedPanel(p => !p)}
+          >
+            {showUnassignedPanel ? <EyeOff className="w-4 h-4" /> : <Eye className="w-4 h-4" />}
+            Unassigned Streets
+          </Button>
           {selectedId && (
             <>
               <Button
@@ -386,7 +413,43 @@ export default function TurfManagement() {
             onClose={() => { setShowRoute(false); setRouteCoords([]); }}
           />
         )}
-      </div>
-    </div>
-  );
-}
+
+        {/* Boundary Map Modal */}
+        {showBoundaryMap && (
+          <div className="absolute inset-4 z-[900] bg-background border border-border rounded-lg shadow-2xl overflow-hidden flex flex-col">
+            <div className="flex items-center justify-between p-4 border-b border-border bg-secondary/20">
+              <h3 className="font-heading font-bold flex items-center gap-2">
+                <Map className="w-5 h-5" /> Turf Zone Boundaries
+              </h3>
+              <Button variant="ghost" size="sm" onClick={() => setShowBoundaryMap(false)}>✕</Button>
+            </div>
+            <div className="flex-1 overflow-hidden">
+              <TurfBoundaryMap 
+                turfs={turfs} 
+                contacts={contacts}
+                onTurfClick={(turf) => {
+                  setSelectedId(turf.name);
+                  setShowBoundaryMap(false);
+                }}
+                highlightAssigned={true}
+              />
+            </div>
+          </div>
+        )}
+
+        {/* Unassigned Streets Panel */}
+        {showUnassignedPanel && (
+          <div className="absolute bottom-4 right-4 z-[900] bg-background border border-border rounded-lg shadow-2xl p-4 w-80 max-h-96">
+            <div className="flex items-center justify-between mb-3 pb-3 border-b border-border">
+              <h3 className="font-heading font-bold text-sm">Unassigned Streets</h3>
+              <Button variant="ghost" size="sm" className="h-6 w-6 p-0" onClick={() => setShowUnassignedPanel(false)}>✕</Button>
+            </div>
+            <div className="overflow-y-auto max-h-80">
+              <UnassignedStreetsOverlay contacts={contacts} turfs={turfs} />
+            </div>
+          </div>
+        )}
+        </div>
+        </div>
+        );
+        }
