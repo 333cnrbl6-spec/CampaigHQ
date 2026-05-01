@@ -116,13 +116,23 @@ export default function Contacts() {
           postcode: [keep, ...dupes].map(d => d.postcode).filter(Boolean).sort((a, b) => b.length - a.length)[0] || keep.postcode || undefined,
         };
 
-        await callWithRetry(() => base44.entities.Contact.update(keep.id, mergedData));
-        merged++;
+        try {
+          await callWithRetry(() => base44.entities.Contact.update(keep.id, mergedData));
+          merged++;
+        } catch (err) {
+          if (!err?.message?.includes('not found')) throw err;
+          // Keeper was already deleted — skip this group entirely
+        }
         await delay(300);
 
         for (const dupe of dupes) {
-          await callWithRetry(() => base44.entities.Contact.delete(dupe.id));
-          deleted++;
+          try {
+            await callWithRetry(() => base44.entities.Contact.delete(dupe.id));
+            deleted++;
+          } catch (err) {
+            if (!err?.message?.includes('not found')) throw err;
+            // Already deleted in a previous run — skip silently
+          }
           await delay(200);
         }
 
