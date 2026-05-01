@@ -351,14 +351,22 @@ export default function RouteOptimizer() {
           </div>
 
           {/* Contact list */}
-          <div className="flex-1 overflow-y-auto p-2">
-            {isLoading ? (
-              <div className="flex justify-center py-8">
-                <Loader2 className="w-5 h-5 animate-spin text-primary" />
-              </div>
-            ) : filteredContacts.length === 0 ? (
-              <p className="text-sm text-muted-foreground text-center py-8">No contacts found</p>
-            ) : (
+           <div className="flex-1 overflow-y-auto p-2">
+             {isLoading ? (
+               <div className="flex justify-center py-8">
+                 <Loader2 className="w-5 h-5 animate-spin text-primary" />
+               </div>
+             ) : filteredContacts.length === 0 ? (
+               <div className="text-center py-8">
+                 <p className="text-sm text-muted-foreground">No contacts found</p>
+                 {turfFilter !== 'all' && (
+                   <p className="text-xs text-amber-600 mt-2">
+                     Contacts in <strong>{turfFilter}</strong> may not have postcodes yet.<br />
+                     Add postcodes to enable routing.
+                   </p>
+                 )}
+               </div>
+             ) : (
               filteredContacts.map(c => (
                 <label
                   key={c.id}
@@ -390,10 +398,20 @@ export default function RouteOptimizer() {
                 </label>
               ))
             )}
-          </div>
+            </div>
 
-          {/* Generate button */}
-          <div className="p-4 border-t border-border">
+            {/* Warning if no postcodes */}
+            {filteredContacts.length > 0 && filteredContacts.every(c => !c.postcode) && (
+            <div className="mx-4 mb-3 flex items-start gap-2 bg-amber-50 border border-amber-200 rounded-lg p-2.5">
+              <XCircle className="w-3.5 h-3.5 text-amber-600 flex-shrink-0 mt-0.5" />
+              <p className="text-[10px] text-amber-700 leading-relaxed">
+                <strong>No postcodes found.</strong> Contacts must have postcodes to generate a route. Go to Contacts and bulk-add postcodes for <strong>{turfFilter}</strong>.
+              </p>
+            </div>
+            )}
+
+            {/* Generate button */}
+            <div className="p-4 border-t border-border">
             <Button
               onClick={handleGenerateRoute}
               disabled={selectedIds.size === 0 || geocoding}
