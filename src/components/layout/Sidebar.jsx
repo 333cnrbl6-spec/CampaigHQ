@@ -16,6 +16,7 @@ const navSections = [
       { path: '/dashboard', label: 'Dashboard', icon: LayoutDashboard },
       { path: '/activity', label: 'Live Activity', icon: Radio },
       { path: '/reports', label: 'Reports', icon: BarChart3 },
+      { path: '/analytics', label: 'Canvassing Analytics', icon: BarChart3 },
       { path: '/leaderboard', label: 'Leaderboard', icon: Trophy },
     ],
   },

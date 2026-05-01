@@ -45,6 +45,7 @@ import VoterListImport from './pages/VoterListImport';
 import TurfDensityMap from './pages/TurfDensityMap';
 import GdprCompliance from './pages/GdprCompliance';
 import ContactDistribution from './pages/ContactDistribution';
+import CanvassingAnalytics from './pages/CanvassingAnalytics';
 
 const AuthenticatedApp = () => {
   const { isLoadingAuth, isLoadingPublicSettings, authError, navigateToLogin } = useAuth();
@@ -112,6 +113,7 @@ const AuthenticatedApp = () => {
         <Route path="/turf-density" element={<TurfDensityMap />} />
         <Route path="/gdpr" element={<GdprCompliance />} />
         <Route path="/distribute" element={<ContactDistribution />} />
+        <Route path="/analytics" element={<CanvassingAnalytics />} />
       </Route>
       <Route path="*" element={<PageNotFound />} />
     </Routes>
