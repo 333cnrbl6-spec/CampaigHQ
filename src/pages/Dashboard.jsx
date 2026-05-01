@@ -10,6 +10,7 @@ import CanvassingMap from '../components/dashboard/CanvassingMap';
 import SupportLevelWidget from '../components/dashboard/SupportLevelWidget';
 import GamifiedLeaderboard from '../components/dashboard/GamifiedLeaderboard';
 import SupportAnalytics from '../components/dashboard/SupportAnalytics';
+import VolunteerGamification from '../components/dashboard/VolunteerGamification';
 
 export default function Dashboard() {
   const { data: contacts = [] } = useQuery({
@@ -97,6 +98,11 @@ export default function Dashboard() {
       {/* Support Analytics — pie chart + undecided hotspots */}
       <div className="mb-6">
         <SupportAnalytics contacts={contacts} />
+      </div>
+
+      {/* Volunteer Gamification — full width */}
+      <div className="mb-6">
+        <VolunteerGamification />
       </div>
 
       {/* Content Grid */}
