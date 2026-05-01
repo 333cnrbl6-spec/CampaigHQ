@@ -179,30 +179,30 @@ export default function Contacts() {
 
   // Auto-optimize route when filtered contacts change
   React.useEffect(() => {
-    if (filtered.length > 0 && filtered.length <= 500) {
-      const optimizeRoute = async () => {
-        setOptimizingRoute(true);
-        try {
-          const response = await base44.functions.invoke('optimizeCanvassingRoute', {
-            contacts: filtered.map(c => ({
-              id: c.id,
-              name: c.name,
-              address: c.address,
-              postcode: c.postcode
-            }))
-          });
-          setRouteData(response.data);
-        } catch (error) {
-          console.log('Route optimization skipped:', error.message);
-        } finally {
-          setOptimizingRoute(false);
-        }
-      };
-      
-      // Debounce to avoid excessive calls
-      const timer = setTimeout(optimizeRoute, 2000);
-      return () => clearTimeout(timer);
-    }
+    if (!filtered || filtered.length === 0 || filtered.length > 500) return;
+    
+    const optimizeRoute = async () => {
+      setOptimizingRoute(true);
+      try {
+        const response = await base44.functions.invoke('optimizeCanvassingRoute', {
+          contacts: filtered.map(c => ({
+            id: c.id,
+            name: c.name,
+            address: c.address,
+            postcode: c.postcode
+          }))
+        });
+        setRouteData(response.data);
+      } catch (error) {
+        console.log('Route optimization skipped:', error.message);
+      } finally {
+        setOptimizingRoute(false);
+      }
+    };
+    
+    // Debounce to avoid excessive calls
+    const timer = setTimeout(optimizeRoute, 2000);
+    return () => clearTimeout(timer);
   }, [filtered]);
 
   const handleSubmit = (data) => {
