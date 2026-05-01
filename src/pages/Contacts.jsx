@@ -55,93 +55,16 @@ export default function Contacts() {
 
   const [deduping, setDeduping] = useState(false);
   const [dedupeResult, setDedupeResult] = useState(null);
-  const [dedupeProgress, setDedupeProgress] = useState({ done: 0, total: 0, deleted: 0 });
 
   const handleDeduplicate = async () => {
     if (!confirm('This will merge duplicate addresses, combining their tags into one record. Continue?')) return;
     setDeduping(true);
     setDedupeResult(null);
-    setDedupeProgress({ done: 0, total: 0, deleted: 0 });
     try {
-      // Group by normalised address (lowercase, trimmed)
-      const groups = {};
-      for (const c of contacts) {
-        const key = (c.address || c.name || '').toLowerCase().trim();
-        if (!key) continue;
-        if (!groups[key]) groups[key] = [];
-        groups[key].push(c);
-      }
-
-      const duplicateGroups = Object.values(groups).filter(g => g.length > 1);
-      let merged = 0;
-      let deleted = 0;
-      setDedupeProgress({ done: 0, total: duplicateGroups.length, deleted: 0 });
-
-      const delay = (ms) => new Promise(r => setTimeout(r, ms));
-
-      const callWithRetry = async (fn) => {
-        for (let attempt = 1; attempt <= 5; attempt++) {
-          try {
-            return await fn();
-          } catch (err) {
-            if (attempt === 5) throw err;
-            await delay(attempt * 1500);
-          }
-        }
-      };
-
-      for (const group of duplicateGroups) {
-        // Sort: prefer records with more data (phone/email/notes)
-        group.sort((a, b) => {
-          const scoreA = (a.phone ? 1 : 0) + (a.email ? 1 : 0) + (a.notes ? 1 : 0);
-          const scoreB = (b.phone ? 1 : 0) + (b.email ? 1 : 0) + (b.notes ? 1 : 0);
-          return scoreB - scoreA;
-        });
-
-        const [keep, ...dupes] = group;
-
-        const allTags = [...new Set([
-          ...(keep.tags || []),
-          ...dupes.flatMap(d => d.tags || []),
-        ])];
-
-        const mergedData = {
-          tags: allTags,
-          phone: keep.phone || dupes.find(d => d.phone)?.phone,
-          email: keep.email || dupes.find(d => d.email)?.email,
-          notes: [keep.notes, ...dupes.map(d => d.notes)].filter(Boolean).join(' | ') || undefined,
-          registered_voter: keep.registered_voter || dupes.some(d => d.registered_voter),
-          volunteer: keep.volunteer || dupes.some(d => d.volunteer),
-          // Prefer the most specific (longest) postcode found across all duplicates
-          postcode: [keep, ...dupes].map(d => d.postcode).filter(Boolean).sort((a, b) => b.length - a.length)[0] || keep.postcode || undefined,
-        };
-
-        try {
-          await callWithRetry(() => base44.entities.Contact.update(keep.id, mergedData));
-          merged++;
-        } catch (err) {
-          if (!err?.message?.includes('not found')) throw err;
-          // Keeper was already deleted — skip this group entirely
-        }
-        await delay(300);
-
-        for (const dupe of dupes) {
-          try {
-            await callWithRetry(() => base44.entities.Contact.delete(dupe.id));
-            deleted++;
-          } catch (err) {
-            if (!err?.message?.includes('not found')) throw err;
-            // Already deleted in a previous run — skip silently
-          }
-          await delay(200);
-        }
-
-        setDedupeProgress({ done: merged, total: duplicateGroups.length, deleted });
-      }
-
+      const response = await base44.functions.invoke('deduplicateContacts', {});
       queryClient.invalidateQueries({ queryKey: ['contacts'] });
       setPage(1);
-      setDedupeResult({ merged, deleted, groups: duplicateGroups.length });
+      setDedupeResult(response.data);
     } finally {
       setDeduping(false);
     }
@@ -253,29 +176,10 @@ export default function Contacts() {
         </div>
       </div>
 
-      {deduping && dedupeProgress.total > 0 && (
-        <div className="mb-6 bg-primary/5 border border-primary/20 rounded-xl p-5 space-y-4">
-          <div className="flex items-center gap-3">
-            <Loader2 className="w-5 h-5 animate-spin text-primary flex-shrink-0" />
-            <div className="flex-1 min-w-0">
-              <p className="text-sm font-semibold text-primary">
-                Merging group {dedupeProgress.done} of {dedupeProgress.total}…
-              </p>
-              <p className="text-xs text-muted-foreground mt-0.5">
-                {dedupeProgress.deleted} duplicate records removed so far
-              </p>
-            </div>
-            <span className="text-xs font-semibold text-primary flex-shrink-0">
-              {Math.round((dedupeProgress.done / dedupeProgress.total) * 100)}%
-            </span>
-          </div>
-          <div className="w-full bg-primary/10 rounded-full h-3 overflow-hidden">
-            <div
-              className="bg-primary h-3 rounded-full transition-all duration-500"
-              style={{ width: `${Math.max(5, (dedupeProgress.done / dedupeProgress.total) * 100)}%` }}
-            />
-          </div>
-          <p className="text-xs text-muted-foreground text-center">⏳ Please keep this tab open — do not navigate away</p>
+      {deduping && (
+        <div className="mb-4 bg-primary/5 border border-primary/20 rounded-lg px-4 py-3 flex items-center gap-3">
+          <Loader2 className="w-4 h-4 animate-spin text-primary flex-shrink-0" />
+          <p className="text-sm text-primary font-medium">Deduplicating contacts on the server — you can navigate away freely.</p>
         </div>
       )}
 
