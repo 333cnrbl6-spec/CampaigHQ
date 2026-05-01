@@ -58,40 +58,62 @@ Deno.serve(async (req) => {
           continue;
         }
 
-        // Parse extracted data
+        // Parse extracted data - output is array returned as { 0: {...}, 1: {...}, ... }
         let rows = [];
-        const output = extractRes.output;
+        const output = extractRes.output || {};
         
-        if (Array.isArray(output)) {
-          rows = output;
-        } else if (output?.rows && Array.isArray(output.rows)) {
-          rows = output.rows;
-        } else if (typeof output === 'object') {
-          rows = [output];
-        }
-
-        rows = rows.filter(r => typeof r === 'object' && r !== null);
-
-        if (rows.length === 0) {
-          errors.push(`File ${fileUrl}: no data rows found`);
+        // Convert numeric-keyed object back to array
+        const outputKeys = Object.keys(output);
+        if (outputKeys.length === 0) {
+          errors.push(`File ${fileUrl}: empty output`);
           continue;
         }
+        
+        // Check if output is numeric-indexed (from array)
+        if (outputKeys.some(k => /^\d+$/.test(k))) {
+          rows = Object.values(output);
+        } else if (output?.rows && Array.isArray(output.rows)) {
+          rows = output.rows;
+        } else if (output?.rows && typeof output.rows === 'object') {
+          // Columnar format: { rows: { TYL1: [...], address: [...] } }
+          const cols = output.rows;
+          const colNames = Object.keys(cols);
+          if (colNames.length > 0 && Array.isArray(cols[colNames[0]])) {
+            const rowCount = cols[colNames[0]].length;
+            for (let i = 0; i < rowCount; i++) {
+              const row = {};
+              colNames.forEach(col => {
+                row[col] = cols[col][i];
+              });
+              rows.push(row);
+            }
+          }
+        }
+
+        rows = rows.filter(r => typeof r === 'object' && r !== null && Object.keys(r).length > 0);
 
         // Get column names from first row
         const columnNames = Object.keys(rows[0] || {});
         
         // Find TYL column (first column with TYL in name)
         const tylCol = columnNames.find(c => c?.toUpperCase().includes('TYL'));
-        const addressCol = columnNames[1]; // Second column is address
-        const postcodeCol = columnNames[columnNames.length - 1]; // Last column is postcode
+        // Address is second column, postcode is last column
+        const addressCol = columnNames.length > 1 ? columnNames[1] : null;
+        const postcodeCol = columnNames[columnNames.length - 1];
 
-        if (!tylCol || !addressCol) {
-          errors.push(`File ${fileUrl}: could not identify TYL or address columns`);
+        if (!tylCol) {
+          errors.push(`File ${fileUrl}: could not identify TYL column. Found columns: ${columnNames.join(', ')}`);
+          continue;
+        }
+        if (!addressCol) {
+          errors.push(`File ${fileUrl}: could not identify address column`);
           continue;
         }
 
-        // Process each row (skip header)
-        for (let i = 1; i < rows.length; i++) {
+        // Process each row (skip header if first row is all string labels)
+        const startIdx = rows[0]?.[tylCol] === 'TYL1' || rows[0]?.[tylCol]?.includes('TYL') ? 1 : 0;
+        
+        for (let i = startIdx; i < rows.length; i++) {
           const row = rows[i];
           const tylCode = (row[tylCol] || '').trim();
           const address = (row[addressCol] || '').trim();
