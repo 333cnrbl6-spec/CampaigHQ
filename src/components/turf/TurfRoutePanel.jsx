@@ -109,11 +109,8 @@ export default function TurfRoutePanel({ turf, onRouteReady, onClose }) {
     queryFn: () => base44.entities.Contact.list(),
   });
 
-  // Build route when turf or contacts change
-  useEffect(() => {
-    if (!turf?.geojson || contacts.length === 0) return;
-    buildRoute();
-  }, [turf?.id, contacts.length]);
+  // Note: Auto-geocoding removed to prevent blocking page renders
+  // Users can manually trigger route building with the Retry button
 
   async function buildRoute() {
     setLoading(true);
