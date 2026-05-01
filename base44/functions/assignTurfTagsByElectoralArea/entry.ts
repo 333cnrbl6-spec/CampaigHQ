@@ -28,16 +28,44 @@ Deno.serve(async (req) => {
 
     // Update contacts with turf tags based on electoral area
     const updates = [];
+    
+    // If no turfs with TYL codes exist, skip tagging
+    if (Object.keys(turfMap).length === 0) {
+      return Response.json({
+        success: true,
+        total_contacts: contacts.length,
+        updated: 0,
+        turf_mappings: turfMap,
+        message: 'No turfs with TYL codes found. Create turfs with TYL names first (e.g. "TYL1", "TYL2").'
+      });
+    }
+    
     for (const contact of contacts) {
-      // Extract electoral area from postcode (first part before space/digit)
-      // or check for electoral_area field if it exists
+      // Extract electoral area from postcode using postcodes.io
       let electoralArea = null;
       
       if (contact.postcode) {
-        // Try to match TYL + number pattern from postcode
-        const match = contact.postcode.match(/^(TYL\d+)/i);
-        if (match) {
-          electoralArea = match[1].toUpperCase();
+        try {
+          const postcodeClean = contact.postcode.replace(/\s+/g, '');
+          const response = await fetch(`https://api.postcodes.io/postcodes/${postcodeClean}`);
+          
+          if (response.ok) {
+            const data = await response.json();
+            // Extract administrative ward or county code
+            // postcodes.io returns ward, district, region, etc. Use first available
+            const ward = data.result?.admin_ward || data.result?.admin_district || '';
+            
+            if (ward) {
+              // Try simple numeric extraction: if ward contains numbers, use those
+              // Or match against known TYL codes if available
+              const numMatch = ward.match(/(\d+)/);
+              if (numMatch) {
+                electoralArea = 'TYL' + numMatch[1];
+              }
+            }
+          }
+        } catch (err) {
+          // Silently skip if postcodes.io fails
         }
       }
 
