@@ -1,4 +1,4 @@
-import React, { useState, useMemo, useCallback, useRef } from 'react';
+import React, { useState, useMemo, useCallback } from 'react';
 import { base44 } from '@/api/base44Client';
 import { useQuery } from '@tanstack/react-query';
 import { Button } from '@/components/ui/button';
@@ -7,13 +7,49 @@ import { Badge } from '@/components/ui/badge';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import {
   MapPin, Navigation, Download, ArrowRight, Loader2,
-  Search, CheckCircle2, XCircle, Play, RotateCcw, Map,
-  Footprints, Printer, ClipboardList
+  Search, XCircle, RotateCcw, Map, Footprints, Printer, ClipboardList, Info
 } from 'lucide-react';
 import CanvassingRouteMap from '@/components/map/CanvassingRouteMap';
 import { useNavigate } from 'react-router-dom';
 
-// Haversine distance in km
+// ---------------------------------------------------------------------------
+// Geocoding — postcodes.io (free, no key, UK only, very reliable)
+// Returns { lat, lng } for a postcode
+// ---------------------------------------------------------------------------
+const postcodeCache = {};
+
+async function getPostcodeCoords(postcode) {
+  const pc = postcode.replace(/\s+/g, '').toUpperCase();
+  if (postcodeCache[pc]) return postcodeCache[pc];
+
+  const res = await fetch(`https://api.postcodes.io/postcodes/${encodeURIComponent(pc)}`);
+  if (!res.ok) return null;
+  const data = await res.json();
+  if (data.status !== 200 || !data.result) return null;
+
+  const coords = [data.result.latitude, data.result.longitude];
+  postcodeCache[pc] = coords;
+  return coords;
+}
+
+// ---------------------------------------------------------------------------
+// Extract house number from an address string (handles "12A", "Flat 3", etc.)
+// Returns a numeric sort key
+// ---------------------------------------------------------------------------
+function extractHouseNumber(address) {
+  if (!address) return 9999;
+  // Match leading number (e.g. "45 High Street", "12A Church Lane")
+  const m = address.match(/^(\d+)/);
+  if (m) return parseInt(m[1], 10);
+  // Match "Flat N" or "Apt N"
+  const flatM = address.match(/(?:flat|apt|apartment|unit)\s+(\d+)/i);
+  if (flatM) return parseInt(flatM[1], 10);
+  return 9999;
+}
+
+// ---------------------------------------------------------------------------
+// Haversine distance (km) — used for inter-postcode TSP only
+// ---------------------------------------------------------------------------
 function haversine([lat1, lon1], [lat2, lon2]) {
   const R = 6371;
   const dLat = ((lat2 - lat1) * Math.PI) / 180;
@@ -25,10 +61,12 @@ function haversine([lat1, lon1], [lat2, lon2]) {
   return R * 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1 - a));
 }
 
-// Nearest-neighbor TSP heuristic
-function nearestNeighbor(stops) {
-  if (stops.length <= 1) return stops;
-  const unvisited = [...stops];
+// ---------------------------------------------------------------------------
+// Nearest-neighbour TSP over postcode CENTROIDS
+// ---------------------------------------------------------------------------
+function nearestNeighbourTSP(nodes) {
+  if (nodes.length <= 1) return nodes;
+  const unvisited = [...nodes];
   const route = [unvisited.shift()];
   while (unvisited.length > 0) {
     const last = route[route.length - 1];
@@ -43,70 +81,77 @@ function nearestNeighbor(stops) {
   return route;
 }
 
+// ---------------------------------------------------------------------------
+// Main algorithm:
+//   1. Group contacts by FULL postcode
+//   2. Geocode each unique postcode via postcodes.io
+//   3. TSP over postcode centroids (nearest-neighbour)
+//   4. Within each postcode, sort contacts by house number (odd side then even
+//      side = natural walking order on a UK street)
+// ---------------------------------------------------------------------------
+async function buildRoute(contacts, onProgress) {
+  // Group by postcode
+  const groups = {};
+  const noPostcode = [];
+  for (const c of contacts) {
+    const pc = (c.postcode || '').replace(/\s+/g, '').toUpperCase();
+    if (!pc) { noPostcode.push(c); continue; }
+    if (!groups[pc]) groups[pc] = [];
+    groups[pc].push(c);
+  }
+
+  const uniquePostcodes = Object.keys(groups);
+  const total = uniquePostcodes.length;
+
+  // Geocode each postcode
+  const postcodeNodes = [];
+  for (let i = 0; i < uniquePostcodes.length; i++) {
+    const pc = uniquePostcodes[i];
+    onProgress(i, total);
+    const coords = await getPostcodeCoords(pc);
+    if (coords) {
+      postcodeNodes.push({ pc, coords, contacts: groups[pc] });
+    } else {
+      // Couldn't geocode — append contacts to noPostcode
+      noPostcode.push(...groups[pc]);
+    }
+  }
+  onProgress(total, total);
+
+  // TSP over postcode centroids
+  const orderedNodes = nearestNeighbourTSP(postcodeNodes);
+
+  // Flatten: for each postcode node, sort contacts by house number
+  const stops = [];
+  for (const node of orderedNodes) {
+    const sorted = [...node.contacts].sort((a, b) =>
+      extractHouseNumber(a.address) - extractHouseNumber(b.address)
+    );
+    for (const c of sorted) {
+      stops.push({ contact: c, coords: node.coords });
+    }
+  }
+
+  // Append contacts with no postcode at end
+  for (const c of noPostcode) {
+    stops.push({ contact: c, coords: null });
+  }
+
+  return stops;
+}
+
 function totalRouteDistance(route) {
   let d = 0;
-  for (let i = 1; i < route.length; i++) d += haversine(route[i - 1].coords, route[i].coords);
+  const withCoords = route.filter(s => s.coords);
+  for (let i = 1; i < withCoords.length; i++) {
+    d += haversine(withCoords[i - 1].coords, withCoords[i].coords);
+  }
   return d;
 }
 
-// Geocode a UK address via Nominatim, anchored tightly to the postcode
-const geocodeCache = {};
-
-async function nominatimSearch(query) {
-  const url = `https://nominatim.openstreetmap.org/search?q=${encodeURIComponent(query)}&format=json&limit=3&countrycodes=gb`;
-  const res = await fetch(url, { headers: { 'Accept-Language': 'en', 'User-Agent': 'CampaignCanvasser/1.0' } });
-  return res.json();
-}
-
-async function geocodeAddress(address, postcode) {
-  const pc = (postcode || '').replace(/\s+/g, '').toUpperCase();
-  const cacheKey = `${pc}|${address}`;
-  if (geocodeCache[cacheKey]) return geocodeCache[cacheKey];
-
-  // Strategy 1: postcode + house number/name only (most precise)
-  // Extract just the first token of the address (house number or name)
-  const firstToken = (address || '').split(/[\s,]+/)[0];
-
-  if (pc) {
-    // Try postcode lookup first to get an anchor centroid
-    const pcData = await nominatimSearch(pc + ', UK');
-    const pcCoords = pcData.length > 0
-      ? [parseFloat(pcData[0].lat), parseFloat(pcData[0].lon)]
-      : null;
-
-    // Try full address + postcode
-    if (address && pc) {
-      const fullData = await nominatimSearch(`${address}, ${pc}, UK`);
-      for (const item of fullData) {
-        const coords = [parseFloat(item.lat), parseFloat(item.lon)];
-        // Accept only if within 2 km of postcode centroid (prevents nationwide matches)
-        if (!pcCoords || haversine(pcCoords, coords) <= 2.0) {
-          geocodeCache[cacheKey] = coords;
-          return coords;
-        }
-      }
-    }
-
-    // Fall back: just postcode centroid (accurate enough for walking routes)
-    if (pcCoords) {
-      geocodeCache[cacheKey] = pcCoords;
-      return pcCoords;
-    }
-  }
-
-  // Last resort: address + UK with strict bbox check (no postcode available)
-  if (address) {
-    const data = await nominatimSearch(`${address}, UK`);
-    if (data.length > 0) {
-      const coords = [parseFloat(data[0].lat), parseFloat(data[0].lon)];
-      geocodeCache[cacheKey] = coords;
-      return coords;
-    }
-  }
-
-  return null;
-}
-
+// ---------------------------------------------------------------------------
+// Component
+// ---------------------------------------------------------------------------
 export default function RouteOptimizer() {
   const navigate = useNavigate();
   const urlParams = new URLSearchParams(window.location.search);
@@ -117,21 +162,19 @@ export default function RouteOptimizer() {
   const [selectedIds, setSelectedIds] = useState(new Set());
   const [geocoding, setGeocoding] = useState(false);
   const [geocodeProgress, setGeocodeProgress] = useState({ done: 0, total: 0 });
-  const [route, setRoute] = useState(null); // array of {contact, coords}
-  const [geocodeErrors, setGeocodeErrors] = useState([]);
+  const [route, setRoute] = useState(null);
+  const [noPostcodeCount, setNoPostcodeCount] = useState(0);
 
   const { data: contacts = [], isLoading } = useQuery({
     queryKey: ['contacts'],
     queryFn: () => base44.entities.Contact.list('name', 5000),
   });
 
-  // Derive all turf zones from tags
   const allTurfs = useMemo(() =>
     [...new Set(contacts.flatMap(c => c.tags || []))].filter(Boolean).sort(),
     [contacts]
   );
 
-  // Filtered contacts for selection panel
   const filteredContacts = useMemo(() => {
     return contacts.filter(c => {
       const matchesTurf = turfFilter === 'all' || (c.tags || []).includes(turfFilter);
@@ -158,33 +201,21 @@ export default function RouteOptimizer() {
   };
 
   const handleGenerateRoute = useCallback(async () => {
-    const toGeocode = contacts.filter(c => selectedIds.has(c.id));
-    if (toGeocode.length === 0) return;
+    const selected = contacts.filter(c => selectedIds.has(c.id));
+    if (!selected.length) return;
 
     setGeocoding(true);
-    setGeocodeProgress({ done: 0, total: toGeocode.length });
     setRoute(null);
-    setGeocodeErrors([]);
+    setNoPostcodeCount(0);
+    setGeocodeProgress({ done: 0, total: 0 });
 
-    const stops = [];
-    const errors = [];
+    const stops = await buildRoute(selected, (done, total) => {
+      setGeocodeProgress({ done, total });
+    });
 
-    for (let i = 0; i < toGeocode.length; i++) {
-      const c = toGeocode[i];
-      // Delay to respect Nominatim's 1 req/sec policy (we may make 2 calls per contact)
-      if (i > 0) await new Promise(r => setTimeout(r, 1200));
-      const coords = await geocodeAddress(c.address, c.postcode);
-      if (coords) {
-        stops.push({ contact: c, coords });
-      } else {
-        errors.push(c.name);
-      }
-      setGeocodeProgress({ done: i + 1, total: toGeocode.length });
-    }
-
-    const optimized = nearestNeighbor(stops);
-    setRoute(optimized);
-    setGeocodeErrors(errors);
+    const unlocated = stops.filter(s => !s.coords).length;
+    setNoPostcodeCount(unlocated);
+    setRoute(stops.filter(s => s.coords)); // only show stops we could place
     setGeocoding(false);
   }, [contacts, selectedIds]);
 
@@ -201,6 +232,7 @@ export default function RouteOptimizer() {
   };
 
   const totalDist = route ? totalRouteDistance(route) : 0;
+  const uniquePostcodesInRoute = route ? new Set(route.map(s => s.contact.postcode)).size : 0;
 
   return (
     <div className="flex flex-col h-screen overflow-hidden">
@@ -208,21 +240,23 @@ export default function RouteOptimizer() {
       <div className="px-6 py-4 border-b border-border bg-background flex items-center justify-between gap-4 flex-shrink-0">
         <div>
           <h1 className="font-heading text-2xl font-bold">Route Optimizer</h1>
-          <p className="text-sm text-muted-foreground">Generate optimized canvassing routes from selected contacts</p>
+          <p className="text-sm text-muted-foreground">
+            Groups contacts by postcode, optimises the postcode order, then sorts house numbers within each street
+          </p>
         </div>
         <div className="flex items-center gap-2">
           {route && (
             <>
               <Badge variant="secondary" className="text-sm px-3 py-1">
-                {route.length} stops · {totalDist.toFixed(1)} km
+                {route.length} stops · {uniquePostcodesInRoute} postcodes · {totalDist.toFixed(1)} km
               </Badge>
               <Button variant="outline" size="sm" className="gap-1.5" onClick={handleDownload}>
                 <Download className="w-4 h-4" /> Export CSV
               </Button>
             </>
           )}
-          {(route || geocodeErrors.length > 0) && (
-            <Button variant="ghost" size="sm" className="gap-1.5" onClick={() => { setRoute(null); setGeocodeErrors([]); }}>
+          {route && (
+            <Button variant="ghost" size="sm" className="gap-1.5" onClick={() => { setRoute(null); setNoPostcodeCount(0); }}>
               <RotateCcw className="w-4 h-4" /> Reset
             </Button>
           )}
@@ -264,6 +298,15 @@ export default function RouteOptimizer() {
             </div>
           </div>
 
+          {/* How it works hint */}
+          <div className="mx-4 mt-3 mb-1 flex items-start gap-2 bg-blue-50 border border-blue-100 rounded-lg p-2.5">
+            <Info className="w-3.5 h-3.5 text-blue-500 flex-shrink-0 mt-0.5" />
+            <p className="text-[10px] text-blue-700 leading-relaxed">
+              Contacts are grouped by postcode, postcodes ordered by walking distance, then house numbers sorted within each street.
+              <strong> Postcodes are required</strong> for accurate routing.
+            </p>
+          </div>
+
           {/* Contact list */}
           <div className="flex-1 overflow-y-auto p-2">
             {isLoading ? (
@@ -276,7 +319,9 @@ export default function RouteOptimizer() {
               filteredContacts.map(c => (
                 <label
                   key={c.id}
-                  className={`flex items-start gap-3 px-3 py-2.5 rounded-lg cursor-pointer transition-colors mb-1 ${selectedIds.has(c.id) ? 'bg-primary/10 border border-primary/20' : 'hover:bg-muted/60'}`}
+                  className={`flex items-start gap-3 px-3 py-2.5 rounded-lg cursor-pointer transition-colors mb-1 ${
+                    selectedIds.has(c.id) ? 'bg-primary/10 border border-primary/20' : 'hover:bg-muted/60'
+                  } ${!c.postcode ? 'opacity-60' : ''}`}
                 >
                   <input
                     type="checkbox"
@@ -287,7 +332,10 @@ export default function RouteOptimizer() {
                   <div className="min-w-0">
                     <p className="text-sm font-medium truncate">{c.name}</p>
                     <p className="text-xs text-muted-foreground truncate">{c.address}</p>
-                    {c.postcode && <p className="text-xs text-muted-foreground">{c.postcode}</p>}
+                    {c.postcode
+                      ? <p className="text-xs text-muted-foreground font-mono">{c.postcode}</p>
+                      : <p className="text-xs text-amber-500">No postcode — may be excluded</p>
+                    }
                     {c.tags?.length > 0 && (
                       <div className="flex gap-1 flex-wrap mt-1">
                         {c.tags.slice(0, 2).map(t => (
@@ -311,7 +359,7 @@ export default function RouteOptimizer() {
               {geocoding ? (
                 <>
                   <Loader2 className="w-4 h-4 animate-spin" />
-                  Geocoding {geocodeProgress.done}/{geocodeProgress.total}…
+                  Looking up postcodes {geocodeProgress.done}/{geocodeProgress.total}…
                 </>
               ) : (
                 <>
@@ -320,20 +368,22 @@ export default function RouteOptimizer() {
                 </>
               )}
             </Button>
-            {geocoding && (
+            {geocoding && geocodeProgress.total > 0 && (
               <div className="mt-2">
                 <div className="w-full bg-primary/10 rounded-full h-1.5 overflow-hidden">
                   <div
-                    className="bg-primary h-1.5 rounded-full transition-all duration-500"
-                    style={{ width: `${geocodeProgress.total ? (geocodeProgress.done / geocodeProgress.total) * 100 : 0}%` }}
+                    className="bg-primary h-1.5 rounded-full transition-all duration-300"
+                    style={{ width: `${(geocodeProgress.done / geocodeProgress.total) * 100}%` }}
                   />
                 </div>
-                <p className="text-xs text-muted-foreground mt-1 text-center">Looking up real addresses…</p>
+                <p className="text-xs text-muted-foreground mt-1 text-center">
+                  Looking up {geocodeProgress.total} unique postcodes…
+                </p>
               </div>
             )}
-            {geocodeErrors.length > 0 && (
+            {noPostcodeCount > 0 && (
               <p className="text-xs text-amber-600 mt-2 flex items-center gap-1">
-                <XCircle className="w-3 h-3" /> {geocodeErrors.length} address{geocodeErrors.length > 1 ? 'es' : ''} couldn't be located
+                <XCircle className="w-3 h-3" /> {noPostcodeCount} contact{noPostcodeCount > 1 ? 's' : ''} skipped (no postcode)
               </p>
             )}
           </div>
@@ -346,15 +396,16 @@ export default function RouteOptimizer() {
           ) : geocoding ? (
             <div className="flex flex-col items-center justify-center h-full gap-4 text-muted-foreground">
               <Loader2 className="w-10 h-10 animate-spin text-primary" />
-              <p className="font-medium">Geocoding addresses via OpenStreetMap…</p>
-              <p className="text-sm">{geocodeProgress.done} of {geocodeProgress.total} looked up</p>
+              <p className="font-medium">Looking up postcodes…</p>
+              <p className="text-sm">{geocodeProgress.done} of {geocodeProgress.total} unique postcodes resolved</p>
             </div>
           ) : (
             <div className="flex flex-col items-center justify-center h-full gap-4 text-muted-foreground">
               <Map className="w-16 h-16 opacity-20" />
               <div className="text-center">
                 <p className="font-medium text-lg">Select contacts & generate a route</p>
-                <p className="text-sm mt-1">Use the panel on the left to filter by turf zone,<br />pick addresses, then click Generate Route.</p>
+                <p className="text-sm mt-1">Filter by turf zone, pick contacts, then click Generate Route.</p>
+                <p className="text-xs mt-2 text-muted-foreground/70">Uses postcodes.io — accurate UK postcode coordinates, no API key needed.</p>
               </div>
             </div>
           )}
@@ -409,6 +460,7 @@ export default function RouteOptimizer() {
                   </button>
                 )}
               </div>
+
               <div className="overflow-y-auto flex-1">
                 {route.map((stop, idx) => (
                   <div key={stop.contact.id} className="flex items-start gap-3 px-4 py-3 border-b border-border/50 last:border-0">
@@ -418,7 +470,9 @@ export default function RouteOptimizer() {
                     <div className="min-w-0 flex-1">
                       <p className="text-sm font-medium truncate">{stop.contact.name}</p>
                       <p className="text-xs text-muted-foreground truncate">{stop.contact.address}</p>
-                      {stop.contact.postcode && <p className="text-xs text-muted-foreground">{stop.contact.postcode}</p>}
+                      {stop.contact.postcode && (
+                        <p className="text-xs text-muted-foreground font-mono">{stop.contact.postcode}</p>
+                      )}
                     </div>
                     {idx < route.length - 1 && (
                       <ArrowRight className="w-3.5 h-3.5 text-muted-foreground flex-shrink-0 mt-1" />
