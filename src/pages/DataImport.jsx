@@ -143,7 +143,7 @@ Return JSON with:
         update({ extractedText: '(spreadsheet)', fileUrl: uploadedUrl, loading: false, loadingStep: null });
         await runStructureAnalysis(uploadedUrl);
       } else {
-        update({ fileUrl: uploadedUrl, loadingStep: { step: 2, total: 2, label: 'Reading and extracting content…', detail: 'AI is scanning your file to pull out all text and data — please keep this tab open.' } });
+        update({ fileUrl: uploadedUrl, loadingStep: { step: 2, total: 2, label: 'Reading and extracting content…', detail: 'AI is scanning your file to pull out all text and data — may take a moment for large files.' } });
 
         const extractRes = await base44.integrations.Core.ExtractDataFromUploadedFile({
           file_url: uploadedUrl,
@@ -482,7 +482,7 @@ Map each source column to its corresponding target field. Return ALL records as 
                   <strong>What's happening:</strong> AI is extracting every row and validating against the schema. Files with 1000+ records can take 60–90 seconds.
                 </div>
               )}
-              <p className="text-xs text-muted-foreground italic">⏳ Keep this tab open — do not navigate away.</p>
+              <p className="text-xs text-muted-foreground italic">AI is processing your file — this may take up to a minute for large files.</p>
             </div>
           )}
         </div>

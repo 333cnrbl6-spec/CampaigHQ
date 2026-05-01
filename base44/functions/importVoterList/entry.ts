@@ -1,21 +1,6 @@
 import { createClientFromRequest } from 'npm:@base44/sdk@0.8.25';
 import * as XLSX from 'npm:xlsx@0.18.5';
 
-const BATCH_SIZE = 200;
-
-async function fetchFile(url) {
-  const res = await fetch(url);
-  if (!res.ok) throw new Error(`Failed to fetch file: ${res.status}`);
-  const arrayBuffer = await res.arrayBuffer();
-  return new Uint8Array(arrayBuffer);
-}
-
-function parseTurfCode(sheetName) {
-  // Extract code from sheet name e.g. "TYL 1 - 835" → "TYL1", "T&MC - 5818" → "T&MC"
-  const match = sheetName.match(/^([A-Z0-9&*\s]+?)\s*[-–]/i);
-  return match ? match[1].trim().replace(/\s+/g, '') : sheetName.trim();
-}
-
 const UK_POSTCODE_RE = /\b([A-Z]{1,2}\d{1,2}[A-Z]?\s*\d[A-Z]{2})\b/i;
 
 function extractPostcode(str) {
@@ -24,24 +9,22 @@ function extractPostcode(str) {
   return m ? m[1].toUpperCase().replace(/\s+/g, ' ').trim() : null;
 }
 
-function parseSheet(workbook, sheetName) {
-  const sheet = workbook.Sheets[sheetName];
+function parseTurfZone(sheetName) {
+  const match = sheetName.match(/^([A-Z0-9&*\s]+?)\s*[-–]/i);
+  return match ? match[1].trim().replace(/\s+/g, '') : sheetName.trim();
+}
+
+function parseSheet(sheet, sheetName, isPostal) {
   const rows = XLSX.utils.sheet_to_json(sheet, { header: 1, defval: null });
-  const turf = parseTurfCode(sheetName);
-  const contacts = [];
+  const turf = parseTurfZone(sheetName);
+  const addresses = [];
 
-  for (let i = 0; i < rows.length; i++) {
-    const row = rows[i];
-    const addr = row[1];
-    if (!addr) continue;
-    const addrStr = String(addr).trim();
-    if (!addrStr) continue;
-    // Skip if it looks like the turf code header row
-    if (addrStr.toUpperCase() === turf.toUpperCase()) continue;
-    // Skip if it looks like a turf code itself
-    if (/^(TYL|T&MC)\d*\*?$/i.test(addrStr)) continue;
+  for (const row of rows) {
+    const raw = row[1];
+    if (!raw) continue;
+    const addr = String(raw).trim();
+    if (!addr || addr.toUpperCase().startsWith('TYL') || addr.toUpperCase() === turf) continue;
 
-    // Try dedicated postcode columns first (cols 2–5), then inline in address
     let postcode = null;
     for (let col = 2; col <= 5; col++) {
       if (row[col]) {
@@ -49,57 +32,62 @@ function parseSheet(workbook, sheetName) {
         if (postcode) break;
       }
     }
-    if (!postcode) postcode = extractPostcode(addrStr);
+    if (!postcode) postcode = extractPostcode(addr);
 
-    contacts.push({
-      name: addrStr,
-      address: addrStr,
-      postcode: postcode || undefined,
-      registered_voter: true,
-      tags: [turf],
-      support_level: 'unknown',
-      canvassed: false,
-    });
+    const tags = isPostal ? [turf, 'Postal Voter'] : [turf];
+    addresses.push({ name: addr, address: addr, postcode: postcode || undefined, tags, registered_voter: isPostal });
   }
-  return contacts;
+  return addresses;
 }
 
 Deno.serve(async (req) => {
-  try {
-    const base44 = createClientFromRequest(req);
-    const user = await base44.auth.me();
-    if (!user) return Response.json({ error: 'Unauthorized' }, { status: 401 });
+  const base44 = createClientFromRequest(req);
+  const user = await base44.auth.me();
+  if (!user) return Response.json({ error: 'Unauthorized' }, { status: 401 });
 
-    const { file_url } = await req.json();
-    if (!file_url) return Response.json({ error: 'file_url required' }, { status: 400 });
+  const { file_url, file_name, is_postal } = await req.json();
+  if (!file_url) return Response.json({ error: 'file_url is required' }, { status: 400 });
 
-    const data = await fetchFile(file_url);
-    const workbook = XLSX.read(data, { type: 'array' });
+  // Download the file
+  const fileRes = await fetch(file_url);
+  if (!fileRes.ok) return Response.json({ error: 'Failed to fetch file' }, { status: 500 });
+  const arrayBuffer = await fileRes.arrayBuffer();
 
-    let allContacts = [];
-    for (const sheetName of workbook.SheetNames) {
-      const contacts = parseSheet(workbook, sheetName);
-      allContacts = allContacts.concat(contacts);
-    }
+  const workbook = XLSX.read(new Uint8Array(arrayBuffer), { type: 'array' });
+  let allRecords = [];
+  for (const name of workbook.SheetNames) {
+    allRecords = allRecords.concat(parseSheet(workbook.Sheets[name], name, !!is_postal));
+  }
 
-    // Import in batches with a small delay to avoid rate limiting
-    let imported = 0;
-    for (let i = 0; i < allContacts.length; i += BATCH_SIZE) {
-      const batch = allContacts.slice(i, i + BATCH_SIZE);
-      await base44.asServiceRole.entities.Contact.bulkCreate(batch);
-      imported += batch.length;
-      if (i + BATCH_SIZE < allContacts.length) {
-        await new Promise(r => setTimeout(r, 300));
+  if (allRecords.length === 0) {
+    return Response.json({ error: 'No records found in file' }, { status: 400 });
+  }
+
+  const BATCH_SIZE = 200;
+  const createdIds = [];
+  const delay = (ms) => new Promise(r => setTimeout(r, ms));
+
+  for (let i = 0; i < allRecords.length; i += BATCH_SIZE) {
+    const batch = allRecords.slice(i, i + BATCH_SIZE);
+    for (let attempt = 1; attempt <= 5; attempt++) {
+      try {
+        const created = await base44.asServiceRole.entities.Contact.bulkCreate(batch);
+        createdIds.push(...(created || []).map(r => r.id));
+        break;
+      } catch (err) {
+        if (attempt === 5) throw err;
+        await delay(attempt * 1500);
       }
     }
-
-    return Response.json({
-      success: true,
-      total: allContacts.length,
-      imported,
-      sheets: workbook.SheetNames.length,
-    });
-  } catch (error) {
-    return Response.json({ error: error.message }, { status: 500 });
   }
+
+  await base44.asServiceRole.entities.ImportLog.create({
+    file_name: file_name || 'voter-list.xlsx',
+    entity_type: 'Contact',
+    record_count: createdIds.length,
+    status: 'completed',
+    created_record_ids: createdIds,
+  });
+
+  return Response.json({ imported: createdIds.length, total: allRecords.length });
 });

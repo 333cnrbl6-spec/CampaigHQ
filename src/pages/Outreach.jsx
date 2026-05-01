@@ -34,7 +34,7 @@ export default function Outreach() {
 
   const { data: contacts = [] } = useQuery({
     queryKey: ['contacts'],
-    queryFn: () => base44.entities.Contact.list('-created_date', 1000),
+    queryFn: () => base44.entities.Contact.list('-created_date', 5000),
   });
 
   const audience = useMemo(() => applyFilters(contacts, filters), [contacts, filters]);
@@ -55,7 +55,7 @@ export default function Outreach() {
 
     if (channel === 'email') {
       const res = await base44.functions.invoke('sendBulkEmail', {
-        contacts: audience,
+        filters,
         subject,
         body,
       });

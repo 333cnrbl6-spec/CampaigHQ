@@ -1,31 +1,9 @@
-import React, { useState, useRef, useEffect } from 'react';
+import React, { useState, useRef } from 'react';
 import * as XLSX from 'xlsx';
 import { base44 } from '@/api/base44Client';
 import { useQueryClient } from '@tanstack/react-query';
 import { Upload, CheckCircle2, AlertTriangle, Loader2, FileSpreadsheet, X } from 'lucide-react';
 import { Button } from '@/components/ui/button';
-
-const REASSURANCE_MESSAGES = [
-  "Working through the list — this is completely normal for large files.",
-  "Still going! Each batch of 200 contacts is sent one at a time.",
-  "Hang in there — the database is accepting the records as fast as it can.",
-  "More than halfway there! Keep this tab open and we'll get there.",
-  "Almost done — the last batches are being written now.",
-];
-
-const BATCH_SIZE = 100;
-
-function parseTurfZone(sheetName) {
-  // Extract turf code from sheet name e.g. "TYL 1 - 835" → "TYL1", "T&MC - 5818" → "T&MC"
-  const match = sheetName.match(/^([A-Z0-9&*\s]+?)\s*[-–]/i);
-  return match ? match[1].trim().replace(/\s+/g, '') : sheetName.trim();
-}
-
-function isPostalVoterSheet(sheetName) {
-  // Only the first upload ("no header" file) contains postal voters.
-  // All subsequent uploads are non-postal voters.
-  return false;
-}
 
 const UK_POSTCODE_RE = /\b([A-Z]{1,2}\d{1,2}[A-Z]?\s*\d[A-Z]{2})\b/i;
 
@@ -35,54 +13,35 @@ function extractPostcode(str) {
   return m ? m[1].toUpperCase().replace(/\s+/g, ' ').trim() : null;
 }
 
-function parseSheet(sheet, sheetName, isPostal = false) {
+function parseTurfZone(sheetName) {
+  const match = sheetName.match(/^([A-Z0-9&*\s]+?)\s*[-–]/i);
+  return match ? match[1].trim().replace(/\s+/g, '') : sheetName.trim();
+}
+
+function parseSheetPreview(sheet, sheetName, isPostal) {
   const rows = XLSX.utils.sheet_to_json(sheet, { header: 1, defval: null });
   const turf = parseTurfZone(sheetName);
-
-  const addresses = [];
+  let count = 0;
   for (const row of rows) {
-    // Column index 1 (second column) is the address
     const raw = row[1];
     if (!raw) continue;
     const addr = String(raw).trim();
-    // Skip if it looks like a header (same as turf code) or is empty
     if (!addr || addr.toUpperCase().startsWith('TYL') || addr.toUpperCase() === turf) continue;
-
-    // Try to find postcode: first check dedicated columns (2, 3, 4), then inline in address
-    let postcode = null;
-    for (let col = 2; col <= 5; col++) {
-      if (row[col]) {
-        postcode = extractPostcode(String(row[col]));
-        if (postcode) break;
-      }
-    }
-    if (!postcode) postcode = extractPostcode(addr);
-
-    const tags = isPostal ? [turf, 'Postal Voter'] : [turf];
-    addresses.push({ name: addr, address: addr, postcode: postcode || undefined, tags, registered_voter: isPostal });
+    count++;
   }
-  return addresses;
+  return { name: sheetName, turf, count, isPostal };
 }
 
 export default function VoterListImport() {
   const queryClient = useQueryClient();
   const inputRef = useRef();
   const [file, setFile] = useState(null);
-  const [voterType, setVoterType] = useState(null); // 'postal' | 'registered'
-  const [pendingFile, setPendingFile] = useState(null); // file waiting for type confirmation
-  const [preview, setPreview] = useState(null); // { sheets: [{name, count, turf}], total }
-  const [status, setStatus] = useState(null); // 'importing' | 'done' | 'error'
-  const [progress, setProgress] = useState({ done: 0, total: 0 });
+  const [voterType, setVoterType] = useState(null);
+  const [pendingFile, setPendingFile] = useState(null);
+  const [preview, setPreview] = useState(null);
+  const [status, setStatus] = useState(null); // 'uploading' | 'importing' | 'done' | 'error'
+  const [result, setResult] = useState(null);
   const [error, setError] = useState(null);
-  const [reassuranceIdx, setReassuranceIdx] = useState(0);
-
-  useEffect(() => {
-    if (status !== 'importing') return;
-    const interval = setInterval(() => {
-      setReassuranceIdx(i => (i + 1) % REASSURANCE_MESSAGES.length);
-    }, 7000);
-    return () => clearInterval(interval);
-  }, [status]);
 
   const processFile = (f, isPostal) => {
     setFile(f);
@@ -91,14 +50,14 @@ export default function VoterListImport() {
     setPreview(null);
     setStatus(null);
     setError(null);
+    setResult(null);
 
     const reader = new FileReader();
     reader.onload = (e) => {
       const workbook = XLSX.read(e.target.result, { type: 'array' });
-      const sheets = workbook.SheetNames.map((name) => {
-        const records = parseSheet(workbook.Sheets[name], name, isPostal);
-        return { name, turf: parseTurfZone(name), count: records.length, isPostal };
-      });
+      const sheets = workbook.SheetNames.map((name) =>
+        parseSheetPreview(workbook.Sheets[name], name, isPostal)
+      );
       const total = sheets.reduce((s, sh) => s + sh.count, 0);
       setPreview({ sheets, total });
     };
@@ -110,6 +69,7 @@ export default function VoterListImport() {
     setPreview(null);
     setStatus(null);
     setError(null);
+    setResult(null);
   };
 
   const handleDrop = (e) => {
@@ -120,67 +80,30 @@ export default function VoterListImport() {
 
   const handleImport = async () => {
     if (!file || !preview) return;
-    setStatus('importing');
     setError(null);
 
-    const reader = new FileReader();
-    reader.onload = async (e) => {
-      const workbook = XLSX.read(e.target.result, { type: 'array' });
-      const isPostal = voterType === 'postal';
-      let allRecords = [];
-      for (const name of workbook.SheetNames) {
-        allRecords = allRecords.concat(parseSheet(workbook.Sheets[name], name, isPostal));
-      }
+    // Step 1: upload file to storage
+    setStatus('uploading');
+    const uploadRes = await base44.integrations.Core.UploadFile({ file });
+    const fileUrl = uploadRes.file_url;
 
-      setProgress({ done: 0, total: allRecords.length, currentBatch: 1, totalBatches: Math.ceil(allRecords.length / BATCH_SIZE) });
+    // Step 2: hand off to backend — we can navigate away now
+    setStatus('importing');
+    const response = await base44.functions.invoke('importVoterList', {
+      file_url: fileUrl,
+      file_name: file.name,
+      is_postal: voterType === 'postal',
+    });
 
-      // Import in batches with retry on rate limit
-      const createdIds = [];
-      const totalBatches = Math.ceil(allRecords.length / BATCH_SIZE);
-      for (let i = 0; i < allRecords.length; i += BATCH_SIZE) {
-        const batchNum = Math.floor(i / BATCH_SIZE) + 1;
-        setProgress(p => ({ ...p, currentBatch: batchNum, totalBatches }));
-        const batch = allRecords.slice(i, i + BATCH_SIZE);
-
-        // Retry up to 5 times on rate limit
-        let created = null;
-        for (let attempt = 1; attempt <= 5; attempt++) {
-          try {
-            created = await base44.entities.Contact.bulkCreate(batch);
-            break;
-          } catch (err) {
-            if (attempt === 5) throw err;
-            // Wait longer on each retry
-            await new Promise(r => setTimeout(r, attempt * 2000));
-          }
-        }
-
-        createdIds.push(...(created || []).map(r => r.id));
-        setProgress({ done: Math.min(i + BATCH_SIZE, allRecords.length), total: allRecords.length, currentBatch: batchNum, totalBatches });
-        // Pause between batches
-        if (i + BATCH_SIZE < allRecords.length) {
-          await new Promise(r => setTimeout(r, 1000));
-        }
-      }
-
-      // Log the import
-      await base44.entities.ImportLog.create({
-        file_name: file.name,
-        entity_type: 'Contact',
-        record_count: createdIds.length,
-        status: 'completed',
-        created_record_ids: createdIds,
-      });
-
-      queryClient.invalidateQueries({ queryKey: ['contact'] });
-      setStatus('done');
-      setProgress({ done: createdIds.length, total: allRecords.length });
-    };
-    reader.onerror = () => {
-      setError('Failed to read file');
+    if (response.data?.error) {
+      setError(response.data.error);
       setStatus('error');
-    };
-    reader.readAsArrayBuffer(file);
+      return;
+    }
+
+    queryClient.invalidateQueries({ queryKey: ['contacts'] });
+    setResult(response.data);
+    setStatus('done');
   };
 
   const reset = () => {
@@ -190,7 +113,7 @@ export default function VoterListImport() {
     setPreview(null);
     setStatus(null);
     setError(null);
-    setProgress({ done: 0, total: 0 });
+    setResult(null);
   };
 
   return (
@@ -252,7 +175,7 @@ export default function VoterListImport() {
         </div>
       )}
 
-      {/* Preview */}
+      {/* Preview + import */}
       {file && preview && status !== 'done' && (
         <div className="space-y-4">
           <div className="flex items-center justify-between bg-card border border-border rounded-xl p-4">
@@ -281,33 +204,13 @@ export default function VoterListImport() {
             ))}
           </div>
 
-          {status === 'importing' ? (
-            <div className="bg-primary/5 border border-primary/20 rounded-xl p-5 space-y-4">
-              <div className="flex items-center gap-3">
-                <Loader2 className="w-5 h-5 animate-spin text-primary flex-shrink-0" />
-                <div className="flex-1 min-w-0">
-                  <p className="text-sm font-semibold text-primary">
-                    Saving batch {progress.currentBatch} of {progress.totalBatches}…
-                  </p>
-                  <p className="text-xs text-muted-foreground mt-0.5">
-                    {progress.done.toLocaleString()} of {progress.total.toLocaleString()} contacts saved
-                  </p>
-                </div>
-                <span className="text-xs font-semibold text-primary flex-shrink-0">
-                  {progress.total ? Math.round((progress.done / progress.total) * 100) : 0}%
-                </span>
-              </div>
-              <div className="w-full bg-primary/10 rounded-full h-3 overflow-hidden">
-                <div
-                  className="bg-primary h-3 rounded-full transition-all duration-500"
-                  style={{ width: progress.total ? `${Math.max(5, (progress.done / progress.total) * 100)}%` : '5%' }}
-                />
-              </div>
-              <div className="bg-white/70 border border-primary/10 rounded-lg px-4 py-3 text-xs text-muted-foreground leading-relaxed transition-all duration-700">
-                💬 <em>{REASSURANCE_MESSAGES[reassuranceIdx]}</em>
-              </div>
-              <p className="text-xs text-muted-foreground text-center">
-                ⏳ Please keep this tab open — do not navigate away
+          {(status === 'uploading' || status === 'importing') ? (
+            <div className="bg-primary/5 border border-primary/20 rounded-lg px-4 py-3 flex items-center gap-3">
+              <Loader2 className="w-4 h-4 animate-spin text-primary flex-shrink-0" />
+              <p className="text-sm text-primary font-medium">
+                {status === 'uploading'
+                  ? 'Uploading file…'
+                  : 'Importing contacts on the server — you can navigate away freely.'}
               </p>
             </div>
           ) : (
@@ -327,12 +230,12 @@ export default function VoterListImport() {
       )}
 
       {/* Success */}
-      {status === 'done' && (
+      {status === 'done' && result && (
         <div className="bg-green-50 border border-green-200 rounded-xl p-10 text-center space-y-3">
           <CheckCircle2 className="w-12 h-12 text-green-600 mx-auto" />
           <p className="font-semibold text-green-900 text-xl">Import Complete!</p>
           <p className="text-sm text-green-700">
-            {progress.done.toLocaleString()} contacts saved to the database, each tagged with their turf zone.
+            {result.imported?.toLocaleString()} contacts saved to the database, each tagged with their turf zone.
           </p>
           <Button onClick={reset} variant="outline" className="mt-4">Import Another File</Button>
         </div>

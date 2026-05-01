@@ -6,20 +6,37 @@ Deno.serve(async (req) => {
     const user = await base44.auth.me();
     if (!user) return Response.json({ error: 'Unauthorized' }, { status: 401 });
 
-    const { contacts, subject, body } = await req.json();
+    const { filters, subject, body } = await req.json();
 
-    if (!contacts?.length) return Response.json({ error: 'No contacts provided' }, { status: 400 });
     if (!subject || !body) return Response.json({ error: 'Subject and body required' }, { status: 400 });
 
-    const contactsWithEmail = contacts.filter(c => c.email);
-    if (contactsWithEmail.length === 0) {
-      return Response.json({ error: 'No contacts with email addresses' }, { status: 400 });
+    // Fetch all contacts server-side (up to 5000)
+    let allContacts = await base44.asServiceRole.entities.Contact.list('-created_date', 5000);
+
+    // Apply filters server-side
+    if (filters) {
+      const { support, voter, postcode } = filters;
+      allContacts = allContacts.filter(c => {
+        if (support && support !== 'all' && c.support_level !== support) return false;
+        if (voter === 'registered' && !c.registered_voter) return false;
+        if (voter === 'canvassed' && !c.canvassed) return false;
+        if (voter === 'not_canvassed' && c.canvassed) return false;
+        if (voter === 'volunteers' && !c.volunteer) return false;
+        if (voter === 'has_email' && !c.email) return false;
+        if (voter === 'has_phone' && !c.phone) return false;
+        if (postcode && postcode !== 'all' && !(c.postcode || '').toUpperCase().startsWith(postcode)) return false;
+        return true;
+      });
     }
 
-    const results = { sent: 0, failed: 0, skipped: 0 };
+    const contactsWithEmail = allContacts.filter(c => c.email);
+    if (contactsWithEmail.length === 0) {
+      return Response.json({ error: 'No contacts with email addresses match the filters' }, { status: 400 });
+    }
+
+    const results = { sent: 0, failed: 0, skipped: allContacts.length - contactsWithEmail.length };
 
     for (const contact of contactsWithEmail) {
-      // Personalise the message
       const personalBody = body
         .replace(/\{\{name\}\}/g, contact.name || 'Resident')
         .replace(/\{\{postcode\}\}/g, contact.postcode || '')
@@ -37,8 +54,6 @@ Deno.serve(async (req) => {
 
       results.sent++;
     }
-
-    results.skipped = contacts.length - contactsWithEmail.length;
 
     return Response.json({ success: true, results });
   } catch (error) {
