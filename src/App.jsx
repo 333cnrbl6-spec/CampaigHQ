@@ -48,6 +48,7 @@ import ContactDistribution from './pages/ContactDistribution';
 import CanvassingAnalytics from './pages/CanvassingAnalytics';
 import CanvassingDashboard from './pages/CanvassingDashboard';
 import LiveTracking from './pages/LiveTracking';
+import CanvassingOptimization from './pages/CanvassingOptimization';
 
 const AuthenticatedApp = () => {
   const { isLoadingAuth, isLoadingPublicSettings, authError, navigateToLogin } = useAuth();
@@ -118,6 +119,7 @@ const AuthenticatedApp = () => {
         <Route path="/analytics" element={<CanvassingAnalytics />} />
         <Route path="/canvassing-dashboard" element={<CanvassingDashboard />} />
         <Route path="/tracking" element={<LiveTracking />} />
+        <Route path="/optimization" element={<CanvassingOptimization />} />
       </Route>
       <Route path="*" element={<PageNotFound />} />
     </Routes>
