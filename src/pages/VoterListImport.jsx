@@ -115,18 +115,32 @@ export default function VoterListImport() {
 
       setProgress({ done: 0, total: allRecords.length, currentBatch: 1, totalBatches: Math.ceil(allRecords.length / BATCH_SIZE) });
 
-      // Import in batches
+      // Import in batches with retry on rate limit
       const createdIds = [];
+      const totalBatches = Math.ceil(allRecords.length / BATCH_SIZE);
       for (let i = 0; i < allRecords.length; i += BATCH_SIZE) {
         const batchNum = Math.floor(i / BATCH_SIZE) + 1;
-        setProgress(p => ({ ...p, currentBatch: batchNum }));
+        setProgress(p => ({ ...p, currentBatch: batchNum, totalBatches }));
         const batch = allRecords.slice(i, i + BATCH_SIZE);
-        const created = await base44.entities.Contact.bulkCreate(batch);
+
+        // Retry up to 5 times on rate limit
+        let created = null;
+        for (let attempt = 1; attempt <= 5; attempt++) {
+          try {
+            created = await base44.entities.Contact.bulkCreate(batch);
+            break;
+          } catch (err) {
+            if (attempt === 5) throw err;
+            // Wait longer on each retry
+            await new Promise(r => setTimeout(r, attempt * 2000));
+          }
+        }
+
         createdIds.push(...(created || []).map(r => r.id));
-        setProgress({ done: Math.min(i + BATCH_SIZE, allRecords.length), total: allRecords.length, currentBatch: batchNum, totalBatches: Math.ceil(allRecords.length / BATCH_SIZE) });
-        // Pause between batches to avoid rate limiting
+        setProgress({ done: Math.min(i + BATCH_SIZE, allRecords.length), total: allRecords.length, currentBatch: batchNum, totalBatches });
+        // Pause between batches
         if (i + BATCH_SIZE < allRecords.length) {
-          await new Promise(r => setTimeout(r, 800));
+          await new Promise(r => setTimeout(r, 1000));
         }
       }
 
