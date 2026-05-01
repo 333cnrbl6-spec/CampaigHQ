@@ -7,24 +7,45 @@ Deno.serve(async (req) => {
 
   const delay = (ms) => new Promise(r => setTimeout(r, ms));
 
-  // Retry only on rate limit (429), not on 404
+  // Retry with exponential backoff, specifically handles 429 rate limits
   const callWithRetry = async (fn) => {
-    for (let attempt = 1; attempt <= 5; attempt++) {
+    for (let attempt = 1; attempt <= 6; attempt++) {
       try {
         return await fn();
       } catch (err) {
         const msg = err?.message || '';
         if (msg.includes('not found')) throw err; // don't retry 404s
-        if (attempt === 5) throw err;
-        await delay(attempt * 1000);
+        if (msg.includes('Rate limit') || msg.includes('429')) {
+          // Exponential backoff: 2s, 4s, 8s, 16s, 32s
+          const wait = Math.min(2000 * Math.pow(2, attempt - 1), 32000);
+          await delay(wait);
+          continue;
+        }
+        if (attempt === 6) throw err;
+        await delay(attempt * 500);
       }
     }
+  };
+
+  // Run tasks with limited concurrency to avoid rate limits
+  const runWithConcurrency = async (tasks, concurrency = 2) => {
+    const results = [];
+    for (let i = 0; i < tasks.length; i += concurrency) {
+      const batch = tasks.slice(i, i + concurrency);
+      const batchResults = await Promise.allSettled(batch.map(t => t()));
+      results.push(...batchResults);
+      // Small pause between batches to stay under rate limits
+      if (i + concurrency < tasks.length) {
+        await delay(300);
+      }
+    }
+    return results;
   };
 
   // Fetch all contacts (up to 10k)
   const contacts = await base44.asServiceRole.entities.Contact.list('name', 10000);
 
-  // Group by normalised address
+  // Group by normalised address + name to find true duplicates
   const groups = {};
   for (const c of contacts) {
     const key = (c.address || c.name || '').toLowerCase().trim();
@@ -46,13 +67,8 @@ Deno.serve(async (req) => {
 
     const [keep, ...dupes] = group;
 
-    const allTags = [...new Set([
-      ...(keep.tags || []),
-      ...dupes.flatMap(d => d.tags || []),
-    ])];
-
     const mergedData = {
-      tags: allTags,
+      tags: [...new Set([...(keep.tags || []), ...dupes.flatMap(d => d.tags || [])])],
       phone: keep.phone || dupes.find(d => d.phone)?.phone,
       email: keep.email || dupes.find(d => d.email)?.email,
       notes: [keep.notes, ...dupes.map(d => d.notes)].filter(Boolean).join(' | ') || undefined,
@@ -66,18 +82,19 @@ Deno.serve(async (req) => {
       merged++;
     } catch (err) {
       if (!err?.message?.includes('not found')) throw err;
-      // Keeper already deleted — skip group
     }
 
-    for (const dupe of dupes) {
+    // Delete duplicates with concurrency control
+    const deleteTasks = dupes.map(dupe => async () => {
       try {
         await callWithRetry(() => base44.asServiceRole.entities.Contact.delete(dupe.id));
         deleted++;
       } catch (err) {
         if (!err?.message?.includes('not found')) throw err;
-        // Already deleted — skip silently
       }
-    }
+    });
+
+    await runWithConcurrency(deleteTasks, 2);
   }
 
   return Response.json({
