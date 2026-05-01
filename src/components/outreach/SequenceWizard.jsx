@@ -195,7 +195,7 @@ export default function SequenceWizard({ sequence, onChange }) {
             <div>
               <label className="block text-xs font-medium mb-1">Message Body</label>
               <div className="mb-2">
-                <p className="text-xs text-muted-foreground">Available placeholders: {'{'}}{'{'}name{'}'}{'}'}, {'{'}}{'{'}postcode{'}'}{'}'}, {'{'}}{'{'}support_level{'}'}{'}'}}</p>
+                <p className="text-xs text-muted-foreground">Use placeholders: (double-braces)name, postcode, support_level</p>
               </div>
               <Textarea
                 value={currentMessage.body}
