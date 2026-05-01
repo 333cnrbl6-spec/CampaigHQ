@@ -39,17 +39,12 @@ Deno.serve(async (req) => {
     // Process each file
     for (const fileUrl of file_urls) {
       try {
-        // Extract data from the file
+        // Extract data from the file - expect array of objects
         const extractRes = await base44.integrations.Core.ExtractDataFromUploadedFile({
           file_url: fileUrl,
           json_schema: {
-            type: 'object',
-            properties: {
-              rows: {
-                type: 'array',
-                items: { type: 'object' }
-              }
-            }
+            type: 'array',
+            items: { type: 'object' }
           }
         });
 
@@ -58,51 +53,64 @@ Deno.serve(async (req) => {
           continue;
         }
 
-        // Parse extracted data - output is array returned as { 0: {...}, 1: {...}, ... }
+        // Parse extracted data - handle ExtractDataFromUploadedFile output format
         let rows = [];
         const output = extractRes.output || {};
         
-        // Convert numeric-keyed object back to array
+        // The output is an array returned as { 0: {...}, 1: {...}, ... }
         const outputKeys = Object.keys(output);
         if (outputKeys.length === 0) {
           errors.push(`File ${fileUrl}: empty output`);
           continue;
         }
         
-        // Check if output is numeric-indexed (from array)
-        if (outputKeys.some(k => /^\d+$/.test(k))) {
+        // Convert numeric-keyed object back to array (preserving order)
+        if (outputKeys.every(k => /^\d+$/.test(k))) {
+          // Sort by numeric index to preserve order
+          const sortedKeys = outputKeys.sort((a, b) => parseInt(a) - parseInt(b));
+          rows = sortedKeys.map(k => output[k]);
+        } else {
           rows = Object.values(output);
-        } else if (output?.rows && Array.isArray(output.rows)) {
-          rows = output.rows;
-        } else if (output?.rows && typeof output.rows === 'object') {
-          // Columnar format: { rows: { TYL1: [...], address: [...] } }
-          const cols = output.rows;
-          const colNames = Object.keys(cols);
-          if (colNames.length > 0 && Array.isArray(cols[colNames[0]])) {
-            const rowCount = cols[colNames[0]].length;
-            for (let i = 0; i < rowCount; i++) {
-              const row = {};
-              colNames.forEach(col => {
-                row[col] = cols[col][i];
-              });
-              rows.push(row);
-            }
-          }
         }
 
-        rows = rows.filter(r => typeof r === 'object' && r !== null && Object.keys(r).length > 0);
+        // Filter out nulls but keep empty objects (they may be valid data rows)
+        rows = rows.filter(r => r !== null && typeof r === 'object');
 
-        // Get column names from first row
-        const columnNames = Object.keys(rows[0] || {});
+        if (rows.length === 0) {
+          errors.push(`File ${fileUrl}: no usable data rows`);
+          continue;
+        }
+
+        // Get column names from first non-empty row
+        let columnNames = [];
+        let firstDataRowIdx = 0;
+        for (let i = 0; i < rows.length; i++) {
+          const cols = Object.keys(rows[i]);
+          if (cols.length > 0) {
+            columnNames = cols;
+            firstDataRowIdx = i;
+            break;
+          }
+        }
         
-        // Find TYL column (first column with TYL in name)
-        const tylCol = columnNames.find(c => c?.toUpperCase().includes('TYL'));
-        // Address is second column, postcode is last column
+        if (columnNames.length === 0) {
+          errors.push(`File ${fileUrl}: could not find any column names`);
+          continue;
+        }
+        
+        // Find TYL column - could be labeled TYL, TYL1, TYL2, etc. or similar variations
+        const tylCol = columnNames.find(c => {
+          const upper = (c || '').toUpperCase();
+          return upper.includes('TYL') || upper.includes('WARD') || upper.includes('ZONE');
+        });
+        
+        // Address is typically the second column
         const addressCol = columnNames.length > 1 ? columnNames[1] : null;
+        // Postcode is typically the last column
         const postcodeCol = columnNames[columnNames.length - 1];
 
         if (!tylCol) {
-          errors.push(`File ${fileUrl}: could not identify TYL column. Found columns: ${columnNames.join(', ')}`);
+          errors.push(`File ${fileUrl}: could not identify TYL/WARD/ZONE column. Found: ${columnNames.join(', ')}`);
           continue;
         }
         if (!addressCol) {
