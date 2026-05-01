@@ -112,6 +112,8 @@ export default function Contacts() {
           notes: [keep.notes, ...dupes.map(d => d.notes)].filter(Boolean).join(' | ') || undefined,
           registered_voter: keep.registered_voter || dupes.some(d => d.registered_voter),
           volunteer: keep.volunteer || dupes.some(d => d.volunteer),
+          // Prefer the most specific (longest) postcode found across all duplicates
+          postcode: [keep, ...dupes].map(d => d.postcode).filter(Boolean).sort((a, b) => b.length - a.length)[0] || keep.postcode || undefined,
         };
 
         await callWithRetry(() => base44.entities.Contact.update(keep.id, mergedData));
@@ -128,6 +130,7 @@ export default function Contacts() {
       }
 
       queryClient.invalidateQueries({ queryKey: ['contacts'] });
+      setPage(1);
       setDedupeResult({ merged, deleted, groups: duplicateGroups.length });
     } finally {
       setDeduping(false);
@@ -198,10 +201,15 @@ export default function Contacts() {
   };
 
   const handleSelectAll = () => {
-    if (selectedIds.size === filtered.length) {
-      setSelectedIds(new Set());
+    const filteredIds = new Set(filtered.map(c => c.id));
+    const allFilteredSelected = filtered.every(c => selectedIds.has(c.id));
+    if (allFilteredSelected) {
+      // Deselect only the currently filtered contacts (preserve any cross-filter selections)
+      const newSelected = new Set(selectedIds);
+      filteredIds.forEach(id => newSelected.delete(id));
+      setSelectedIds(newSelected);
     } else {
-      setSelectedIds(new Set(filtered.map(c => c.id)));
+      setSelectedIds(filteredIds);
     }
   };
 
@@ -336,7 +344,7 @@ export default function Contacts() {
              <div className="flex items-center gap-2">
                <input
                  type="checkbox"
-                 checked={selectedIds.size === filtered.length}
+                 checked={filtered.length > 0 && filtered.every(c => selectedIds.has(c.id))}
                  onChange={handleSelectAll}
                  className="w-4 h-4 rounded cursor-pointer"
                />
