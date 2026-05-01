@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { base44 } from '@/api/base44Client';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { Button } from '@/components/ui/button';
@@ -33,10 +33,18 @@ export default function Contacts() {
   const queryClient = useQueryClient();
   const navigate = useNavigate();
 
-  const { data: contacts = [], isLoading } = useQuery({
+  const { data: contacts = [], isLoading, refetch } = useQuery({
     queryKey: ['contacts'],
-    queryFn: () => base44.entities.Contact.list('name', 5000),
+    queryFn: () => base44.entities.Contact.list('name', 10000),
   });
+
+  // Auto-refresh if turf dropdown is empty but we expect data
+  React.useEffect(() => {
+    const allTurfs = [...new Set(contacts.flatMap(c => c.tags || []))].filter(Boolean);
+    if (contacts.length > 0 && allTurfs.length === 0) {
+      refetch();
+    }
+  }, [contacts, refetch]);
 
   const createMutation = useMutation({
     mutationFn: (data) => base44.entities.Contact.create(data),
