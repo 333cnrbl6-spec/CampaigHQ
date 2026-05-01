@@ -3,7 +3,8 @@ import { useQuery } from '@tanstack/react-query';
 import { base44 } from '@/api/base44Client';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
-import { Route, Navigation, X, MapPin, ChevronDown, ChevronUp } from 'lucide-react';
+import { Route, Navigation, X, MapPin, ChevronDown, ChevronUp, FileText } from 'lucide-react';
+import WalkSheetPrint from '@/components/canvassing/WalkSheetPrint';
 
 // Point-in-polygon test (ray casting)
 function pointInPolygon(point, polygon) {
@@ -80,6 +81,7 @@ export default function TurfRoutePanel({ turf, onRouteReady, onClose }) {
   const [loading, setLoading] = useState(false);
   const [expanded, setExpanded] = useState(true);
   const [totalDist, setTotalDist] = useState(0);
+  const [showWalkSheet, setShowWalkSheet] = useState(false);
 
   const { data: contacts = [] } = useQuery({
     queryKey: ['contacts'],
@@ -200,12 +202,25 @@ export default function TurfRoutePanel({ turf, onRouteReady, onClose }) {
                 ))}
               </ol>
 
-              <Button size="sm" className="w-full gap-2" onClick={openGoogleMaps}>
-                <Navigation className="w-4 h-4" /> Open in Google Maps
-              </Button>
+              <div className="flex gap-2">
+                <Button size="sm" className="flex-1 gap-2" onClick={openGoogleMaps}>
+                  <Navigation className="w-4 h-4" /> Google Maps
+                </Button>
+                <Button size="sm" variant="outline" className="flex-1 gap-2" onClick={() => setShowWalkSheet(true)}>
+                  <FileText className="w-4 h-4" /> Walk Sheet
+                </Button>
+              </div>
             </>
           )}
         </div>
+      )}
+
+      {showWalkSheet && route.length > 0 && (
+        <WalkSheetPrint
+          stops={route}
+          title={`${turf.name} — Walking Route`}
+          onClose={() => setShowWalkSheet(false)}
+        />
       )}
     </div>
   );

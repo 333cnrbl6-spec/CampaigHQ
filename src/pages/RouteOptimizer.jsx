@@ -7,9 +7,10 @@ import { Badge } from '@/components/ui/badge';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import {
   MapPin, Navigation, Download, ArrowRight, Loader2,
-  Search, XCircle, RotateCcw, Map, Footprints, Printer, ClipboardList, Info
+  Search, XCircle, RotateCcw, Map, Footprints, Printer, ClipboardList, Info, FileText
 } from 'lucide-react';
 import CanvassingRouteMap from '@/components/map/CanvassingRouteMap';
+import WalkSheetPrint from '@/components/canvassing/WalkSheetPrint';
 import { useNavigate } from 'react-router-dom';
 
 // ---------------------------------------------------------------------------
@@ -194,6 +195,7 @@ export default function RouteOptimizer() {
   const [geocodeProgress, setGeocodeProgress] = useState({ done: 0, total: 0 });
   const [route, setRoute] = useState(null);
   const [noPostcodeCount, setNoPostcodeCount] = useState(0);
+  const [showWalkSheet, setShowWalkSheet] = useState(false);
 
   const { data: contacts = [], isLoading } = useQuery({
     queryKey: ['contacts'],
@@ -282,6 +284,9 @@ export default function RouteOptimizer() {
               </Badge>
               <Button variant="outline" size="sm" className="gap-1.5" onClick={handleDownload}>
                 <Download className="w-4 h-4" /> Export CSV
+              </Button>
+              <Button variant="outline" size="sm" className="gap-1.5" onClick={() => setShowWalkSheet(true)}>
+                <FileText className="w-4 h-4" /> Walk Sheet
               </Button>
             </>
           )}
@@ -514,6 +519,14 @@ export default function RouteOptimizer() {
           )}
         </div>
       </div>
+
+      {showWalkSheet && route && (
+        <WalkSheetPrint
+          stops={route}
+          title={turfFilter !== 'all' ? `${turfFilter} — ${route.length} stops` : `${route.length} stops`}
+          onClose={() => setShowWalkSheet(false)}
+        />
+      )}
     </div>
   );
 }
