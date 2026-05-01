@@ -342,6 +342,7 @@ Return JSON with:
       const createdRecords = await base44.entities[validationResult.entityName].bulkCreate(validationResult.validRecords);
       const recordIds = (createdRecords || []).map(r => r.id);
 
+      // Save import log for future reprocessing (with file_url for zone extraction)
       await base44.entities.ImportLog.create({
         file_name: currentFile.name,
         file_url: fileUrl,
