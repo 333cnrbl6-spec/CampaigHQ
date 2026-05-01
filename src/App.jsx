@@ -50,6 +50,7 @@ import CanvassingDashboard from './pages/CanvassingDashboard';
 import LiveTracking from './pages/LiveTracking';
 import CanvassingOptimization from './pages/CanvassingOptimization';
 import RouteAnalysis from './pages/RouteAnalysis';
+import FieldNavigation from './pages/FieldNavigation';
 
 const AuthenticatedApp = () => {
   const { isLoadingAuth, isLoadingPublicSettings, authError, navigateToLogin } = useAuth();
@@ -122,6 +123,7 @@ const AuthenticatedApp = () => {
         <Route path="/tracking" element={<LiveTracking />} />
         <Route path="/optimization" element={<CanvassingOptimization />} />
         <Route path="/route-analysis" element={<RouteAnalysis />} />
+        <Route path="/field-nav" element={<FieldNavigation />} />
       </Route>
       <Route path="*" element={<PageNotFound />} />
     </Routes>

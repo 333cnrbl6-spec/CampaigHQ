@@ -555,14 +555,14 @@ export default function RouteOptimizer() {
                 <button
                   onClick={() => {
                     const ids = route.map(s => s.contact.id).join(',');
-                    navigate(`/field-mode?route_ids=${encodeURIComponent(ids)}`);
+                    navigate(`/field-nav?route_ids=${encodeURIComponent(ids)}`);
                   }}
                   className="w-full flex items-center gap-2.5 px-3 py-2 rounded-lg border border-border hover:bg-primary/5 hover:border-primary/30 transition-colors text-left"
                 >
-                  <Footprints className="w-4 h-4 text-primary flex-shrink-0" />
+                  <Navigation className="w-4 h-4 text-primary flex-shrink-0" />
                   <div className="min-w-0">
-                    <p className="text-xs font-semibold">Field Mode</p>
-                    <p className="text-[10px] text-muted-foreground">Door-knock in route order</p>
+                    <p className="text-xs font-semibold">Turn-by-Turn Navigation</p>
+                    <p className="text-[10px] text-muted-foreground">Route guidance with live map</p>
                   </div>
                 </button>
                 <button
