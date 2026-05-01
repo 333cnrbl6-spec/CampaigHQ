@@ -5,7 +5,7 @@ import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Badge } from '@/components/ui/badge';
-import { Plus, Search, Pencil, Trash2, Phone, Mail, MapPin, CheckCircle2, Tag, GitMerge, Loader2, Navigation, Zap, MapPinOff } from 'lucide-react';
+import { Plus, Search, Pencil, Trash2, Phone, Mail, MapPin, CheckCircle2, Tag, GitMerge, Loader2, Navigation, Zap, Merge } from 'lucide-react';
 import { AnimatePresence, motion } from 'framer-motion';
 import { useNavigate } from 'react-router-dom';
 import ContactForm from '../components/contacts/ContactForm';
@@ -284,6 +284,16 @@ export default function Contacts() {
             onClick={() => navigate(`/route${turfFilter !== 'all' ? `?turf=${encodeURIComponent(turfFilter)}` : ''}`)}
           >
             <Navigation className="w-4 h-4" /> Plan Route
+          </Button>
+          <Button
+            variant="ghost"
+            size="sm"
+            className="gap-2"
+            onClick={handleDeduplicate}
+            disabled={deduping || isLoading}
+          >
+            {deduping ? <Loader2 className="w-4 h-4 animate-spin" /> : <Merge className="w-4 h-4" />}
+            Deduplicate
           </Button>
         </div>
       </div>
