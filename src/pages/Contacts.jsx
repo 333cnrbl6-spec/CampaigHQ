@@ -25,11 +25,15 @@ export default function Contacts() {
   const [filter, setFilter] = useState('all');
   const [selectedIds, setSelectedIds] = useState(new Set());
   const [showTagDialog, setShowTagDialog] = useState(false);
+  const [turfFilter, setTurfFilter] = useState('all');
+  const [sortBy, setSortBy] = useState('name');
+  const [page, setPage] = useState(1);
+  const PAGE_SIZE = 100;
   const queryClient = useQueryClient();
 
   const { data: contacts = [], isLoading } = useQuery({
     queryKey: ['contacts'],
-    queryFn: () => base44.entities.Contact.list('-created_date', 500),
+    queryFn: () => base44.entities.Contact.list('name', 5000),
   });
 
   const createMutation = useMutation({
@@ -65,16 +69,32 @@ export default function Contacts() {
     },
   });
 
+  // Derive all turf zones from tags
+  const allTurfs = [...new Set(contacts.flatMap(c => c.tags || []))].filter(Boolean).sort();
+
   const filtered = contacts.filter(c => {
-    const matchesSearch = c.name?.toLowerCase().includes(search.toLowerCase()) ||
+    const matchesSearch = !search || c.name?.toLowerCase().includes(search.toLowerCase()) ||
       c.address?.toLowerCase().includes(search.toLowerCase()) ||
       c.postcode?.toLowerCase().includes(search.toLowerCase());
-    const matchesFilter = filter === 'all' ? true : 
+    const matchesFilter = filter === 'all' ? true :
       filter === 'voters' ? c.registered_voter :
       filter === 'non-voters' ? !c.registered_voter :
       c.support_level === filter;
-    return matchesSearch && matchesFilter;
+    const matchesTurf = turfFilter === 'all' ? true : (c.tags || []).includes(turfFilter);
+    return matchesSearch && matchesFilter && matchesTurf;
+  }).sort((a, b) => {
+    if (sortBy === 'name') return (a.name || '').localeCompare(b.name || '');
+    if (sortBy === 'turf') {
+      const ta = (a.tags || [])[0] || '';
+      const tb = (b.tags || [])[0] || '';
+      return ta.localeCompare(tb) || (a.name || '').localeCompare(b.name || '');
+    }
+    if (sortBy === 'address') return (a.address || '').localeCompare(b.address || '');
+    return 0;
   });
+
+  const totalPages = Math.ceil(filtered.length / PAGE_SIZE);
+  const paginated = filtered.slice((page - 1) * PAGE_SIZE, page * PAGE_SIZE);
 
   const handleSubmit = (data) => {
     if (editing) {
@@ -107,7 +127,7 @@ export default function Contacts() {
       <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 mb-8">
         <div>
           <h1 className="font-heading text-3xl font-bold">Voter Contacts</h1>
-          <p className="text-muted-foreground mt-1">{contacts.length} contacts recorded</p>
+          <p className="text-muted-foreground mt-1">{contacts.length.toLocaleString()} contacts total{filtered.length !== contacts.length ? ` · ${filtered.length.toLocaleString()} shown` : ''}</p>
         </div>
         <Button onClick={() => { setEditing(null); setShowForm(true); }} className="gap-2">
           <Plus className="w-4 h-4" /> Add Contact
@@ -134,26 +154,45 @@ export default function Contacts() {
              <Input
                placeholder="Search by name, address, postcode..."
                value={search}
-               onChange={(e) => setSearch(e.target.value)}
+               onChange={(e) => { setSearch(e.target.value); setPage(1); }}
                className="pl-10"
              />
            </div>
-           <Select value={filter} onValueChange={setFilter}>
-             <SelectTrigger className="w-[180px]">
-               <SelectValue placeholder="Filter..." />
-             </SelectTrigger>
-             <SelectContent>
-               <SelectItem value="all">All Contacts</SelectItem>
-               <SelectItem value="voters">Registered Voters</SelectItem>
-               <SelectItem value="non-voters">Non-Voters</SelectItem>
-               <SelectItem value="strong_supporter">Strong Supporter</SelectItem>
-               <SelectItem value="leaning">Leaning</SelectItem>
-               <SelectItem value="undecided">Undecided</SelectItem>
-               <SelectItem value="opposed">Opposed</SelectItem>
-               <SelectItem value="unknown">Unknown</SelectItem>
-             </SelectContent>
-           </Select>
-         </div>
+           <Select value={filter} onValueChange={(v) => { setFilter(v); setPage(1); }}>
+              <SelectTrigger className="w-[180px]">
+                <SelectValue placeholder="Filter..." />
+              </SelectTrigger>
+              <SelectContent>
+                <SelectItem value="all">All Contacts</SelectItem>
+                <SelectItem value="voters">Registered Voters</SelectItem>
+                <SelectItem value="non-voters">Non-Voters</SelectItem>
+                <SelectItem value="strong_supporter">Strong Supporter</SelectItem>
+                <SelectItem value="leaning">Leaning</SelectItem>
+                <SelectItem value="undecided">Undecided</SelectItem>
+                <SelectItem value="opposed">Opposed</SelectItem>
+                <SelectItem value="unknown">Unknown</SelectItem>
+              </SelectContent>
+            </Select>
+            <Select value={turfFilter} onValueChange={(v) => { setTurfFilter(v); setPage(1); }}>
+              <SelectTrigger className="w-[160px]">
+                <SelectValue placeholder="Turf zone..." />
+              </SelectTrigger>
+              <SelectContent>
+                <SelectItem value="all">All Turfs</SelectItem>
+                {allTurfs.map(t => <SelectItem key={t} value={t}>{t}</SelectItem>)}
+              </SelectContent>
+            </Select>
+            <Select value={sortBy} onValueChange={(v) => { setSortBy(v); setPage(1); }}>
+              <SelectTrigger className="w-[140px]">
+                <SelectValue placeholder="Sort by..." />
+              </SelectTrigger>
+              <SelectContent>
+                <SelectItem value="name">Sort: Name</SelectItem>
+                <SelectItem value="turf">Sort: Turf Zone</SelectItem>
+                <SelectItem value="address">Sort: Address</SelectItem>
+              </SelectContent>
+            </Select>
+           </div>
 
          {/* Bulk Actions Bar */}
          {selectedIds.size > 0 && (
@@ -191,7 +230,7 @@ export default function Contacts() {
         </div>
       ) : (
         <div className="grid gap-3">
-           {filtered.map((contact) => (
+           {paginated.map((contact) => (
              <div key={contact.id} className={`bg-card rounded-xl border p-4 hover:shadow-sm transition-all flex items-center gap-4 cursor-pointer ${selectedIds.has(contact.id) ? 'border-primary bg-primary/5' : 'border-border/50'}`}>
                <input
                  type="checkbox"
@@ -242,6 +281,20 @@ export default function Contacts() {
               </div>
             </div>
           ))}
+        </div>
+      )}
+
+      {/* Pagination */}
+      {totalPages > 1 && (
+        <div className="flex items-center justify-between mt-6 pt-4 border-t border-border">
+          <p className="text-sm text-muted-foreground">
+            Showing {((page - 1) * PAGE_SIZE) + 1}–{Math.min(page * PAGE_SIZE, filtered.length)} of {filtered.length.toLocaleString()}
+          </p>
+          <div className="flex items-center gap-2">
+            <Button variant="outline" size="sm" onClick={() => setPage(p => Math.max(1, p - 1))} disabled={page === 1}>Previous</Button>
+            <span className="text-sm text-muted-foreground">Page {page} of {totalPages}</span>
+            <Button variant="outline" size="sm" onClick={() => setPage(p => Math.min(totalPages, p + 1))} disabled={page === totalPages}>Next</Button>
+          </div>
         </div>
       )}
 
