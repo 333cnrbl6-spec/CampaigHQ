@@ -13,7 +13,7 @@ const REASSURANCE_MESSAGES = [
   "Almost done — the last batches are being written now.",
 ];
 
-const BATCH_SIZE = 200;
+const BATCH_SIZE = 100;
 
 function parseTurfZone(sheetName) {
   // Extract turf code from sheet name e.g. "TYL 1 - 835" → "TYL1", "T&MC - 5818" → "T&MC"
@@ -124,6 +124,10 @@ export default function VoterListImport() {
         const created = await base44.entities.Contact.bulkCreate(batch);
         createdIds.push(...(created || []).map(r => r.id));
         setProgress({ done: Math.min(i + BATCH_SIZE, allRecords.length), total: allRecords.length, currentBatch: batchNum, totalBatches: Math.ceil(allRecords.length / BATCH_SIZE) });
+        // Pause between batches to avoid rate limiting
+        if (i + BATCH_SIZE < allRecords.length) {
+          await new Promise(r => setTimeout(r, 800));
+        }
       }
 
       // Log the import
