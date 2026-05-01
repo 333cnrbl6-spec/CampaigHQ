@@ -72,8 +72,21 @@ export default function Contacts() {
       let merged = 0;
       let deleted = 0;
 
+      const delay = (ms) => new Promise(r => setTimeout(r, ms));
+
+      const callWithRetry = async (fn) => {
+        for (let attempt = 1; attempt <= 5; attempt++) {
+          try {
+            return await fn();
+          } catch (err) {
+            if (attempt === 5) throw err;
+            await delay(attempt * 1500);
+          }
+        }
+      };
+
       for (const group of duplicateGroups) {
-        // Sort: prefer records with more data (phone/email/notes), then by created_date asc
+        // Sort: prefer records with more data (phone/email/notes)
         group.sort((a, b) => {
           const scoreA = (a.phone ? 1 : 0) + (a.email ? 1 : 0) + (a.notes ? 1 : 0);
           const scoreB = (b.phone ? 1 : 0) + (b.email ? 1 : 0) + (b.notes ? 1 : 0);
@@ -82,28 +95,28 @@ export default function Contacts() {
 
         const [keep, ...dupes] = group;
 
-        // Merge all unique tags from all duplicates into the keeper
         const allTags = [...new Set([
           ...(keep.tags || []),
           ...dupes.flatMap(d => d.tags || []),
         ])];
 
-        // Merge other fields: use best non-empty value
         const mergedData = {
           tags: allTags,
-          phone: keep.phone || dupes.find(d => d.phone)?.phone || keep.phone,
-          email: keep.email || dupes.find(d => d.email)?.email || keep.email,
+          phone: keep.phone || dupes.find(d => d.phone)?.phone,
+          email: keep.email || dupes.find(d => d.email)?.email,
           notes: [keep.notes, ...dupes.map(d => d.notes)].filter(Boolean).join(' | ') || undefined,
           registered_voter: keep.registered_voter || dupes.some(d => d.registered_voter),
           volunteer: keep.volunteer || dupes.some(d => d.volunteer),
         };
 
-        await base44.entities.Contact.update(keep.id, mergedData);
+        await callWithRetry(() => base44.entities.Contact.update(keep.id, mergedData));
         merged++;
+        await delay(300);
 
         for (const dupe of dupes) {
-          await base44.entities.Contact.delete(dupe.id);
+          await callWithRetry(() => base44.entities.Contact.delete(dupe.id));
           deleted++;
+          await delay(200);
         }
       }
 
