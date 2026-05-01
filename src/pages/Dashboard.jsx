@@ -9,6 +9,7 @@ import RecentActivity from '../components/dashboard/RecentActivity';
 import CanvassingMap from '../components/dashboard/CanvassingMap';
 import SupportLevelWidget from '../components/dashboard/SupportLevelWidget';
 import GamifiedLeaderboard from '../components/dashboard/GamifiedLeaderboard';
+import SupportAnalytics from '../components/dashboard/SupportAnalytics';
 
 export default function Dashboard() {
   const { data: contacts = [] } = useQuery({
@@ -91,6 +92,11 @@ export default function Dashboard() {
       {/* Support Level Widget — full width */}
       <div className="mb-6">
         <SupportLevelWidget contacts={contacts} />
+      </div>
+
+      {/* Support Analytics — pie chart + undecided hotspots */}
+      <div className="mb-6">
+        <SupportAnalytics contacts={contacts} />
       </div>
 
       {/* Content Grid */}
