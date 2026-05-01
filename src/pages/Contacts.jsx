@@ -57,6 +57,10 @@ export default function Contacts() {
   const [dedupeResult, setDedupeResult] = useState(null);
   const [geocoding, setGeocoding] = useState(false);
   const [geocodeResult, setGeocodeResult] = useState(null);
+  const [assigning, setAssigning] = useState(false);
+  const [assignResult, setAssignResult] = useState(null);
+  const [reprocessing, setReprocessing] = useState(false);
+  const [reprocessResult, setReprocessResult] = useState(null);
 
   const handleDeduplicate = async () => {
     if (!confirm('This will merge duplicate addresses, combining their tags into one record. Continue?')) return;
@@ -82,6 +86,32 @@ export default function Contacts() {
       setGeocodeResult(response.data);
     } finally {
       setGeocoding(false);
+    }
+  };
+
+  const handleAssignTurfs = async () => {
+    if (!confirm('Extract electoral area codes from postcodes and assign turf zones? This may take a minute.')) return;
+    setAssigning(true);
+    setAssignResult(null);
+    try {
+      const response = await base44.functions.invoke('assignTurfTagsByElectoralArea', {});
+      queryClient.invalidateQueries({ queryKey: ['contacts'] });
+      setAssignResult(response.data);
+    } finally {
+      setAssigning(false);
+    }
+  };
+
+  const handleReprocessImports = async () => {
+    if (!confirm('Re-analyze recent import files to recover zone data? This may take a few minutes.')) return;
+    setReprocessing(true);
+    setReprocessResult(null);
+    try {
+      const response = await base44.functions.invoke('reprocessImportsForTurfTags', {});
+      queryClient.invalidateQueries({ queryKey: ['contacts'] });
+      setReprocessResult(response.data);
+    } finally {
+      setReprocessing(false);
     }
   };
 
@@ -170,48 +200,84 @@ export default function Contacts() {
 
   return (
     <div className="p-6 lg:p-10 max-w-[1400px] mx-auto">
-      <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 mb-8">
-        <div>
-          <h1 className="font-heading text-3xl font-bold">Voter Contacts</h1>
-          <p className="text-muted-foreground mt-1">{contacts.length.toLocaleString()} contacts total{filtered.length !== contacts.length ? ` · ${filtered.length.toLocaleString()} shown` : ''}</p>
+      <div className="mb-8">
+        <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 mb-6">
+          <div>
+            <h1 className="font-heading text-3xl font-bold">Voter Contacts</h1>
+            <p className="text-muted-foreground mt-1">{contacts.length.toLocaleString()} contacts total{filtered.length !== contacts.length ? ` · ${filtered.length.toLocaleString()} shown` : ''}</p>
+          </div>
+          <Button 
+            onClick={() => { setEditing(null); setShowForm(true); }} 
+            size="sm"
+            className="gap-2 w-fit"
+          >
+            <Plus className="w-4 h-4" /> Add Contact
+          </Button>
         </div>
-        <div className="flex items-center gap-2 flex-wrap">
-           <Button
-             onClick={handleDeduplicate}
-             variant="outline"
-             size="sm"
-             className="gap-2"
-             disabled={deduping || isLoading}
-           >
-             {deduping ? <Loader2 className="w-4 h-4 animate-spin" /> : <GitMerge className="w-4 h-4" />}
-             {deduping ? 'Merging…' : 'Deduplicate'}
-           </Button>
-           <Button
-             onClick={handleBatchGeocode}
-             variant="outline"
-             size="sm"
-             className="gap-2"
-             disabled={geocoding || isLoading}
-           >
-             {geocoding ? <Loader2 className="w-4 h-4 animate-spin" /> : <MapPinOff className="w-4 h-4" />}
-             {geocoding ? 'Geocoding…' : 'Geocode All'}
-           </Button>
-           <Button
-             variant="outline"
-             size="sm"
-             className="gap-2"
-             onClick={() => navigate(`/route${turfFilter !== 'all' ? `?turf=${encodeURIComponent(turfFilter)}` : ''}`)}
-           >
-             <Navigation className="w-4 h-4" /> Plan Route
-           </Button>
-           <Button 
-             onClick={() => { setEditing(null); setShowForm(true); }} 
-             size="sm"
-             className="gap-2"
-           >
-             <Plus className="w-4 h-4" /> Add Contact
-           </Button>
-         </div>
+
+        {/* Infrastructure Setup Panel */}
+        <div className="bg-gradient-to-r from-blue-50 to-cyan-50 border border-blue-200 rounded-xl p-4 mb-6">
+          <div className="mb-3">
+            <h3 className="font-semibold text-blue-900 flex items-center gap-2">
+              <Zap className="w-4 h-4 text-blue-600" />
+              Infrastructure Setup — Enable Field Tools
+            </h3>
+            <p className="text-xs text-blue-700 mt-1">Complete these steps in order to unlock Route Optimizer, Live Tracking, and Field Navigation.</p>
+          </div>
+          <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
+            <Button
+              onClick={handleAssignTurfs}
+              variant="outline"
+              size="sm"
+              className="gap-2 justify-start bg-white hover:bg-blue-50 border-blue-200 text-blue-900"
+              disabled={assigning || isLoading}
+            >
+              {assigning ? <Loader2 className="w-4 h-4 animate-spin" /> : <Tag className="w-4 h-4" />}
+              <span className="text-left">
+                <div className="font-medium text-xs">Step 1: Assign Turfs</div>
+                <div className="text-xs text-muted-foreground">Extract electoral zones</div>
+              </span>
+            </Button>
+            <Button
+              onClick={handleReprocessImports}
+              variant="outline"
+              size="sm"
+              className="gap-2 justify-start bg-white hover:bg-blue-50 border-blue-200 text-blue-900"
+              disabled={reprocessing || isLoading}
+            >
+              {reprocessing ? <Loader2 className="w-4 h-4 animate-spin" /> : <GitMerge className="w-4 h-4" />}
+              <span className="text-left">
+                <div className="font-medium text-xs">Step 2: Recover Zones</div>
+                <div className="text-xs text-muted-foreground">Re-analyze import files</div>
+              </span>
+            </Button>
+            <Button
+              onClick={handleBatchGeocode}
+              variant="outline"
+              size="sm"
+              className="gap-2 justify-start bg-white hover:bg-blue-50 border-blue-200 text-blue-900"
+              disabled={geocoding || isLoading}
+            >
+              {geocoding ? <Loader2 className="w-4 h-4 animate-spin" /> : <MapPin className="w-4 h-4" />}
+              <span className="text-left">
+                <div className="font-medium text-xs">Step 3: Geocode All</div>
+                <div className="text-xs text-muted-foreground">Add map coordinates</div>
+              </span>
+            </Button>
+          </div>
+        </div>
+
+        {/* Secondary Actions */}
+        <div className="flex items-center gap-2 flex-wrap mb-4">
+          <Button
+            variant="ghost"
+            size="sm"
+            className="gap-2"
+            onClick={() => navigate(`/route${turfFilter !== 'all' ? `?turf=${encodeURIComponent(turfFilter)}` : ''}`)}
+          >
+            <Navigation className="w-4 h-4" /> Plan Route
+          </Button>
+        </div>
       </div>
 
       {deduping && (
@@ -238,13 +304,45 @@ export default function Contacts() {
        )}
 
        {geocodeResult && !geocoding && (
-         <div className="mb-4 bg-green-50 border border-green-200 rounded-lg px-4 py-3 text-sm text-green-800 flex items-center justify-between">
-           <span>
-             Geocoded <strong>{geocodeResult.results.succeeded}</strong> contacts — {geocodeResult.results.failed} failed (no valid postcode).
-           </span>
-           <button onClick={() => setGeocodeResult(null)} className="text-green-600 hover:text-green-800 ml-4">✕</button>
-         </div>
-       )}
+          <div className="mb-4 bg-green-50 border border-green-200 rounded-lg px-4 py-3 text-sm text-green-800 flex items-center justify-between">
+            <span>
+              Geocoded <strong>{geocodeResult.results.succeeded}</strong> contacts — {geocodeResult.results.failed} failed (no valid postcode).
+            </span>
+            <button onClick={() => setGeocodeResult(null)} className="text-green-600 hover:text-green-800 ml-4">✕</button>
+          </div>
+        )}
+
+        {assigning && (
+          <div className="mb-4 bg-primary/5 border border-primary/20 rounded-lg px-4 py-3 flex items-center gap-3">
+            <Loader2 className="w-4 h-4 animate-spin text-primary flex-shrink-0" />
+            <p className="text-sm text-primary font-medium">Extracting electoral zones from postcodes — you can navigate away freely.</p>
+          </div>
+        )}
+
+        {assignResult && !assigning && (
+          <div className="mb-4 bg-green-50 border border-green-200 rounded-lg px-4 py-3 text-sm text-green-800 flex items-center justify-between">
+            <span>
+              Tagged <strong>{assignResult.contacts_tagged}</strong> contacts with turf zones.
+            </span>
+            <button onClick={() => setAssignResult(null)} className="text-green-600 hover:text-green-800 ml-4">✕</button>
+          </div>
+        )}
+
+        {reprocessing && (
+          <div className="mb-4 bg-primary/5 border border-primary/20 rounded-lg px-4 py-3 flex items-center gap-3">
+            <Loader2 className="w-4 h-4 animate-spin text-primary flex-shrink-0" />
+            <p className="text-sm text-primary font-medium">Re-analyzing import files — you can navigate away freely.</p>
+          </div>
+        )}
+
+        {reprocessResult && !reprocessing && (
+          <div className="mb-4 bg-green-50 border border-green-200 rounded-lg px-4 py-3 text-sm text-green-800 flex items-center justify-between">
+            <span>
+              Added <strong>{reprocessResult.total_tags_added}</strong> zone tags from {reprocessResult.files_processed} files.
+            </span>
+            <button onClick={() => setReprocessResult(null)} className="text-green-600 hover:text-green-800 ml-4">✕</button>
+          </div>
+        )}
 
       <AnimatePresence>
         {showForm && (
