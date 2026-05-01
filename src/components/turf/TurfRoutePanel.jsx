@@ -70,9 +70,30 @@ function nearestNeighbourRoute(points) {
 async function geocodeAddress(address, postcode) {
   const query = postcode ? `${address}, ${postcode}` : address;
   const url = `https://nominatim.openstreetmap.org/search?q=${encodeURIComponent(query)}&format=json&limit=1`;
-  const res = await fetch(url, { headers: { 'Accept-Language': 'en' } });
-  const data = await res.json();
-  if (data.length > 0) return [parseFloat(data[0].lon), parseFloat(data[0].lat)];
+  
+  try {
+    const controller = new AbortController();
+    const timeout = setTimeout(() => controller.abort(), 5000);
+    
+    const res = await fetch(url, { 
+      headers: { 'Accept-Language': 'en' },
+      signal: controller.signal
+    });
+    clearTimeout(timeout);
+    
+    if (!res.ok) return null;
+    
+    const contentType = res.headers.get('content-type');
+    if (!contentType?.includes('application/json')) return null;
+    
+    const data = await res.json();
+    if (Array.isArray(data) && data.length > 0) {
+      return [parseFloat(data[0].lon), parseFloat(data[0].lat)];
+    }
+  } catch (error) {
+    console.warn(`Geocoding failed for "${query}":`, error.message);
+  }
+  
   return null;
 }
 
