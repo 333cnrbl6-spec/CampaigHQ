@@ -53,6 +53,7 @@ import RouteAnalysis from './pages/RouteAnalysis';
 import FieldNavigation from './pages/FieldNavigation';
 import VolunteerPerformance from './pages/VolunteerPerformance';
 import VolunteerLiveMap from './pages/VolunteerLiveMap';
+import AutomatedSequences from './pages/AutomatedSequences';
 
 const AuthenticatedApp = () => {
   const { isLoadingAuth, isLoadingPublicSettings, authError, navigateToLogin } = useAuth();
@@ -128,6 +129,7 @@ const AuthenticatedApp = () => {
         <Route path="/field-nav" element={<FieldNavigation />} />
         <Route path="/performance" element={<VolunteerPerformance />} />
         <Route path="/live-map" element={<VolunteerLiveMap />} />
+        <Route path="/sequences" element={<AutomatedSequences />} />
       </Route>
       <Route path="*" element={<PageNotFound />} />
     </Routes>
