@@ -7,7 +7,7 @@ import { Badge } from '@/components/ui/badge';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import {
   MapPin, Navigation, Download, ArrowRight, Loader2,
-  Search, XCircle, RotateCcw, Map, Footprints, Printer, ClipboardList, Info, FileText
+  Search, XCircle, RotateCcw, Map, Footprints, Printer, ClipboardList, Info, FileText, RefreshCw
 } from 'lucide-react';
 import CanvassingRouteMap from '@/components/map/CanvassingRouteMap';
 import WalkSheetPrint from '@/components/canvassing/WalkSheetPrint';
@@ -197,14 +197,19 @@ export default function RouteOptimizer() {
   const [noPostcodeCount, setNoPostcodeCount] = useState(0);
   const [showWalkSheet, setShowWalkSheet] = useState(false);
 
-  const { data: contacts = [], isLoading } = useQuery({
+  const { data: contacts = [], isLoading, refetch: refetchContacts } = useQuery({
     queryKey: ['contacts'],
     queryFn: () => base44.entities.Contact.list('name', 5000),
   });
 
+  const { data: turfs = [] } = useQuery({
+    queryKey: ['turfs'],
+    queryFn: () => base44.entities.Turf.list('name', 1000),
+  });
+
   const allTurfs = useMemo(() =>
-    [...new Set(contacts.flatMap(c => c.tags || []))].filter(Boolean).sort(),
-    [contacts]
+    turfs.map(t => t.name).filter(Boolean).sort(),
+    [turfs]
   );
 
   const filteredContacts = useMemo(() => {
@@ -277,25 +282,28 @@ export default function RouteOptimizer() {
           </p>
         </div>
         <div className="flex items-center gap-2">
-          {route && (
-            <>
-              <Badge variant="secondary" className="text-sm px-3 py-1">
-                {route.length} stops · {uniquePostcodesInRoute} postcodes · {totalDist.toFixed(1)} km
-              </Badge>
-              <Button variant="outline" size="sm" className="gap-1.5" onClick={handleDownload}>
-                <Download className="w-4 h-4" /> Export CSV
-              </Button>
-              <Button variant="outline" size="sm" className="gap-1.5" onClick={() => setShowWalkSheet(true)}>
-                <FileText className="w-4 h-4" /> Walk Sheet
-              </Button>
-            </>
-          )}
-          {route && (
-            <Button variant="ghost" size="sm" className="gap-1.5" onClick={() => { setRoute(null); setNoPostcodeCount(0); }}>
-              <RotateCcw className="w-4 h-4" /> Reset
-            </Button>
-          )}
-        </div>
+           <Button variant="outline" size="sm" className="gap-1.5" onClick={() => refetchContacts()} disabled={isLoading}>
+             <RefreshCw className={`w-4 h-4 ${isLoading ? 'animate-spin' : ''}`} /> Refresh Data
+           </Button>
+           {route && (
+             <>
+               <Badge variant="secondary" className="text-sm px-3 py-1">
+                 {route.length} stops · {uniquePostcodesInRoute} postcodes · {totalDist.toFixed(1)} km
+               </Badge>
+               <Button variant="outline" size="sm" className="gap-1.5" onClick={handleDownload}>
+                 <Download className="w-4 h-4" /> Export CSV
+               </Button>
+               <Button variant="outline" size="sm" className="gap-1.5" onClick={() => setShowWalkSheet(true)}>
+                 <FileText className="w-4 h-4" /> Walk Sheet
+               </Button>
+             </>
+           )}
+           {route && (
+             <Button variant="ghost" size="sm" className="gap-1.5" onClick={() => { setRoute(null); setNoPostcodeCount(0); }}>
+               <RotateCcw className="w-4 h-4" /> Reset
+             </Button>
+           )}
+         </div>
       </div>
 
       <div className="flex flex-1 overflow-hidden">
