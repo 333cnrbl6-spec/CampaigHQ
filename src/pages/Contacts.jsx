@@ -53,11 +53,13 @@ export default function Contacts() {
 
   const [deduping, setDeduping] = useState(false);
   const [dedupeResult, setDedupeResult] = useState(null);
+  const [dedupeProgress, setDedupeProgress] = useState({ done: 0, total: 0, deleted: 0 });
 
   const handleDeduplicate = async () => {
     if (!confirm('This will merge duplicate addresses, combining their tags into one record. Continue?')) return;
     setDeduping(true);
     setDedupeResult(null);
+    setDedupeProgress({ done: 0, total: 0, deleted: 0 });
     try {
       // Group by normalised address (lowercase, trimmed)
       const groups = {};
@@ -71,6 +73,7 @@ export default function Contacts() {
       const duplicateGroups = Object.values(groups).filter(g => g.length > 1);
       let merged = 0;
       let deleted = 0;
+      setDedupeProgress({ done: 0, total: duplicateGroups.length, deleted: 0 });
 
       const delay = (ms) => new Promise(r => setTimeout(r, ms));
 
@@ -118,6 +121,8 @@ export default function Contacts() {
           deleted++;
           await delay(200);
         }
+
+        setDedupeProgress({ done: merged, total: duplicateGroups.length, deleted });
       }
 
       queryClient.invalidateQueries({ queryKey: ['contacts'] });
@@ -221,7 +226,33 @@ export default function Contacts() {
         </div>
       </div>
 
-      {dedupeResult && (
+      {deduping && dedupeProgress.total > 0 && (
+        <div className="mb-6 bg-primary/5 border border-primary/20 rounded-xl p-5 space-y-4">
+          <div className="flex items-center gap-3">
+            <Loader2 className="w-5 h-5 animate-spin text-primary flex-shrink-0" />
+            <div className="flex-1 min-w-0">
+              <p className="text-sm font-semibold text-primary">
+                Merging group {dedupeProgress.done} of {dedupeProgress.total}…
+              </p>
+              <p className="text-xs text-muted-foreground mt-0.5">
+                {dedupeProgress.deleted} duplicate records removed so far
+              </p>
+            </div>
+            <span className="text-xs font-semibold text-primary flex-shrink-0">
+              {Math.round((dedupeProgress.done / dedupeProgress.total) * 100)}%
+            </span>
+          </div>
+          <div className="w-full bg-primary/10 rounded-full h-3 overflow-hidden">
+            <div
+              className="bg-primary h-3 rounded-full transition-all duration-500"
+              style={{ width: `${Math.max(5, (dedupeProgress.done / dedupeProgress.total) * 100)}%` }}
+            />
+          </div>
+          <p className="text-xs text-muted-foreground text-center">⏳ Please keep this tab open — do not navigate away</p>
+        </div>
+      )}
+
+      {dedupeResult && !deduping && (
         <div className="mb-4 bg-green-50 border border-green-200 rounded-lg px-4 py-3 text-sm text-green-800 flex items-center justify-between">
           <span>
             Merged <strong>{dedupeResult.groups}</strong> duplicate groups — kept {dedupeResult.merged} records, removed <strong>{dedupeResult.deleted}</strong> duplicates.
