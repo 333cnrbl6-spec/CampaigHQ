@@ -2,7 +2,9 @@ import { useState, useEffect, useCallback, useRef } from 'react';
 import { base44 } from '@/api/base44Client';
 
 const CONTACTS_KEY = 'offline_contacts_cache';
+const CONTACTS_EXPIRY_KEY = 'offline_contacts_cache_expiry';
 const QUEUE_KEY = 'offline_sync_queue';
+const CACHE_DURATION = 7 * 24 * 60 * 60 * 1000; // 7 days
 
 function loadCache(key) {
   try { return JSON.parse(localStorage.getItem(key)) || []; } catch { return []; }
@@ -20,6 +22,7 @@ export function useOfflineFieldMode() {
   const isSyncingRef = useRef(false);
   const [syncResult, setSyncResult] = useState(null); // { synced, failed }
   const [isLoadingContacts, setIsLoadingContacts] = useState(true);
+  const [cacheStatus, setCacheStatus] = useState(null);
 
   // Track online/offline
   useEffect(() => {
@@ -38,11 +41,28 @@ export function useOfflineFieldMode() {
     async function fetchContacts() {
       setIsLoadingContacts(true);
       try {
+        // Check if cache is still valid
+        const cacheExpiry = localStorage.getItem(CONTACTS_EXPIRY_KEY);
+        const isCacheValid = cacheExpiry && Date.now() < parseInt(cacheExpiry);
+        
+        // Try online fetch first
         const data = await base44.entities.Contact.list();
         setContacts(data);
         saveCache(CONTACTS_KEY, data);
+        localStorage.setItem(CONTACTS_EXPIRY_KEY, (Date.now() + CACHE_DURATION).toString());
+        setCacheStatus({ isValid: true, age: 0 });
       } catch {
-        setContacts(loadCache(CONTACTS_KEY));
+        // Fallback to cache
+        const cached = loadCache(CONTACTS_KEY);
+        const cacheExpiry = localStorage.getItem(CONTACTS_EXPIRY_KEY);
+        const isCacheValid = cacheExpiry && Date.now() < parseInt(cacheExpiry);
+        
+        setContacts(cached);
+        setCacheStatus({ 
+          isValid: isCacheValid, 
+          age: isCacheValid ? 'recent' : 'stale',
+          count: cached.length
+        });
       }
       setIsLoadingContacts(false);
     }
@@ -55,7 +75,12 @@ export function useOfflineFieldMode() {
     if (prevOnlineRef.current === false && isOnline) {
       // came back online — refresh contacts
       base44.entities.Contact.list()
-        .then(data => { setContacts(data); saveCache(CONTACTS_KEY, data); })
+        .then(data => { 
+          setContacts(data); 
+          saveCache(CONTACTS_KEY, data);
+          localStorage.setItem(CONTACTS_EXPIRY_KEY, (Date.now() + CACHE_DURATION).toString());
+          setCacheStatus({ isValid: true, age: 0 });
+        })
         .catch(() => {});
     }
     prevOnlineRef.current = isOnline;
@@ -146,6 +171,7 @@ export function useOfflineFieldMode() {
     queue,
     isSyncing,
     syncResult,
+    cacheStatus,
     logInteraction,
     syncQueue,
   };

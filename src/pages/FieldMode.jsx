@@ -2,15 +2,15 @@ import React, { useState, useMemo, useEffect, useRef } from 'react';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
-import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Badge } from '@/components/ui/badge';
-import { Textarea } from '@/components/ui/textarea';
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/components/ui/dialog';
-import { ChevronLeft, ChevronRight, Check, X, AlertCircle, WifiOff, Wifi, RefreshCw, CloudUpload, Search, Clock, MessageSquare, MapPin, Footprints } from 'lucide-react';
+import { ChevronLeft, ChevronRight, Check, X, AlertCircle, WifiOff, Wifi, RefreshCw, CloudUpload, Search, Footprints } from 'lucide-react';
 import { useOfflineFieldMode } from '../hooks/useOfflineFieldMode';
 import { useGeolocation } from '@/hooks/useGeolocation';
 import { base44 } from '@/api/base44Client';
 import { useQuery } from '@tanstack/react-query';
+import MobileContactCard from '@/components/field/MobileContactCard';
+import MobileInteractionForm from '@/components/field/MobileInteractionForm';
 
 const SUPPORT_LEVELS = {
   strong_supporter: { label: 'Strong Supporter', color: 'bg-green-100 text-green-800' },
@@ -23,10 +23,9 @@ const SUPPORT_LEVELS = {
 export default function FieldMode() {
   const [currentIndex, setCurrentIndex] = useState(0);
   const [showInteractionDialog, setShowInteractionDialog] = useState(false);
-  const [interactionData, setInteractionData] = useState({ type: 'door_knock', outcome: 'neutral', notes: '' });
-  const [supportLevel, setSupportLevel] = useState('unknown');
   const [searchQuery, setSearchQuery] = useState('');
   const [searchMode, setSearchMode] = useState(false);
+  const [isSubmittingInteraction, setIsSubmittingInteraction] = useState(false);
 
   const urlParams = new URLSearchParams(window.location.search);
   const routeIdsParam = urlParams.get('route_ids');
@@ -39,6 +38,7 @@ export default function FieldMode() {
     queue,
     isSyncing,
     syncResult,
+    cacheStatus,
     logInteraction,
     syncQueue,
   } = useOfflineFieldMode();
@@ -127,27 +127,30 @@ export default function FieldMode() {
   const currentContact = displayContacts[currentIndex] || displayContacts[0];
   const progress = displayContacts.length > 0 ? Math.round((currentIndex / displayContacts.length) * 100) : 0;
 
-  const handleLogInteraction = async () => {
-    const interactionPayload = {
-      contact_id: currentContact.id,
-      type: interactionData.type,
-      date: new Date().toISOString().split('T')[0],
-      time: new Date().toLocaleTimeString('en-GB', { hour: '2-digit', minute: '2-digit' }),
-      notes: interactionData.notes,
-      outcome: interactionData.outcome,
-    };
+  const handleLogInteraction = async (formData) => {
+    setIsSubmittingInteraction(true);
+    try {
+      const interactionPayload = {
+        contact_id: currentContact.id,
+        type: 'door_knock',
+        date: new Date().toISOString().split('T')[0],
+        time: new Date().toLocaleTimeString('en-GB', { hour: '2-digit', minute: '2-digit' }),
+        notes: formData.notes,
+        outcome: formData.outcome,
+      };
 
-    const contactUpdatePayload = supportLevel !== 'unknown' ? {
-      id: currentContact.id,
-      data: { support_level: supportLevel, canvassed: true, canvass_date: new Date().toISOString().split('T')[0] }
-    } : null;
+      const contactUpdatePayload = formData.support_level !== 'unknown' ? {
+        id: currentContact.id,
+        data: { support_level: formData.support_level, canvassed: true, canvass_date: new Date().toISOString().split('T')[0] }
+      } : null;
 
-    await logInteraction(interactionPayload, contactUpdatePayload);
+      await logInteraction(interactionPayload, contactUpdatePayload);
 
-    setShowInteractionDialog(false);
-    setInteractionData({ type: 'door_knock', outcome: 'neutral', notes: '' });
-    setSupportLevel('unknown');
-    setCurrentIndex(i => Math.min(i + 1, displayContacts.length - 1));
+      setShowInteractionDialog(false);
+      setCurrentIndex(i => Math.min(i + 1, displayContacts.length - 1));
+    } finally {
+      setIsSubmittingInteraction(false);
+    }
   };
 
   const handleSelectContact = (index) => {
@@ -157,8 +160,8 @@ export default function FieldMode() {
   };
 
   return (
-    <div className="min-h-screen bg-background p-4 flex flex-col items-center justify-center">
-      <div className="w-full max-w-md space-y-4">
+    <div className="min-h-screen bg-background px-3 py-4 flex flex-col">
+      <div className="w-full space-y-3 flex-1 flex flex-col">
 
         {/* Route mode banner */}
         {routeIds && (
@@ -169,12 +172,11 @@ export default function FieldMode() {
         )}
 
         {/* Online/Offline status bar */}
-         <div className={`flex items-center justify-between px-3 py-2 rounded-lg text-sm font-medium ${isOnline ? 'bg-green-50 text-green-700' : 'bg-yellow-50 text-yellow-700 border border-yellow-200'}`}>
-           <div className="flex items-center gap-2">
-             {isOnline ? <Wifi className="w-4 h-4" /> : <WifiOff className="w-4 h-4" />}
-             <span>{isOnline ? 'Online' : 'Offline — interactions will sync when reconnected'}</span>
-             {location && <span className="text-xs opacity-70 flex items-center gap-1"><MapPin className="w-3 h-3" /> Location sorted</span>}
-           </div>
+        <div className={`flex items-center justify-between px-3 py-2 rounded-lg text-xs font-medium ${isOnline ? 'bg-green-50 text-green-700' : 'bg-amber-50 text-amber-700 border border-amber-200'}`}>
+          <div className="flex items-center gap-2">
+            {isOnline ? <Wifi className="w-4 h-4" /> : <WifiOff className="w-4 h-4" />}
+            <span>{isOnline ? '✓ Online' : '📱 Offline — syncing when connected'}</span>
+          </div>
           {queue.length > 0 && (
             <div className="flex items-center gap-2">
               <span className="bg-yellow-200 text-yellow-800 text-xs px-2 py-0.5 rounded-full font-bold">{queue.length} pending</span>
@@ -258,165 +260,72 @@ export default function FieldMode() {
           </div>
         )}
 
-        {/* Contact Card — only render when we have a valid contact */}
+        {/* Contact Card — Mobile-first layout */}
         {!currentContact && searchMode && (
-          <div className="text-center py-8 text-muted-foreground text-sm">Select a contact from the search results above.</div>
+          <div className="text-center py-8 text-muted-foreground text-sm">Select a contact from search.</div>
         )}
-        {currentContact && <Card>
-          <CardHeader>
-            <CardTitle className="text-xl">{currentContact?.name}</CardTitle>
-          </CardHeader>
-          <CardContent className="space-y-4">
-            {/* Contact Info */}
-            <div>
-              <p className="text-sm text-muted-foreground">Address</p>
-              <p className="font-medium">{currentContact.address}</p>
-              {currentContact.postcode && <p className="text-sm">{currentContact.postcode}</p>}
-            </div>
-            {currentContact.phone && (
-              <div>
-                <p className="text-sm text-muted-foreground">Phone</p>
-                <p className="font-medium">{currentContact.phone}</p>
+        {currentContact && (
+          <div className="flex-1 overflow-y-auto mb-4">
+            <Card className="sticky top-0">
+              <MobileContactCard 
+                contact={currentContact}
+                index={currentIndex}
+                total={displayContacts.length}
+                stopNumber={routeIds ? routeIds.indexOf(currentContact.id) + 1 : null}
+              />
+              </Card>
               </div>
-            )}
-            {currentContact.email && (
-              <div>
-                <p className="text-sm text-muted-foreground">Email</p>
-                <p className="font-medium text-sm">{currentContact.email}</p>
-              </div>
-            )}
+              )}
 
-            {/* Support Level & Canvass Status */}
-            <div className="border-t border-border pt-3">
-              <p className="text-sm font-semibold mb-2">Relationship Status</p>
-              <div className="space-y-2">
-                {currentContact.support_level && currentContact.support_level !== 'unknown' && (
-                  <Badge className={SUPPORT_LEVELS[currentContact.support_level]?.color}>
-                    {SUPPORT_LEVELS[currentContact.support_level]?.label}
-                  </Badge>
-                )}
-                {currentContact.canvassed && currentContact.canvass_date && (
-                  <div className="flex items-center gap-2 text-xs">
-                    <Clock className="w-3 h-3 text-muted-foreground" />
-                    <span className="text-muted-foreground">Last visited: {currentContact.canvass_date}</span>
-                  </div>
-                )}
-                {!currentContact.canvassed && (
-                  <p className="text-xs text-muted-foreground">Not yet canvassed</p>
-                )}
-              </div>
-            </div>
-
-            {/* Key Issues */}
-            {currentContact.key_issues?.length > 0 && (
-              <div className="border-t border-border pt-3">
-                <p className="text-sm font-semibold mb-2">Key Concerns</p>
-                <div className="flex flex-wrap gap-1">
-                  {currentContact.key_issues.map((issue) => (
-                    <Badge key={issue} variant="secondary" className="text-xs">
-                      {issue}
-                    </Badge>
-                  ))}
-                </div>
-              </div>
-            )}
-
-            {/* General Notes */}
-            {currentContact.notes && (
-              <div className="border-t border-border pt-3">
-                <p className="text-sm font-semibold mb-2">Notes</p>
-                <p className="text-sm bg-secondary/30 p-2 rounded">{currentContact.notes}</p>
-              </div>
-            )}
-
-            {/* Interaction History */}
-            {isOnline && interactions.length > 0 && (
-              <div className="border-t border-border pt-3">
-                <p className="text-sm font-semibold mb-2 flex items-center gap-1">
-                  <MessageSquare className="w-4 h-4" /> Recent Interactions
-                </p>
-                <div className="space-y-2 max-h-40 overflow-y-auto">
-                  {interactions.map((interaction) => (
-                    <div key={interaction.id} className="bg-muted/30 p-2 rounded text-xs">
-                      <p className="font-medium capitalize">{interaction.type.replace('_', ' ')} • {interaction.date}</p>
-                      {interaction.outcome && <p className="text-muted-foreground">Outcome: {interaction.outcome}</p>}
-                      {interaction.notes && <p className="text-muted-foreground mt-1">{interaction.notes}</p>}
-                    </div>
-                  ))}
-                </div>
-              </div>
-            )}
-          </CardContent>
-        </Card>}
-
-        {/* Action Buttons */}
+        {/* Action Buttons — Mobile optimized */}
         {currentContact && !searchMode && (
-          <div className="space-y-3">
-            <Button className="w-full h-12 text-base gap-2" onClick={() => setShowInteractionDialog(true)}>
+          <div className="space-y-2 flex-shrink-0">
+            <Button 
+              className="w-full h-12 text-base gap-2" 
+              onClick={() => setShowInteractionDialog(true)}
+            >
               <Check className="w-5 h-5" /> Log Interaction
             </Button>
             <div className="flex gap-2">
-              <Button variant="outline" className="flex-1" onClick={() => setCurrentIndex(i => Math.max(0, i - 1))} disabled={currentIndex === 0}>
+              <Button 
+                variant="outline" 
+                className="flex-1 h-10" 
+                onClick={() => setCurrentIndex(i => Math.max(0, i - 1))} 
+                disabled={currentIndex === 0}
+              >
                 <ChevronLeft className="w-4 h-4" />
               </Button>
-              <Button variant="outline" className="flex-1" onClick={() => setCurrentIndex(i => Math.min(displayContacts.length - 1, i + 1))} disabled={currentIndex === displayContacts.length - 1}>
+              <Button 
+                variant="outline" 
+                className="flex-1 h-10" 
+                onClick={() => setCurrentIndex(i => Math.min(displayContacts.length - 1, i + 1))} 
+                disabled={currentIndex === displayContacts.length - 1}
+              >
                 <ChevronRight className="w-4 h-4" />
               </Button>
+              <Button 
+                variant="ghost" 
+                className="flex-1 h-10 text-destructive" 
+                onClick={() => setCurrentIndex(i => Math.min(displayContacts.length - 1, i + 1))}
+              >
+                <X className="w-4 h-4" /> Skip
+              </Button>
             </div>
-            <Button variant="ghost" className="w-full text-destructive" onClick={() => setCurrentIndex(i => Math.min(displayContacts.length - 1, i + 1))}>
-              <X className="w-4 h-4 mr-2" /> Skip Contact
-            </Button>
           </div>
         )}
 
-        {/* Interaction Dialog */}
+        {/* Interaction Dialog - Mobile optimized */}
         <Dialog open={showInteractionDialog} onOpenChange={setShowInteractionDialog}>
-          <DialogContent>
+          <DialogContent className="w-full max-w-md mx-auto">
             <DialogHeader>
               <DialogTitle>Log Interaction — {currentContact?.name}</DialogTitle>
             </DialogHeader>
-            <div className="space-y-4">
-              <div>
-                <label className="text-sm font-medium">Support Level</label>
-                <Select value={supportLevel} onValueChange={setSupportLevel}>
-                  <SelectTrigger><SelectValue /></SelectTrigger>
-                  <SelectContent>
-                    <SelectItem value="strong_supporter">Strong Supporter</SelectItem>
-                    <SelectItem value="leaning">Leaning</SelectItem>
-                    <SelectItem value="undecided">Undecided</SelectItem>
-                    <SelectItem value="opposed">Opposed</SelectItem>
-                    <SelectItem value="unknown">Unknown</SelectItem>
-                  </SelectContent>
-                </Select>
-              </div>
-              <div>
-                <label className="text-sm font-medium">Outcome</label>
-                <Select value={interactionData.outcome} onValueChange={val => setInteractionData({ ...interactionData, outcome: val })}>
-                  <SelectTrigger><SelectValue /></SelectTrigger>
-                  <SelectContent>
-                    <SelectItem value="positive">Positive</SelectItem>
-                    <SelectItem value="neutral">Neutral</SelectItem>
-                    <SelectItem value="negative">Negative</SelectItem>
-                    <SelectItem value="no_answer">No Answer</SelectItem>
-                  </SelectContent>
-                </Select>
-              </div>
-              <div>
-                <label className="text-sm font-medium">Key Points</label>
-                <Textarea
-                  placeholder="What was discussed? Any key concerns or promises?"
-                  value={interactionData.notes}
-                  onChange={e => setInteractionData({ ...interactionData, notes: e.target.value })}
-                  className="min-h-24"
-                />
-              </div>
-              <div className="flex gap-2 justify-end">
-                <Button variant="outline" onClick={() => setShowInteractionDialog(false)}>Cancel</Button>
-                <Button onClick={handleLogInteraction}>
-                  {isOnline ? 'Save & Next' : 'Save Offline & Next'}
-                </Button>
-              </div>
-            </div>
+            <MobileInteractionForm
+              contact={currentContact}
+              onSubmit={handleLogInteraction}
+              isOnline={isOnline}
+              isLoading={isSubmittingInteraction}
+            />
           </DialogContent>
         </Dialog>
 
@@ -424,3 +333,5 @@ export default function FieldMode() {
     </div>
   );
 }
+
+// Remove unused SUPPORT_LEVELS constant at component level since it's in MobileContactCard
