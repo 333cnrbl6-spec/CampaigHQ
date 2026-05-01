@@ -9,111 +9,144 @@ Deno.serve(async (req) => {
       return Response.json({ error: 'Unauthorized' }, { status: 401 });
     }
 
-    // Fetch recent import logs (Contact entity imports)
-    const importLogs = await base44.entities.ImportLog.filter(
-      { entity_type: 'Contact' },
-      '-created_date',
-      20
-    );
+    // Get recent import logs
+    const importLogs = await base44.entities.ImportLog.list('-created_date', 20);
+    const contactsWithUrls = importLogs.filter(log => log.file_url && log.entity_type === 'Contact');
 
-    if (importLogs.length === 0) {
-      return Response.json({ message: 'No recent Contact imports found' });
+    if (contactsWithUrls.length === 0) {
+      return Response.json({ 
+        success: true, 
+        files_processed: 0, 
+        total_tags_added: 0,
+        message: 'No import files found to reprocess'
+      });
     }
 
-    // Fetch all current contacts for matching
+    // Get all contacts for matching
     const allContacts = await base44.entities.Contact.list('name', 10000);
+    const contactsByPostcode = {};
+    const contactsByAddress = {};
+    
+    allContacts.forEach(contact => {
+      if (contact.postcode) {
+        const normalized = (contact.postcode || '').replace(/\s/g, '').toUpperCase();
+        if (!contactsByPostcode[normalized]) contactsByPostcode[normalized] = [];
+        contactsByPostcode[normalized].push(contact);
+      }
+      if (contact.address) {
+        const normalized = (contact.address || '').toLowerCase().trim();
+        if (!contactsByAddress[normalized]) contactsByAddress[normalized] = [];
+        contactsByAddress[normalized].push(contact);
+      }
+    });
 
     let totalTagsAdded = 0;
-    const results = [];
+    const errors = [];
 
-    // Process each recent import file
-    for (const log of importLogs) {
-      if (!log.file_url) continue;
-
+    // Process each import file
+    for (const importLog of contactsWithUrls) {
       try {
-        // Re-extract with focus on zone/turf/area columns
-        const extractRes = await base44.integrations.Core.InvokeLLM({
-          prompt: `Re-extract all records from this Contact file, focusing on identifying any zone, turf, area, or region columns.
-Map the following columns to their target fields:
-- name → name
-- address → address
-- postcode → postcode
-- email → email
-- phone → phone
-- zone/turf/area/region/electoral_area/ward → tags (as an array)
-- any other zone-like field → tags
-
-For zone/turf columns: if they have a value, put it in a tags array like ["Zone Name"] or ["TYL1"]. If empty, tags: [].
-
-Return ALL records as a JSON array with name, address, postcode, and tags fields.`,
-          file_urls: [log.file_url],
-          response_json_schema: {
+        // Extract raw data from the file
+        const extractRes = await base44.integrations.Core.ExtractDataFromUploadedFile({
+          file_url: importLog.file_url,
+          json_schema: {
             type: 'object',
             properties: {
-              records: {
+              rows: {
                 type: 'array',
-                items: {
-                  type: 'object',
-                  properties: {
-                    name: { type: 'string' },
-                    address: { type: 'string' },
-                    postcode: { type: 'string' },
-                    tags: { type: 'array', items: { type: 'string' } }
-                  }
-                }
+                items: { type: 'object' }
               }
             }
           }
         });
 
-        const extracted = extractRes?.records || [];
+        if (extractRes.status !== 'success') {
+          errors.push(`File ${importLog.file_name}: extraction failed`);
+          continue;
+        }
 
-        // Match extracted records to existing contacts and add tags
-        for (const rec of extracted) {
-          if (!rec.tags || rec.tags.length === 0) continue;
+        // Parse extracted data
+        let rows = [];
+        const output = extractRes.output;
+        
+        if (Array.isArray(output)) {
+          rows = output;
+        } else if (output?.rows && Array.isArray(output.rows)) {
+          rows = output.rows;
+        } else if (typeof output === 'object') {
+          rows = [output];
+        }
 
-          // Try to match by name + postcode, or name + address
-          const match = allContacts.find(c => {
-            const nameMatch = c.name?.toLowerCase() === rec.name?.toLowerCase();
-            const postcodeMatch = c.postcode?.replace(/\s+/g, '') === rec.postcode?.replace(/\s+/g, '');
-            const addressMatch = c.address?.toLowerCase() === rec.address?.toLowerCase();
+        rows = rows.filter(r => typeof r === 'object' && r !== null);
 
-            return nameMatch && (postcodeMatch || addressMatch);
-          });
+        if (rows.length === 0) {
+          errors.push(`File ${importLog.file_name}: no data found`);
+          continue;
+        }
 
-          if (match) {
-            const currentTags = match.tags || [];
-            const newTags = rec.tags.filter(t => t && !currentTags.includes(t));
+        // Get column names from first row
+        const columnNames = Object.keys(rows[0] || {});
+        
+        // Identify columns: look for TYL, address (second col), and postcode (last col)
+        const tylCol = columnNames.find(c => c?.toUpperCase().includes('TYL'));
+        const addressCol = columnNames[1]; // Second column is address
+        const postcodeCol = columnNames[columnNames.length - 1]; // Last column is postcode
 
-            if (newTags.length > 0) {
-              const updatedTags = [...currentTags, ...newTags];
-              await base44.entities.Contact.update(match.id, { tags: updatedTags });
-              totalTagsAdded += newTags.length;
+        if (!tylCol) {
+          errors.push(`File ${importLog.file_name}: no TYL column found`);
+          continue;
+        }
+
+        // Process each row
+        for (const row of rows) {
+          const tylCode = row[tylCol];
+          const address = row[addressCol];
+          const postcode = row[postcodeCol];
+
+          // Skip if no TYL or address
+          if (!tylCode || !address) continue;
+
+          // Normalize postcode for matching
+          const normalizedPostcode = (postcode || '').replace(/\s/g, '').toUpperCase();
+
+          // Try to find matching contact by postcode + address
+          let matchedContact = null;
+
+          if (normalizedPostcode && contactsByPostcode[normalizedPostcode]) {
+            const candidates = contactsByPostcode[normalizedPostcode];
+            matchedContact = candidates.find(c => 
+              c.address?.toLowerCase().includes(address.toLowerCase())
+            ) || candidates[0];
+          }
+
+          // If no match by postcode+address, try by address alone
+          if (!matchedContact) {
+            const normalizedAddress = address.toLowerCase().trim();
+            if (contactsByAddress[normalizedAddress]) {
+              matchedContact = contactsByAddress[normalizedAddress][0];
+            }
+          }
+
+          // If we found a match, add the tag
+          if (matchedContact) {
+            const existingTags = matchedContact.tags || [];
+            if (!existingTags.includes(tylCode)) {
+              existingTags.push(tylCode);
+              await base44.entities.Contact.update(matchedContact.id, { tags: existingTags });
+              totalTagsAdded++;
             }
           }
         }
-
-        results.push({
-          file: log.file_name,
-          records_extracted: extracted.length,
-          records_matched: extracted.filter(r => allContacts.find(c => 
-            c.name?.toLowerCase() === r.name?.toLowerCase()
-          )).length
-        });
-      } catch (err) {
-        results.push({
-          file: log.file_name,
-          error: err.message
-        });
+      } catch (error) {
+        errors.push(`File ${importLog.file_name}: ${error.message}`);
       }
     }
 
     return Response.json({
       success: true,
-      files_processed: results.length,
+      files_processed: contactsWithUrls.length,
       total_tags_added: totalTagsAdded,
-      details: results,
-      message: `Reprocessed ${results.length} recent imports and added ${totalTagsAdded} zone tags to existing contacts`
+      errors: errors.length > 0 ? errors : undefined
     });
   } catch (error) {
     return Response.json({ error: error.message }, { status: 500 });
