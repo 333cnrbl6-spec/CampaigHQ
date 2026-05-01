@@ -3,7 +3,8 @@ import {
   BookOpen, LayoutDashboard, Users, Zap, MapPin, Map, Printer,
   Route, Newspaper, ClipboardList, Calendar, Send, BarChart3,
   Upload, MessageSquare, FileText, ChevronRight, Search,
-  CheckCircle2, AlertCircle, Info, ThumbsUp, DoorOpen
+  CheckCircle2, AlertCircle, Info, ThumbsUp, DoorOpen,
+  ShieldCheck, Navigation, FileSpreadsheet, Footprints, ScrollText, UserCog
 } from 'lucide-react';
 import { Input } from '@/components/ui/input';
 import { cn } from '@/lib/utils';
@@ -20,7 +21,7 @@ const SECTIONS = [
     content: [
       {
         type: 'intro',
-        text: 'Welcome to the Paul Binns Green Party Campaign App — a complete campaign management platform for voter contact, leaflet tracking, volunteer coordination, and election day operations.',
+        text: 'Welcome to the Paul Binns Green Party Campaign App — a complete campaign management platform for voter contact, leaflet tracking, volunteer coordination, route planning, and election day operations.',
       },
       {
         type: 'steps',
@@ -39,6 +40,21 @@ const SECTIONS = [
           'The sidebar can be collapsed using the arrow at the bottom to give more screen space.',
           'On mobile, the layout adjusts automatically — all features are accessible.',
           'The green Olive bot (bottom right) is always available to answer questions.',
+        ],
+      },
+      {
+        type: 'list',
+        heading: 'Key sections at a glance',
+        items: [
+          'Dashboard — campaign overview, live stats, and coverage map',
+          'Voter Contacts — full database of every contact in the ward',
+          'Field Mode — mobile door-knocking interface with offline support',
+          'Leaflet Distribution — three-round tracking per street',
+          'Route Optimiser — postcode-accurate walking routes',
+          'Turf Sheets & Print — pre-briefing safety form + printable canvassing sheets',
+          'Voter List Import — bulk import from the electoral register spreadsheet',
+          'GDPR Compliance — consent tracking, data requests, and retention controls',
+          'Organiser Dashboard — volunteer performance and coverage heatmap',
         ],
       },
       {
@@ -267,48 +283,141 @@ const SECTIONS = [
         heading: 'Marking a Street as Done',
         steps: [
           'Click "Leaflet Distribution" in the sidebar.',
-          'Find the street using the search or filter.',
+          'Find the street using the search or filter by turf or round.',
           'Click the tick button for the relevant round (R1, R2, or R3).',
           'The progress bars update automatically.',
         ],
       },
       {
         type: 'steps',
-        heading: 'Printing Volunteer Sheets',
+        heading: 'Printing a Leaflet Run Sheet',
         steps: [
-          'Click "Turf Sheets" in the sidebar.',
-          'Select a turf to print, or filter by area.',
-          'Click "Print Sheet" — a clean per-street table is generated with house counts, postal voter numbers, and tick columns.',
+          'Inside Leaflet Distribution, click "Print Run Sheet" for a turf.',
+          'You will first be shown the Safety Briefing Form — fill this in before printing.',
+          'The printed output includes a cover page with volunteer details, emergency contact, and GDPR reminder.',
+          'The main sheet lists all streets with round tick boxes, house counts, and postal voter counts.',
           'Hand the printed sheet to volunteers at the start of a session.',
         ],
+      },
+      {
+        type: 'tip',
+        text: 'Always complete the Safety Briefing form before printing — it ensures lone worker safety details are on the sheet in case of emergency.',
+      },
+    ],
+  },
+  {
+    id: 'turf-sheets',
+    icon: Printer,
+    title: 'Turf Sheets & Print',
+    color: 'text-fuchsia-600',
+    bg: 'bg-fuchsia-50',
+    content: [
+      {
+        type: 'intro',
+        text: 'Turf Sheets generate printable canvassing documents for any set of contacts. They can be printed in standard mode or in Optimised Route mode (sorted by walking order from the Route Optimiser).',
+      },
+      {
+        type: 'steps',
+        heading: 'Printing a Standard Turf Sheet',
+        steps: [
+          'Click "Turf Sheets" in the sidebar.',
+          'Use the turf zone filter or search to find the contacts you want.',
+          'Select individual contacts or click "Select All".',
+          'Click "Print Sheet".',
+          'Complete the Safety Briefing Form (volunteer name, date, emergency contact, GDPR confirmation).',
+          'The sheet generates with a cover page followed by a table of contacts grouped by street.',
+        ],
+      },
+      {
+        type: 'steps',
+        heading: 'Printing an Optimised Route Sheet',
+        steps: [
+          'First generate a route in the Route Optimiser (see Route Optimiser section).',
+          'From the route panel, click "Print Turf Sheet".',
+          'This opens Turf Sheets with contacts pre-selected in walking order.',
+          'Complete the Safety Briefing Form and print.',
+          'The sheet title shows "Optimised Route" and contacts are listed in route sequence.',
+        ],
+      },
+      {
+        type: 'list',
+        heading: 'What the Safety Briefing Form collects',
+        items: [
+          'Volunteer name and date of session',
+          'Emergency contact name and phone number (mandatory)',
+          'Health or accessibility notes (optional)',
+          'Lone worker safety confirmation (mandatory tick)',
+          'GDPR data handling confirmation (mandatory tick)',
+        ],
+      },
+      {
+        type: 'list',
+        heading: 'What the Print Cover Page shows',
+        items: [
+          'Campaign branding and task title',
+          'Volunteer and date details',
+          'Emergency contact prominently highlighted',
+          'Contact/street count and estimated leaflets needed',
+          'Safeguarding and GDPR reminder block',
+        ],
+      },
+      {
+        type: 'warning',
+        text: 'The Safety Briefing form cannot be skipped. All mandatory fields (name, emergency contact, both confirmation ticks) must be completed before the sheet will generate.',
       },
     ],
   },
   {
     id: 'route',
-    icon: Route,
+    icon: Navigation,
     title: 'Route Optimiser',
     color: 'text-indigo-600',
     bg: 'bg-indigo-50',
     content: [
       {
         type: 'intro',
-        text: 'The Route Optimiser builds efficient walking routes for volunteers — minimising backtracking and maximising the number of doors covered per hour.',
+        text: 'The Route Optimiser builds accurate walking routes for canvassing sessions. It groups contacts by postcode, finds the most efficient order to visit each postcode cluster, then sorts house numbers within each street for a natural walking sequence.',
       },
       {
         type: 'steps',
         heading: 'Building a Route',
         steps: [
-          'Click "Route Optimizer" in the Maps & Routes section.',
-          'Select a starting point and the streets or turf you want to cover.',
-          'The optimiser calculates the most efficient walking order.',
-          'View the route on the map with turn-by-turn directions.',
-          'Share the route with volunteers or print it as a reference sheet.',
+          'Click "Route Optimiser" in the Maps & Routes section of the sidebar.',
+          'Use the Turf Zone filter to narrow down to a specific area.',
+          'Select individual contacts or click "Select All" to include the whole zone.',
+          'Click "Generate Route".',
+          'The system looks up each unique postcode via postcodes.io (free UK service) — typically takes a few seconds.',
+          'The optimised route appears on the map and in the visit order panel.',
         ],
       },
       {
+        type: 'list',
+        heading: 'How the optimisation works',
+        items: [
+          'Contacts are grouped by full postcode (e.g. M29 8AB)',
+          'Postcodes are ordered using a nearest-neighbour algorithm to minimise walking distance',
+          'Within each postcode, contacts are sorted by house number for natural street-walking order',
+          'The map shows the route connecting all stops in sequence',
+          'Contacts without a postcode are flagged and excluded — make sure postcodes are imported correctly',
+        ],
+      },
+      {
+        type: 'steps',
+        heading: 'Using a Route',
+        steps: [
+          'From the Visit Order panel (right side), click "Field Mode" to start door-knocking in route order on your phone.',
+          'Click "Print Turf Sheet" to generate a printable sheet with the contacts in route sequence.',
+          'Click "Export CSV" to download the route as a spreadsheet.',
+          'Click "Leaflet Tracker" (if a turf zone is selected) to open the street tracking view for that zone.',
+        ],
+      },
+      {
+        type: 'warning',
+        text: 'Contacts must have a postcode to be included in the route. If many contacts are showing as "No postcode", re-import the voter list file — the importer now automatically extracts postcodes from the electoral register spreadsheet.',
+      },
+      {
         type: 'tip',
-        text: 'With limited volunteer hours remaining before polling day, using the route optimiser can meaningfully increase the number of doors covered per session.',
+        text: 'Using the Route Optimiser before each canvassing session can meaningfully increase the number of doors covered per hour — especially in areas with streets running in different directions.',
       },
     ],
   },
@@ -410,32 +519,205 @@ const SECTIONS = [
     ],
   },
   {
-    id: 'import',
-    icon: Upload,
-    title: 'Data Import',
+    id: 'voter-import',
+    icon: FileSpreadsheet,
+    title: 'Voter List Import',
     color: 'text-emerald-600',
     bg: 'bg-emerald-50',
     content: [
       {
         type: 'intro',
-        text: 'Import bulk voter contact lists from CSV, Excel, or Word files. The AI automatically detects field structure and maps columns to the correct fields.',
+        text: 'The Voter List Importer is designed specifically for the Tyldesley & Mosley Common electoral register spreadsheet (XLSX format). It automatically extracts addresses, postcodes, and turf zone tags from each sheet.',
+      },
+      {
+        type: 'steps',
+        heading: 'Importing the Electoral Register',
+        steps: [
+          'Click "Voter Import" in the Admin section of the sidebar.',
+          'Drag and drop the XLSX electoral register file into the upload zone.',
+          'Choose the voter type: Postal Voters or Registered (Non-Postal).',
+          'A preview shows how many addresses are on each sheet and which turf zone they belong to.',
+          'Click "Import" — records are saved in batches with a progress bar.',
+          'When complete, a success screen confirms how many contacts were saved.',
+        ],
+      },
+      {
+        type: 'list',
+        heading: 'What is automatically extracted',
+        items: [
+          'Address (full street address from column 2 of the spreadsheet)',
+          'Postcode — scanned from dedicated postcode columns (cols 2–5) or extracted from the address string using a UK postcode pattern',
+          'Turf zone tag — derived from the sheet name (e.g. "TYL 1 - 835" → tag "TYL1")',
+          'Postal Voter tag — added automatically if you select "Postal Voters" at import time',
+          'Registered voter flag — set to true for all electoral register imports',
+        ],
+      },
+      {
+        type: 'warning',
+        text: 'Postcodes are essential for the Route Optimiser. If contacts are missing postcodes after import, check the spreadsheet has a postcode column or that postcodes are included within the address text.',
+      },
+      {
+        type: 'steps',
+        heading: 'Importing Generic Data (CSV/Excel/JSON)',
+        steps: [
+          'Click "Import Data" in the Admin section.',
+          'Drag and drop your file (CSV, Excel, JSON, PDF, or Word).',
+          'The AI detects field structure and suggests column mappings.',
+          'Review and adjust the mapping if needed.',
+          'Validation runs automatically — review any flagged records.',
+          'Confirm and import. The import log is saved for rollback if needed.',
+        ],
+      },
+    ],
+  },
+  {
+    id: 'gdpr',
+    icon: ShieldCheck,
+    title: 'GDPR Compliance',
+    color: 'text-slate-600',
+    bg: 'bg-slate-100',
+    content: [
+      {
+        type: 'intro',
+        text: 'The GDPR Compliance module helps you meet your legal obligations under UK GDPR — managing consent records, handling right-to-be-forgotten requests, and applying data retention policies.',
+      },
+      {
+        type: 'list',
+        heading: 'What GDPR Compliance covers',
+        items: [
+          'Consent Log — view which contacts have given consent, when, and by what method',
+          'Right to Be Forgotten — process deletion requests from contacts',
+          'Data Retention — identify and clean up contacts whose data is past its retention period',
+          'Consent methods tracked: door knock, phone, email, online form, electoral roll, unknown',
+        ],
+      },
+      {
+        type: 'steps',
+        heading: 'Processing a Right to Be Forgotten Request',
+        steps: [
+          'Click "GDPR Compliance" in the sidebar.',
+          'Go to the "Right to Be Forgotten" tab.',
+          'Search for the contact by name or email.',
+          'Click "Request Deletion".',
+          'The contact is flagged with deletion_requested = true and a date is recorded.',
+          'An admin can then confirm and permanently delete the record.',
+        ],
+      },
+      {
+        type: 'steps',
+        heading: 'Reviewing the Consent Log',
+        steps: [
+          'Click "GDPR Compliance" → "Consent Log" tab.',
+          'Filter by consent method or date range.',
+          'Contacts obtained via the electoral roll are automatically recorded.',
+          'For door-knock contacts, consent should be recorded when adding or updating the contact.',
+        ],
+      },
+      {
+        type: 'warning',
+        text: 'Under UK GDPR, you must have a lawful basis for holding each contact\'s personal data. The electoral register provides a legitimate interest basis for registered voters. For other contacts, ensure consent has been recorded.',
+      },
+    ],
+  },
+  {
+    id: 'import',
+    icon: Upload,
+    title: 'Data Import (Generic)',
+    color: 'text-teal-600',
+    bg: 'bg-teal-50',
+    content: [
+      {
+        type: 'intro',
+        text: 'The generic Data Import tool accepts CSV, Excel, JSON, PDF, and Word files and uses AI to automatically detect and map fields to the Contact database.',
       },
       {
         type: 'steps',
         heading: 'Importing a Contact List',
         steps: [
           'Click "Import Data" in the Admin section.',
-          'Drag and drop your file into the upload zone (CSV, Excel, JSON, PDF, Word).',
-          'The AI detects the field structure and suggests mappings.',
-          'Review and adjust the column mapping if needed.',
+          'Drag and drop your file into the upload zone.',
+          'The AI detects the field structure and suggests column mappings.',
+          'Review and adjust the mapping if needed.',
           'Validation runs automatically — review any flagged records.',
           'Confirm and import.',
           'The import log is saved so you can roll back if needed.',
         ],
       },
       {
+        type: 'tip',
+        text: 'For the official electoral register file, use "Voter Import" instead — it has a dedicated parser that correctly handles the multi-sheet turf zone format and extracts postcodes automatically.',
+      },
+      {
         type: 'warning',
         text: 'Always review the validation report before confirming an import — duplicate addresses or missing postcodes will be flagged for your attention.',
+      },
+    ],
+  },
+  {
+    id: 'organiser',
+    icon: UserCog,
+    title: 'Organiser Dashboard',
+    color: 'text-blue-700',
+    bg: 'bg-blue-50',
+    content: [
+      {
+        type: 'intro',
+        text: 'The Organiser Dashboard gives campaign managers a bird\'s-eye view of volunteer performance, canvassing coverage gaps, and overall campaign health.',
+      },
+      {
+        type: 'list',
+        heading: 'What the Organiser Dashboard shows',
+        items: [
+          'Total doors knocked this week vs target',
+          'Volunteer activity — who has been out and when',
+          'Canvassing coverage heatmap — streets with no contact highlighted',
+          'Support level distribution across the ward',
+          'Recent session logs from all volunteers',
+          'Turfs completed, in progress, and not started',
+        ],
+      },
+      {
+        type: 'steps',
+        heading: 'Using the coverage map',
+        steps: [
+          'Click "Organiser Dashboard" in the sidebar.',
+          'The map shows all turfs colour-coded by completion status.',
+          'Click any turf to see which volunteer is assigned and their progress.',
+          'Use this to identify gaps and reassign or add resource before polling day.',
+        ],
+      },
+      {
+        type: 'tip',
+        text: 'Review the Organiser Dashboard at the end of each canvassing day to spot unworked streets and brief the team the following morning.',
+      },
+    ],
+  },
+  {
+    id: 'scripts',
+    icon: ScrollText,
+    title: 'Canvassing Scripts',
+    color: 'text-orange-600',
+    bg: 'bg-orange-50',
+    content: [
+      {
+        type: 'intro',
+        text: 'The Canvassing Scripts section provides AI-generated, editable scripts for door-knocking conversations — tailored to different voter types and key local issues.',
+      },
+      {
+        type: 'steps',
+        heading: 'Using a Script',
+        steps: [
+          'Click "Canvassing Scripts" in the sidebar.',
+          'Select a script from the list or click "Generate New Script".',
+          'Choose the audience (undecided voter, known supporter, postal voter, etc.).',
+          'The AI generates a conversational script referencing local issues.',
+          'Scripts can be printed and handed to volunteers before a session.',
+          'Field Mode can display the relevant script alongside each contact.',
+        ],
+      },
+      {
+        type: 'tip',
+        text: 'Consistent, issue-led scripts make conversations more productive. Share updated scripts before each session as new local issues emerge.',
       },
     ],
   },
@@ -476,6 +758,22 @@ const SECTIONS = [
           {
             q: 'Data looks wrong after an import',
             a: 'Go to the import log in Data Import and use the rollback option to undo the import. Then correct your source file and re-import.',
+          },
+          {
+            q: 'Route Optimiser says many contacts have no postcode',
+            a: 'The voter list was likely imported before postcode extraction was added. Re-import the electoral register file using the Voter Import page — the importer now automatically detects and saves postcodes from the spreadsheet.',
+          },
+          {
+            q: 'Safety Briefing form won\'t let me proceed to print',
+            a: 'All mandatory fields must be completed: volunteer name, emergency contact name, emergency contact phone, and both confirmation checkboxes (lone worker safety + GDPR). Check for any fields highlighted in red.',
+          },
+          {
+            q: 'Printed sheet has no cover page',
+            a: 'The cover page only appears when you go through the Safety Briefing form before printing. If you printed directly from the browser, use the in-app "Print Sheet" button instead.',
+          },
+          {
+            q: 'Route Optimiser contacts are still in the wrong area',
+            a: 'Make sure you\'ve filtered by a specific Turf Zone before selecting contacts. If contacts have incorrect postcodes in the database, edit them individually in Voter Contacts.',
           },
         ],
       },
