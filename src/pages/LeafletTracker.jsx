@@ -9,6 +9,8 @@ import { Badge } from '@/components/ui/badge';
 import { Plus, CheckCircle2, Clock, Loader2, MapPin, User, Home, Printer, ChevronDown, ChevronUp, Navigation, X } from 'lucide-react';
 import LeafletRunForm from '../components/leaflet/LeafletRunForm';
 import RoundProgressCard from '../components/leaflet/RoundProgressCard';
+import PrePrintBriefing from '../components/print/PrePrintBriefing';
+import LeafletRunSheet from '../components/leaflet/LeafletRunSheet';
 
 const ROUND_CONFIG = {
   1: { label: 'Round 1 — All Households', color: 'bg-blue-100 text-blue-800 border-blue-200', dot: 'bg-blue-500', description: 'Leaflet to every household' },
@@ -45,6 +47,8 @@ export default function LeafletTracker() {
   const [filterTurf, setFilterTurf] = useState(initialTurf);
   const [activeRound, setActiveRound] = useState(0); // 0 = all rounds view
   const [expandedStreet, setExpandedStreet] = useState(null);
+  const [printContext, setPrintContext] = useState(null); // { turfId }
+  const [briefingData, setBriefingData] = useState(null);
   const queryClient = useQueryClient();
 
   const { data: runs = [], isLoading } = useQuery({
@@ -108,9 +112,40 @@ export default function LeafletTracker() {
   const totalPostalHouses = runs.reduce((s, r) => s + (r.postal_voter_houses || 0), 0);
 
   const handlePrint = (turfId) => {
-    const url = `/turf-sheets?turf_id=${turfId}`;
-    window.open(url, '_blank');
+    setPrintContext({ turfId });
+    setBriefingData(null);
   };
+
+  // --- Pre-print briefing flow ---
+  if (printContext && !briefingData) {
+    const turfForPrint = turfs.find(t => t.id === printContext.turfId);
+    const streetsForPrint = runs.filter(r => r.turf_id === printContext.turfId);
+    const totalH = streetsForPrint.reduce((s, r) => s + (r.total_houses || 0), 0);
+    const totalP = streetsForPrint.reduce((s, r) => s + (r.postal_voter_houses || 0), 0);
+    return (
+      <PrePrintBriefing
+        mode="leaflet"
+        defaultTitle={turfForPrint ? `${turfForPrint.name} — Leaflet Sheet` : 'Leaflet Distribution Sheet'}
+        streetCount={streetsForPrint.length}
+        totalHouses={totalH}
+        onBack={() => setPrintContext(null)}
+        onConfirm={(data) => setBriefingData(data)}
+      />
+    );
+  }
+
+  if (printContext && briefingData) {
+    const turfForPrint = turfs.find(t => t.id === printContext.turfId);
+    const streetsForPrint = runs.filter(r => r.turf_id === printContext.turfId);
+    return (
+      <LeafletRunSheet
+        turf={turfForPrint}
+        streets={streetsForPrint}
+        briefing={briefingData}
+        onBack={() => { setPrintContext(null); setBriefingData(null); }}
+      />
+    );
+  }
 
   return (
     <div className="p-6 lg:p-10 max-w-[1200px] mx-auto">

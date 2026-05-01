@@ -1,6 +1,7 @@
 import { useMemo, useRef } from 'react';
 import { Button } from '@/components/ui/button';
 import { Printer, ArrowLeft, Leaf } from 'lucide-react';
+import PrintCoverPage from '../print/PrintCoverPage';
 
 const supportLabel = {
   strong_supporter: 'Strong Supporter',
@@ -22,7 +23,7 @@ function extractStreet(address = '') {
   return address.replace(/^\d+[a-zA-Z]?\s*/, '').trim() || address;
 }
 
-export default function TurfSheetPrint({ contacts, title, groupBy, onBack }) {
+export default function TurfSheetPrint({ contacts, title, groupBy, briefing, onBack }) {
   const printRef = useRef(null);
 
   const grouped = useMemo(() => {
@@ -63,6 +64,16 @@ export default function TurfSheetPrint({ contacts, title, groupBy, onBack }) {
 
       {/* Printable area */}
       <div ref={printRef} className="p-6 max-w-[210mm] mx-auto print:p-0 print:max-w-none print:mx-0">
+
+        {/* Cover page — only when briefing data is present */}
+        {briefing && (
+          <PrintCoverPage
+            title={title}
+            mode="canvassing"
+            briefing={briefing}
+            stats={{ contactCount: contacts.length, streetCount: grouped.length, groupBy }}
+          />
+        )}
 
         {/* Header */}
         <div className="flex items-start justify-between mb-6 pb-4 border-b-2 border-slate-800 print:mb-4">
@@ -158,10 +169,10 @@ export default function TurfSheetPrint({ contacts, title, groupBy, onBack }) {
         @media print {
           body * { visibility: hidden; }
           .print\\:p-0, .print\\:p-0 * { visibility: visible; }
-          /* target the printable div */
           [data-print], [data-print] * { visibility: visible; }
         }
         @page { margin: 12mm; size: A4; }
+        .page-break-after { page-break-after: always; }
       `}</style>
     </>
   );

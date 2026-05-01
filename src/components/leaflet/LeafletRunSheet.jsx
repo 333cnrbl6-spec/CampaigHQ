@@ -1,7 +1,8 @@
 import { Button } from '@/components/ui/button';
 import { ArrowLeft, Printer, MapPin, Home, Mail } from 'lucide-react';
+import PrintCoverPage from '../print/PrintCoverPage';
 
-export default function LeafletRunSheet({ turf, streets = [], onBack }) {
+export default function LeafletRunSheet({ turf, streets = [], briefing, onBack }) {
   const turfName = turf?.name || 'Leaflet Round';
   const totalHouses = streets.reduce((s, r) => s + (r.total_houses || 0), 0);
   const totalPostal = streets.reduce((s, r) => s + (r.postal_voter_houses || 0), 0);
@@ -27,6 +28,22 @@ export default function LeafletRunSheet({ turf, streets = [], onBack }) {
 
       {/* Printable content */}
       <div className="max-w-[800px] mx-auto p-6 print:p-4 space-y-6">
+
+        {/* Cover page */}
+        {briefing && (
+          <PrintCoverPage
+            title={turfName}
+            mode="leaflet"
+            briefing={briefing}
+            stats={{
+              streetCount: streets.length,
+              totalHouses,
+              totalPostal,
+              totalNonPostal,
+            }}
+          />
+        )}
+
         {/* Header */}
         <div className="border-b-2 border-foreground pb-4 print:pb-2">
           <h1 className="text-2xl font-bold font-heading print:text-xl">{turfName}</h1>
@@ -147,6 +164,11 @@ export default function LeafletRunSheet({ turf, streets = [], onBack }) {
           R1 = All households · R2 = Postal voters only · R3 = Excluding postal voters
         </div>
       </div>
+
+      <style>{`
+        @page { margin: 12mm; size: A4; }
+        .page-break-after { page-break-after: always; }
+      `}</style>
     </div>
   );
 }

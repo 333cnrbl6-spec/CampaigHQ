@@ -9,6 +9,7 @@ import { Checkbox } from '@/components/ui/checkbox';
 import { Search, Printer, Users, MapPin, ChevronDown, ChevronRight, CheckCircle2, ArrowLeft, Footprints } from 'lucide-react';
 import TurfSheetPrint from '../components/turf/TurfSheetPrint';
 import LeafletRunSheet from '../components/leaflet/LeafletRunSheet';
+import PrePrintBriefing from '../components/print/PrePrintBriefing';
 
 const supportBadge = {
   strong_supporter: { label: 'Strong', cls: 'bg-green-100 text-green-800 border-green-200' },
@@ -40,7 +41,9 @@ export default function TurfSheets() {
   );
   const [expandedStreets, setExpandedStreets] = useState(new Set());
   const [groupBy, setGroupBy] = useState('street'); // 'street' | 'postcode'
-  const [showPrint, setShowPrint] = useState(!!routeIds);
+  const [showBriefing, setShowBriefing] = useState(!!routeIds);
+  const [showPrint, setShowPrint] = useState(false);
+  const [briefingData, setBriefingData] = useState(null);
   const [sheetTitle, setSheetTitle] = useState(routeIds ? 'Optimised Route Sheet' : 'Canvassing Turf Sheet');
 
   const { data: contacts = [], isLoading } = useQuery({
@@ -127,15 +130,54 @@ export default function TurfSheets() {
   const selectAll = () => setSelectedIds(new Set(filtered.map(c => c.id)));
   const clearAll = () => setSelectedIds(new Set());
 
-  // If turf_id is in URL, show the leaflet-run based sheet
+  // If turf_id is in URL, show briefing → leaflet-run based sheet
   if (turfIdParam) {
     const turf = turfs.find(t => t.id === turfIdParam);
     const streets = leafletRuns.filter(r => r.turf_id === turfIdParam);
+    const totalH = streets.reduce((s, r) => s + (r.total_houses || 0), 0);
+    const totalP = streets.reduce((s, r) => s + (r.postal_voter_houses || 0), 0);
+
+    if (!briefingData) {
+      return (
+        <PrePrintBriefing
+          mode="leaflet"
+          defaultTitle={turf ? `${turf.name} — Leaflet Sheet` : 'Leaflet Distribution Sheet'}
+          streetCount={streets.length}
+          totalHouses={totalH}
+          onBack={() => window.history.back()}
+          onConfirm={(data) => setBriefingData(data)}
+        />
+      );
+    }
+
     return (
       <LeafletRunSheet
         turf={turf}
         streets={streets}
-        onBack={() => window.history.back()}
+        briefing={briefingData}
+        onBack={() => setBriefingData(null)}
+      />
+    );
+  }
+
+  if (showBriefing) {
+    return (
+      <PrePrintBriefing
+        mode="canvassing"
+        defaultTitle={sheetTitle}
+        contactCount={selectedContacts.length}
+        streetCount={
+          new Set(selectedContacts.map(c => c.address?.replace(/^\d+[a-zA-Z]?\s*/, '').trim() || c.address)).size
+        }
+        onBack={() => {
+          setShowBriefing(false);
+          if (routeIds) window.history.back();
+        }}
+        onConfirm={(data) => {
+          setBriefingData(data);
+          setShowBriefing(false);
+          setShowPrint(true);
+        }}
       />
     );
   }
@@ -146,7 +188,8 @@ export default function TurfSheets() {
         contacts={selectedContacts}
         title={sheetTitle}
         groupBy={groupBy}
-        onBack={() => setShowPrint(false)}
+        briefing={briefingData}
+        onBack={() => { setShowPrint(false); setBriefingData(null); }}
       />
     );
   }
@@ -167,7 +210,7 @@ export default function TurfSheets() {
         <Button
           className="gap-2"
           disabled={selectedIds.size === 0}
-          onClick={() => setShowPrint(true)}
+          onClick={() => setShowBriefing(true)}
         >
           <Printer className="w-4 h-4" />
           Print Sheet ({selectedIds.size})
