@@ -27,6 +27,14 @@ function isPostalVoterSheet(sheetName) {
   return false;
 }
 
+const UK_POSTCODE_RE = /\b([A-Z]{1,2}\d{1,2}[A-Z]?\s*\d[A-Z]{2})\b/i;
+
+function extractPostcode(str) {
+  if (!str) return null;
+  const m = String(str).match(UK_POSTCODE_RE);
+  return m ? m[1].toUpperCase().replace(/\s+/g, ' ').trim() : null;
+}
+
 function parseSheet(sheet, sheetName, isPostal = false) {
   const rows = XLSX.utils.sheet_to_json(sheet, { header: 1, defval: null });
   const turf = parseTurfZone(sheetName);
@@ -39,8 +47,19 @@ function parseSheet(sheet, sheetName, isPostal = false) {
     const addr = String(raw).trim();
     // Skip if it looks like a header (same as turf code) or is empty
     if (!addr || addr.toUpperCase().startsWith('TYL') || addr.toUpperCase() === turf) continue;
+
+    // Try to find postcode: first check dedicated columns (2, 3, 4), then inline in address
+    let postcode = null;
+    for (let col = 2; col <= 5; col++) {
+      if (row[col]) {
+        postcode = extractPostcode(String(row[col]));
+        if (postcode) break;
+      }
+    }
+    if (!postcode) postcode = extractPostcode(addr);
+
     const tags = isPostal ? [turf, 'Postal Voter'] : [turf];
-    addresses.push({ name: addr, address: addr, tags, registered_voter: isPostal });
+    addresses.push({ name: addr, address: addr, postcode: postcode || undefined, tags, registered_voter: isPostal });
   }
   return addresses;
 }

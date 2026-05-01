@@ -16,6 +16,14 @@ function parseTurfCode(sheetName) {
   return match ? match[1].trim().replace(/\s+/g, '') : sheetName.trim();
 }
 
+const UK_POSTCODE_RE = /\b([A-Z]{1,2}\d{1,2}[A-Z]?\s*\d[A-Z]{2})\b/i;
+
+function extractPostcode(str) {
+  if (!str) return null;
+  const m = String(str).match(UK_POSTCODE_RE);
+  return m ? m[1].toUpperCase().replace(/\s+/g, ' ').trim() : null;
+}
+
 function parseSheet(workbook, sheetName) {
   const sheet = workbook.Sheets[sheetName];
   const rows = XLSX.utils.sheet_to_json(sheet, { header: 1, defval: null });
@@ -30,12 +38,23 @@ function parseSheet(workbook, sheetName) {
     if (!addrStr) continue;
     // Skip if it looks like the turf code header row
     if (addrStr.toUpperCase() === turf.toUpperCase()) continue;
-    // Skip if it looks like a turf code itself (all caps short string matching pattern)
+    // Skip if it looks like a turf code itself
     if (/^(TYL|T&MC)\d*\*?$/i.test(addrStr)) continue;
+
+    // Try dedicated postcode columns first (cols 2–5), then inline in address
+    let postcode = null;
+    for (let col = 2; col <= 5; col++) {
+      if (row[col]) {
+        postcode = extractPostcode(String(row[col]));
+        if (postcode) break;
+      }
+    }
+    if (!postcode) postcode = extractPostcode(addrStr);
 
     contacts.push({
       name: addrStr,
       address: addrStr,
+      postcode: postcode || undefined,
       registered_voter: true,
       tags: [turf],
       support_level: 'unknown',
