@@ -106,7 +106,21 @@ Return JSON with:
 
       if (analysisRes && analysisRes.fields) {
         markStageComplete(2);
-        update({ assessment: analysisRes, currentStage: 3, loading: false, loadingStep: null });
+        // Check if this is a Contact import and if postcode field is present
+        const isSuggestedContact = analysisRes.suggestedEntity === 'Contact';
+        const hasPostcodeField = analysisRes.fields.some(f => 
+          f.name.toLowerCase().includes('postcode') || f.name.toLowerCase().includes('postal')
+        );
+        const postcodeWarning = isSuggestedContact && !hasPostcodeField
+          ? 'Warning: No postcode field detected. Postcodes are required for routing. Contact import will continue but records without postcodes cannot be used in Route Optimizer.'
+          : null;
+
+        update({ 
+          assessment: { ...analysisRes, postcodeWarning }, 
+          currentStage: 3, 
+          loading: false, 
+          loadingStep: null 
+        });
       } else {
         update({ error: 'AI could not analyse the data structure. Please try again.', loading: false, loadingStep: null });
       }
@@ -409,11 +423,21 @@ Map each source column to its corresponding target field. Return ALL records as 
 
           {/* Stage 3: Database Assessment */}
           {currentStage === 3 && assessment && !validationResult && (
-            <DatabaseAssessment
-              assessment={assessment}
-              onConfirm={handleConfirmImport}
-              loading={loading}
-            />
+            <>
+              {assessment.postcodeWarning && (
+                <div className="bg-amber-50 border border-amber-200 rounded-xl p-4 flex items-start gap-3">
+                  <AlertTriangle className="w-5 h-5 text-amber-600 flex-shrink-0 mt-0.5" />
+                  <div>
+                    <p className="text-sm font-semibold text-amber-900">{assessment.postcodeWarning}</p>
+                  </div>
+                </div>
+              )}
+              <DatabaseAssessment
+                assessment={assessment}
+                onConfirm={handleConfirmImport}
+                loading={loading}
+              />
+            </>
           )}
 
           {/* Stage 4: Validation Results */}
