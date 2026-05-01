@@ -89,12 +89,38 @@ function nearestNeighbourTSP(nodes) {
 //   4. Within each postcode, sort contacts by house number (odd side then even
 //      side = natural walking order on a UK street)
 // ---------------------------------------------------------------------------
+const UK_POSTCODE_RE = /\b([A-Z]{1,2}\d{1,2}[A-Z]?\s*\d[A-Z]{2})\b/i;
+
+// Try to extract a usable postcode from an address string as fallback
+function extractPostcodeFromAddress(address) {
+  if (!address) return null;
+  const m = address.match(UK_POSTCODE_RE);
+  return m ? m[1].toUpperCase().replace(/\s+/g, '') : null;
+}
+
+// Try geocoding with a partial outward code (e.g. "M29") via postcodes.io autocomplete
+async function getOutwardCodeCoords(outward) {
+  const pc = outward.replace(/\s+/g, '').toUpperCase();
+  if (postcodeCache['OC_' + pc]) return postcodeCache['OC_' + pc];
+  try {
+    const res = await fetch(`https://api.postcodes.io/outcodes/${encodeURIComponent(pc)}`);
+    if (!res.ok) return null;
+    const data = await res.json();
+    if (data.status !== 200 || !data.result) return null;
+    const coords = [data.result.latitude, data.result.longitude];
+    postcodeCache['OC_' + pc] = coords;
+    return coords;
+  } catch { return null; }
+}
+
 async function buildRoute(contacts, onProgress) {
-  // Group by postcode
+  // Group by postcode — fall back to extracting postcode from address
   const groups = {};
   const noPostcode = [];
   for (const c of contacts) {
-    const pc = (c.postcode || '').replace(/\s+/g, '').toUpperCase();
+    let pc = (c.postcode || '').replace(/\s+/g, '').toUpperCase();
+    // Try to rescue missing postcodes from address string
+    if (!pc) pc = extractPostcodeFromAddress(c.address) || '';
     if (!pc) { noPostcode.push(c); continue; }
     if (!groups[pc]) groups[pc] = [];
     groups[pc].push(c);
@@ -103,16 +129,20 @@ async function buildRoute(contacts, onProgress) {
   const uniquePostcodes = Object.keys(groups);
   const total = uniquePostcodes.length;
 
-  // Geocode each postcode
+  // Geocode each postcode, falling back to outward code if full postcode fails
   const postcodeNodes = [];
   for (let i = 0; i < uniquePostcodes.length; i++) {
     const pc = uniquePostcodes[i];
     onProgress(i, total);
-    const coords = await getPostcodeCoords(pc);
+    let coords = await getPostcodeCoords(pc);
+    if (!coords) {
+      // Try just the outward code (first half, e.g. "M29" from "M291AB")
+      const outward = pc.match(/^([A-Z]{1,2}\d{1,2}[A-Z]?)/i)?.[1];
+      if (outward) coords = await getOutwardCodeCoords(outward);
+    }
     if (coords) {
       postcodeNodes.push({ pc, coords, contacts: groups[pc] });
     } else {
-      // Couldn't geocode — append contacts to noPostcode
       noPostcode.push(...groups[pc]);
     }
   }
