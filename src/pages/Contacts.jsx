@@ -71,14 +71,21 @@ export default function Contacts() {
   };
 
   const bulkTagMutation = useMutation({
-    mutationFn: async (tags) => {
+    mutationFn: async ({ tags, mode }) => {
       const selectedContacts = contacts.filter(c => selectedIds.has(c.id));
       await Promise.all(
-        selectedContacts.map(contact =>
-          base44.entities.Contact.update(contact.id, {
-            tags: [...(contact.tags || []), ...tags].filter((v, i, a) => a.indexOf(v) === i),
-          })
-        )
+        selectedContacts.map(contact => {
+          let newTags;
+          if (mode === 'apply') {
+            newTags = [...new Set([...(contact.tags || []), ...tags])];
+          } else if (mode === 'remove') {
+            newTags = (contact.tags || []).filter(t => !tags.includes(t));
+          } else {
+            // replace
+            newTags = tags;
+          }
+          return base44.entities.Contact.update(contact.id, { tags: newTags });
+        })
       );
     },
     onSuccess: () => {
@@ -361,7 +368,7 @@ export default function Contacts() {
         isOpen={showTagDialog}
         onOpenChange={setShowTagDialog}
         selectedCount={selectedIds.size}
-        onApply={(tags) => bulkTagMutation.mutate(tags)}
+        onApply={(tags, mode) => bulkTagMutation.mutate({ tags, mode })}
         loading={bulkTagMutation.isPending}
       />
     </div>
