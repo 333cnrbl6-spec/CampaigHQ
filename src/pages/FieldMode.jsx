@@ -1,4 +1,4 @@
-import React, { useState, useMemo, useEffect } from 'react';
+import React, { useState, useMemo, useEffect, useRef } from 'react';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
@@ -6,7 +6,7 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@
 import { Badge } from '@/components/ui/badge';
 import { Textarea } from '@/components/ui/textarea';
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/components/ui/dialog';
-import { ChevronLeft, ChevronRight, Check, X, AlertCircle, WifiOff, Wifi, RefreshCw, CloudUpload, Search, Clock, MessageSquare, MapPin } from 'lucide-react';
+import { ChevronLeft, ChevronRight, Check, X, AlertCircle, WifiOff, Wifi, RefreshCw, CloudUpload, Search, Clock, MessageSquare, MapPin, Footprints } from 'lucide-react';
 import { useOfflineFieldMode } from '../hooks/useOfflineFieldMode';
 import { useGeolocation } from '@/hooks/useGeolocation';
 import { base44 } from '@/api/base44Client';
@@ -28,9 +28,13 @@ export default function FieldMode() {
   const [searchQuery, setSearchQuery] = useState('');
   const [searchMode, setSearchMode] = useState(false);
 
+  const urlParams = new URLSearchParams(window.location.search);
+  const routeIdsParam = urlParams.get('route_ids');
+  const routeIds = routeIdsParam ? routeIdsParam.split(',').filter(Boolean) : null;
+
   const {
     isOnline,
-    contacts,
+    contacts: allContacts,
     isLoadingContacts,
     queue,
     isSyncing,
@@ -38,6 +42,17 @@ export default function FieldMode() {
     logInteraction,
     syncQueue,
   } = useOfflineFieldMode();
+
+  // If route_ids param present, sort contacts into that exact order
+  const contacts = useMemo(() => {
+    if (!routeIds || allContacts.length === 0) return allContacts;
+    const map = Object.fromEntries(allContacts.map(c => [c.id, c]));
+    const ordered = routeIds.map(id => map[id]).filter(Boolean);
+    // append any remaining contacts not in the route
+    const inRoute = new Set(routeIds);
+    const rest = allContacts.filter(c => !inRoute.has(c.id));
+    return [...ordered, ...rest];
+  }, [allContacts, routeIds]);
 
   const { location, requestLocation, calculateDistance } = useGeolocation();
 
@@ -144,6 +159,14 @@ export default function FieldMode() {
   return (
     <div className="min-h-screen bg-background p-4 flex flex-col items-center justify-center">
       <div className="w-full max-w-md space-y-4">
+
+        {/* Route mode banner */}
+        {routeIds && (
+          <div className="flex items-center gap-2 px-3 py-2 rounded-lg text-sm font-medium bg-primary/10 text-primary border border-primary/20">
+            <Footprints className="w-4 h-4 flex-shrink-0" />
+            <span>Route mode — {routeIds.length} stops in optimised order</span>
+          </div>
+        )}
 
         {/* Online/Offline status bar */}
          <div className={`flex items-center justify-between px-3 py-2 rounded-lg text-sm font-medium ${isOnline ? 'bg-green-50 text-green-700' : 'bg-yellow-50 text-yellow-700 border border-yellow-200'}`}>

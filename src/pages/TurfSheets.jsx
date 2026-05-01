@@ -6,7 +6,7 @@ import { Input } from '@/components/ui/input';
 import { Badge } from '@/components/ui/badge';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Checkbox } from '@/components/ui/checkbox';
-import { Search, Printer, Users, MapPin, ChevronDown, ChevronRight, CheckCircle2, ArrowLeft } from 'lucide-react';
+import { Search, Printer, Users, MapPin, ChevronDown, ChevronRight, CheckCircle2, ArrowLeft, Footprints } from 'lucide-react';
 import TurfSheetPrint from '../components/turf/TurfSheetPrint';
 import LeafletRunSheet from '../components/leaflet/LeafletRunSheet';
 
@@ -27,16 +27,21 @@ function extractStreet(address = '') {
 
 export default function TurfSheets() {
   // Support direct /turf-sheets?turf_id=xxx for leaflet-run-based sheet
+  // Support /turf-sheets?route_ids=id1,id2,... to pre-select contacts from route optimizer
   const urlParams = new URLSearchParams(window.location.search);
   const turfIdParam = urlParams.get('turf_id');
+  const routeIdsParam = urlParams.get('route_ids');
+  const routeIds = routeIdsParam ? routeIdsParam.split(',').filter(Boolean) : null;
 
   const [search, setSearch] = useState('');
   const [filterSupport, setFilterSupport] = useState('all');
-  const [selectedIds, setSelectedIds] = useState(new Set());
+  const [selectedIds, setSelectedIds] = useState(() =>
+    routeIds ? new Set(routeIds) : new Set()
+  );
   const [expandedStreets, setExpandedStreets] = useState(new Set());
   const [groupBy, setGroupBy] = useState('street'); // 'street' | 'postcode'
-  const [showPrint, setShowPrint] = useState(false);
-  const [sheetTitle, setSheetTitle] = useState('Canvassing Turf Sheet');
+  const [showPrint, setShowPrint] = useState(!!routeIds);
+  const [sheetTitle, setSheetTitle] = useState(routeIds ? 'Optimised Route Sheet' : 'Canvassing Turf Sheet');
 
   const { data: contacts = [], isLoading } = useQuery({
     queryKey: ['contacts'],
@@ -85,10 +90,14 @@ export default function TurfSheets() {
       }));
   }, [filtered, groupBy]);
 
-  const selectedContacts = useMemo(
-    () => contacts.filter(c => selectedIds.has(c.id)),
-    [contacts, selectedIds]
-  );
+  const selectedContacts = useMemo(() => {
+    if (routeIds) {
+      // Preserve route order
+      const map = Object.fromEntries(contacts.map(c => [c.id, c]));
+      return routeIds.map(id => map[id]).filter(Boolean);
+    }
+    return contacts.filter(c => selectedIds.has(c.id));
+  }, [contacts, selectedIds, routeIds]);
 
   const toggleContact = (id) => {
     setSelectedIds(prev => {
@@ -144,6 +153,12 @@ export default function TurfSheets() {
 
   return (
     <div className="p-6 lg:p-10 max-w-[1400px] mx-auto">
+      {routeIds && (
+        <div className="mb-5 flex items-center gap-2.5 px-4 py-3 bg-primary/5 border border-primary/20 rounded-xl text-sm text-primary font-medium">
+          <Footprints className="w-4 h-4 flex-shrink-0" />
+          <span>Route imported from Route Optimizer — {routeIds.length} contacts pre-selected in walking order</span>
+        </div>
+      )}
       <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 mb-8">
         <div>
           <h1 className="font-heading text-3xl font-bold">Turf Sheets</h1>

@@ -7,9 +7,11 @@ import { Badge } from '@/components/ui/badge';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import {
   MapPin, Navigation, Download, ArrowRight, Loader2,
-  Search, CheckCircle2, XCircle, Play, RotateCcw, Map
+  Search, CheckCircle2, XCircle, Play, RotateCcw, Map,
+  Footprints, Printer, ClipboardList
 } from 'lucide-react';
 import CanvassingRouteMap from '@/components/map/CanvassingRouteMap';
+import { useNavigate } from 'react-router-dom';
 
 // Haversine distance in km
 function haversine([lat1, lon1], [lat2, lon2]) {
@@ -106,6 +108,7 @@ async function geocodeAddress(address, postcode) {
 }
 
 export default function RouteOptimizer() {
+  const navigate = useNavigate();
   const urlParams = new URLSearchParams(window.location.search);
   const initialTurf = urlParams.get('turf') || 'all';
 
@@ -362,6 +365,49 @@ export default function RouteOptimizer() {
               <div className="px-4 py-3 border-b border-border flex items-center justify-between">
                 <h3 className="font-semibold text-sm">Visit Order</h3>
                 <span className="text-xs text-muted-foreground">{route.length} stops · {totalDist.toFixed(1)} km</span>
+              </div>
+
+              {/* Integration actions */}
+              <div className="px-3 py-2.5 border-b border-border space-y-1.5">
+                <p className="text-[10px] font-semibold text-muted-foreground uppercase tracking-wide mb-1.5">Use this route in…</p>
+                <button
+                  onClick={() => {
+                    const ids = route.map(s => s.contact.id).join(',');
+                    navigate(`/field-mode?route_ids=${encodeURIComponent(ids)}`);
+                  }}
+                  className="w-full flex items-center gap-2.5 px-3 py-2 rounded-lg border border-border hover:bg-primary/5 hover:border-primary/30 transition-colors text-left"
+                >
+                  <Footprints className="w-4 h-4 text-primary flex-shrink-0" />
+                  <div className="min-w-0">
+                    <p className="text-xs font-semibold">Field Mode</p>
+                    <p className="text-[10px] text-muted-foreground">Door-knock in route order</p>
+                  </div>
+                </button>
+                <button
+                  onClick={() => {
+                    const ids = route.map(s => s.contact.id).join(',');
+                    navigate(`/turf-sheets?route_ids=${encodeURIComponent(ids)}`);
+                  }}
+                  className="w-full flex items-center gap-2.5 px-3 py-2 rounded-lg border border-border hover:bg-primary/5 hover:border-primary/30 transition-colors text-left"
+                >
+                  <Printer className="w-4 h-4 text-primary flex-shrink-0" />
+                  <div className="min-w-0">
+                    <p className="text-xs font-semibold">Print Turf Sheet</p>
+                    <p className="text-[10px] text-muted-foreground">Pre-selected in route order</p>
+                  </div>
+                </button>
+                {turfFilter !== 'all' && (
+                  <button
+                    onClick={() => navigate(`/leaflets?turf=${encodeURIComponent(turfFilter)}`)}
+                    className="w-full flex items-center gap-2.5 px-3 py-2 rounded-lg border border-border hover:bg-primary/5 hover:border-primary/30 transition-colors text-left"
+                  >
+                    <ClipboardList className="w-4 h-4 text-primary flex-shrink-0" />
+                    <div className="min-w-0">
+                      <p className="text-xs font-semibold">Leaflet Tracker</p>
+                      <p className="text-[10px] text-muted-foreground truncate">Streets for {turfFilter}</p>
+                    </div>
+                  </button>
+                )}
               </div>
               <div className="overflow-y-auto flex-1">
                 {route.map((stop, idx) => (
