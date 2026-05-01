@@ -10,6 +10,7 @@ import {
   Search, XCircle, RotateCcw, Map, Footprints, Printer, ClipboardList, Info, FileText, RefreshCw, FileText as FilePdf
 } from 'lucide-react';
 import CanvassingRouteMap from '@/components/map/CanvassingRouteMap';
+import ContactsZoneMap from '@/components/map/ContactsZoneMap';
 import WalkSheetPrint from '@/components/canvassing/WalkSheetPrint';
 import { useNavigate } from 'react-router-dom';
 
@@ -510,6 +511,8 @@ export default function RouteOptimizer() {
               <p className="font-medium">Looking up postcodes…</p>
               <p className="text-sm">{geocodeProgress.done} of {geocodeProgress.total} unique postcodes resolved</p>
             </div>
+          ) : filteredContacts.length > 0 ? (
+            <ContactsZoneMap contacts={filteredContacts} selectedIds={selectedIds} />
           ) : (
             <div className="flex flex-col items-center justify-center h-full gap-4 text-muted-foreground">
               <Map className="w-16 h-16 opacity-20" />
