@@ -5,7 +5,7 @@ import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Badge } from '@/components/ui/badge';
-import { Plus, Search, Pencil, Trash2, Phone, Mail, MapPin, CheckCircle2, Tag } from 'lucide-react';
+import { Plus, Search, Pencil, Trash2, Phone, Mail, MapPin, CheckCircle2, Tag, GitMerge, Loader2 } from 'lucide-react';
 import { AnimatePresence, motion } from 'framer-motion';
 import ContactForm from '../components/contacts/ContactForm';
 import BulkTagDialog from '../components/contacts/BulkTagDialog';
@@ -50,6 +50,69 @@ export default function Contacts() {
     mutationFn: (id) => base44.entities.Contact.delete(id),
     onSuccess: () => queryClient.invalidateQueries({ queryKey: ['contacts'] }),
   });
+
+  const [deduping, setDeduping] = useState(false);
+  const [dedupeResult, setDedupeResult] = useState(null);
+
+  const handleDeduplicate = async () => {
+    if (!confirm('This will merge duplicate addresses, combining their tags into one record. Continue?')) return;
+    setDeduping(true);
+    setDedupeResult(null);
+    try {
+      // Group by normalised address (lowercase, trimmed)
+      const groups = {};
+      for (const c of contacts) {
+        const key = (c.address || c.name || '').toLowerCase().trim();
+        if (!key) continue;
+        if (!groups[key]) groups[key] = [];
+        groups[key].push(c);
+      }
+
+      const duplicateGroups = Object.values(groups).filter(g => g.length > 1);
+      let merged = 0;
+      let deleted = 0;
+
+      for (const group of duplicateGroups) {
+        // Sort: prefer records with more data (phone/email/notes), then by created_date asc
+        group.sort((a, b) => {
+          const scoreA = (a.phone ? 1 : 0) + (a.email ? 1 : 0) + (a.notes ? 1 : 0);
+          const scoreB = (b.phone ? 1 : 0) + (b.email ? 1 : 0) + (b.notes ? 1 : 0);
+          return scoreB - scoreA;
+        });
+
+        const [keep, ...dupes] = group;
+
+        // Merge all unique tags from all duplicates into the keeper
+        const allTags = [...new Set([
+          ...(keep.tags || []),
+          ...dupes.flatMap(d => d.tags || []),
+        ])];
+
+        // Merge other fields: use best non-empty value
+        const mergedData = {
+          tags: allTags,
+          phone: keep.phone || dupes.find(d => d.phone)?.phone || keep.phone,
+          email: keep.email || dupes.find(d => d.email)?.email || keep.email,
+          notes: [keep.notes, ...dupes.map(d => d.notes)].filter(Boolean).join(' | ') || undefined,
+          registered_voter: keep.registered_voter || dupes.some(d => d.registered_voter),
+          volunteer: keep.volunteer || dupes.some(d => d.volunteer),
+        };
+
+        await base44.entities.Contact.update(keep.id, mergedData);
+        merged++;
+
+        for (const dupe of dupes) {
+          await base44.entities.Contact.delete(dupe.id);
+          deleted++;
+        }
+      }
+
+      queryClient.invalidateQueries({ queryKey: ['contacts'] });
+      setDedupeResult({ merged, deleted, groups: duplicateGroups.length });
+    } finally {
+      setDeduping(false);
+    }
+  };
 
   const bulkTagMutation = useMutation({
     mutationFn: async (tags) => {
@@ -129,10 +192,30 @@ export default function Contacts() {
           <h1 className="font-heading text-3xl font-bold">Voter Contacts</h1>
           <p className="text-muted-foreground mt-1">{contacts.length.toLocaleString()} contacts total{filtered.length !== contacts.length ? ` · ${filtered.length.toLocaleString()} shown` : ''}</p>
         </div>
-        <Button onClick={() => { setEditing(null); setShowForm(true); }} className="gap-2">
-          <Plus className="w-4 h-4" /> Add Contact
-        </Button>
+        <div className="flex items-center gap-2">
+          <Button
+            onClick={handleDeduplicate}
+            variant="outline"
+            className="gap-2"
+            disabled={deduping || isLoading}
+          >
+            {deduping ? <Loader2 className="w-4 h-4 animate-spin" /> : <GitMerge className="w-4 h-4" />}
+            {deduping ? 'Merging…' : 'Deduplicate'}
+          </Button>
+          <Button onClick={() => { setEditing(null); setShowForm(true); }} className="gap-2">
+            <Plus className="w-4 h-4" /> Add Contact
+          </Button>
+        </div>
       </div>
+
+      {dedupeResult && (
+        <div className="mb-4 bg-green-50 border border-green-200 rounded-lg px-4 py-3 text-sm text-green-800 flex items-center justify-between">
+          <span>
+            Merged <strong>{dedupeResult.groups}</strong> duplicate groups — kept {dedupeResult.merged} records, removed <strong>{dedupeResult.deleted}</strong> duplicates.
+          </span>
+          <button onClick={() => setDedupeResult(null)} className="text-green-600 hover:text-green-800 ml-4">✕</button>
+        </div>
+      )}
 
       <AnimatePresence>
         {showForm && (
