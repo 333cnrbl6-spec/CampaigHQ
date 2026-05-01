@@ -1,0 +1,68 @@
+{
+  "name": "VolunteerLocation",
+  "type": "object",
+  "properties": {
+    "volunteer_email": {
+      "type": "string",
+      "description": "Email of the volunteer"
+    },
+    "volunteer_name": {
+      "type": "string",
+      "description": "Name of the volunteer"
+    },
+    "latitude": {
+      "type": "number",
+      "description": "Current latitude"
+    },
+    "longitude": {
+      "type": "number",
+      "description": "Current longitude"
+    },
+    "postcode": {
+      "type": "string",
+      "description": "Postcode of current location"
+    },
+    "turf_id": {
+      "type": "string",
+      "description": "ID of the turf being canvassed"
+    },
+    "turf_name": {
+      "type": "string",
+      "description": "Name of the turf being canvassed"
+    },
+    "current_contact_id": {
+      "type": "string",
+      "description": "ID of contact currently being canvassed"
+    },
+    "doors_knocked_today": {
+      "type": "number",
+      "default": 0,
+      "description": "Doors knocked in current session"
+    },
+    "last_updated": {
+      "type": "string",
+      "format": "date-time",
+      "description": "Last time location was updated"
+    },
+    "status": {
+      "type": "string",
+      "enum": [
+        "active",
+        "idle",
+        "offline"
+      ],
+      "default": "active",
+      "description": "Current activity status"
+    },
+    "battery_level": {
+      "type": "number",
+      "description": "Device battery percentage (0-100)"
+    }
+  },
+  "required": [
+    "volunteer_email",
+    "volunteer_name",
+    "latitude",
+    "longitude"
+  ]
+}

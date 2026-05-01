@@ -56,9 +56,28 @@ export default function FieldMode() {
 
   const { location, requestLocation, calculateDistance } = useGeolocation();
 
-  // Request location on mount
+  // Request location on mount and periodically update volunteer location
   useEffect(() => {
     requestLocation();
+    
+    // Update location every 30 seconds while in field mode
+    const interval = setInterval(() => {
+      requestLocation();
+      if (location) {
+        base44.functions.invoke('updateVolunteerLocation', {
+          latitude: location.latitude,
+          longitude: location.longitude,
+          postcode: contacts[currentIndex]?.postcode,
+          turf_id: contacts[currentIndex]?.turf_id,
+          turf_name: contacts[currentIndex]?.turf_name,
+          current_contact_id: contacts[currentIndex]?.id,
+          doors_knocked_today: currentIndex,
+          battery_level: navigator.getBattery ? navigator.getBattery().then(b => b.level * 100) : null,
+        }).catch(err => console.error('Location update failed:', err));
+      }
+    }, 30000);
+
+    return () => clearInterval(interval);
   }, []);
 
   // Fetch interaction history for current contact
@@ -145,6 +164,20 @@ export default function FieldMode() {
       } : null;
 
       await logInteraction(interactionPayload, contactUpdatePayload);
+
+      // Update volunteer location
+      if (location) {
+        base44.functions.invoke('updateVolunteerLocation', {
+          latitude: location.latitude,
+          longitude: location.longitude,
+          postcode: currentContact.postcode,
+          turf_id: currentContact.turf_id,
+          turf_name: currentContact.turf_name,
+          current_contact_id: currentContact.id,
+          doors_knocked_today: (currentIndex + 1),
+          battery_level: navigator.getBattery ? (await navigator.getBattery()).level * 100 : null,
+        }).catch(err => console.error('Location update failed:', err));
+      }
 
       setShowInteractionDialog(false);
       setCurrentIndex(i => Math.min(i + 1, displayContacts.length - 1));

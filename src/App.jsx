@@ -47,6 +47,7 @@ import GdprCompliance from './pages/GdprCompliance';
 import ContactDistribution from './pages/ContactDistribution';
 import CanvassingAnalytics from './pages/CanvassingAnalytics';
 import CanvassingDashboard from './pages/CanvassingDashboard';
+import LiveTracking from './pages/LiveTracking';
 
 const AuthenticatedApp = () => {
   const { isLoadingAuth, isLoadingPublicSettings, authError, navigateToLogin } = useAuth();
@@ -116,6 +117,7 @@ const AuthenticatedApp = () => {
         <Route path="/distribute" element={<ContactDistribution />} />
         <Route path="/analytics" element={<CanvassingAnalytics />} />
         <Route path="/canvassing-dashboard" element={<CanvassingDashboard />} />
+        <Route path="/tracking" element={<LiveTracking />} />
       </Route>
       <Route path="*" element={<PageNotFound />} />
     </Routes>
