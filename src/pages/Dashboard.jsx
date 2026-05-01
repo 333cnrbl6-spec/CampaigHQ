@@ -1,7 +1,8 @@
-import React from 'react';
+import React, { useState } from 'react';
 import { base44 } from '@/api/base44Client';
 import { useQuery } from '@tanstack/react-query';
-import { Users, Calendar, ClipboardList, Leaf, TrendingUp } from 'lucide-react';
+import { Users, Calendar, ClipboardList, Leaf, TrendingUp, Zap, AlertCircle, MapPin } from 'lucide-react';
+import { Button } from '@/components/ui/button';
 import StatCard from '../components/dashboard/StatCard';
 import UpcomingEvents from '../components/dashboard/UpcomingEvents';
 import SupportBreakdown from '../components/dashboard/SupportBreakdown';
@@ -11,8 +12,13 @@ import SupportLevelWidget from '../components/dashboard/SupportLevelWidget';
 import GamifiedLeaderboard from '../components/dashboard/GamifiedLeaderboard';
 import SupportAnalytics from '../components/dashboard/SupportAnalytics';
 import VolunteerGamification from '../components/dashboard/VolunteerGamification';
+import InfrastructureStatus from '../components/dashboard/InfrastructureStatus';
+import WeeklySummaryWidget from '../components/dashboard/WeeklySummaryWidget';
 
 export default function Dashboard() {
+  const [geocodingStatus, setGecodingStatus] = useState(null);
+  const [showOptimizationHint, setShowOptimizationHint] = useState(true);
+
   const { data: contacts = [] } = useQuery({
     queryKey: ['contacts'],
     queryFn: () => base44.entities.Contact.list('-created_date', 1000),
@@ -38,10 +44,17 @@ export default function Dashboard() {
     queryFn: () => base44.entities.ContactInteraction.list('-date', 1000),
   });
 
+  const { data: logs = [] } = useQuery({
+    queryKey: ['canvassingLogs'],
+    queryFn: () => base44.entities.CanvassingLog.list('-session_date', 100),
+  });
+
   const canvassed = contacts.filter(c => c.canvassed).length;
   const supporters = contacts.filter(c => ['strong_supporter', 'leaning'].includes(c.support_level)).length;
   const upcomingEvents = events.filter(e => e.status === 'upcoming');
   const activeTasks = tasks.filter(t => t.status !== 'done').length;
+  const needsGeocoding = contacts.filter(c => !c.latitude || !c.longitude).length;
+  const doorsThisWeek = logs.reduce((sum, l) => sum + (l.doors_knocked || 0), 0);
 
   return (
     <div className="p-6 lg:p-10 max-w-[1400px] mx-auto">
@@ -71,16 +84,27 @@ export default function Dashboard() {
           icon={TrendingUp}
         />
         <StatCard
-          title="Upcoming Events"
-          value={upcomingEvents.length}
-          subtitle="scheduled"
-          icon={Calendar}
+          title="This Week"
+          value={doorsThisWeek}
+          subtitle="doors knocked"
+          icon={MapPin}
         />
         <StatCard
           title="Active Tasks"
           value={activeTasks}
           subtitle={`${tasks.filter(t => t.status === 'done').length} completed`}
           icon={ClipboardList}
+        />
+      </div>
+
+      {/* Infrastructure & Alerts */}
+      <div className="mb-8">
+        <InfrastructureStatus 
+          contactsNeedingGeocode={needsGeocoding}
+          totalContacts={contacts.length}
+          onGeocodeClick={() => setGecodingStatus('processing')}
+          onOptimizeClick={() => window.location.href = '/route-analysis'}
+          geocodingInProgress={geocodingStatus === 'processing'}
         />
       </div>
 
@@ -103,6 +127,11 @@ export default function Dashboard() {
       {/* Volunteer Gamification — full width */}
       <div className="mb-6">
         <VolunteerGamification />
+      </div>
+
+      {/* Weekly Summary */}
+      <div className="mb-8">
+        <WeeklySummaryWidget logs={logs} contacts={contacts} />
       </div>
 
       {/* Content Grid */}

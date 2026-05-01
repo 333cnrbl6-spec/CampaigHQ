@@ -5,7 +5,7 @@ import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Badge } from '@/components/ui/badge';
-import { Plus, Search, Pencil, Trash2, Phone, Mail, MapPin, CheckCircle2, Tag, GitMerge, Loader2, Navigation } from 'lucide-react';
+import { Plus, Search, Pencil, Trash2, Phone, Mail, MapPin, CheckCircle2, Tag, GitMerge, Loader2, Navigation, Zap, MapPinOff } from 'lucide-react';
 import { AnimatePresence, motion } from 'framer-motion';
 import { useNavigate } from 'react-router-dom';
 import ContactForm from '../components/contacts/ContactForm';
@@ -55,6 +55,8 @@ export default function Contacts() {
 
   const [deduping, setDeduping] = useState(false);
   const [dedupeResult, setDedupeResult] = useState(null);
+  const [geocoding, setGeocoding] = useState(false);
+  const [geocodeResult, setGeocodeResult] = useState(null);
 
   const handleDeduplicate = async () => {
     if (!confirm('This will merge duplicate addresses, combining their tags into one record. Continue?')) return;
@@ -67,6 +69,19 @@ export default function Contacts() {
       setDedupeResult(response.data);
     } finally {
       setDeduping(false);
+    }
+  };
+
+  const handleBatchGeocode = async () => {
+    if (!confirm('Geocode all contacts lacking location data? This may take a few minutes.')) return;
+    setGeocoding(true);
+    setGeocodeResult(null);
+    try {
+      const response = await base44.functions.invoke('batchGeocodeContacts', {});
+      queryClient.invalidateQueries({ queryKey: ['contacts'] });
+      setGeocodeResult(response.data);
+    } finally {
+      setGeocoding(false);
     }
   };
 
@@ -160,27 +175,43 @@ export default function Contacts() {
           <h1 className="font-heading text-3xl font-bold">Voter Contacts</h1>
           <p className="text-muted-foreground mt-1">{contacts.length.toLocaleString()} contacts total{filtered.length !== contacts.length ? ` · ${filtered.length.toLocaleString()} shown` : ''}</p>
         </div>
-        <div className="flex items-center gap-2">
-          <Button
-            onClick={handleDeduplicate}
-            variant="outline"
-            className="gap-2"
-            disabled={deduping || isLoading}
-          >
-            {deduping ? <Loader2 className="w-4 h-4 animate-spin" /> : <GitMerge className="w-4 h-4" />}
-            {deduping ? 'Merging…' : 'Deduplicate'}
-          </Button>
-          <Button
-            variant="outline"
-            className="gap-2"
-            onClick={() => navigate(`/route${turfFilter !== 'all' ? `?turf=${encodeURIComponent(turfFilter)}` : ''}`)}
-          >
-            <Navigation className="w-4 h-4" /> Plan Route
-          </Button>
-          <Button onClick={() => { setEditing(null); setShowForm(true); }} className="gap-2">
-            <Plus className="w-4 h-4" /> Add Contact
-          </Button>
-        </div>
+        <div className="flex items-center gap-2 flex-wrap">
+           <Button
+             onClick={handleDeduplicate}
+             variant="outline"
+             size="sm"
+             className="gap-2"
+             disabled={deduping || isLoading}
+           >
+             {deduping ? <Loader2 className="w-4 h-4 animate-spin" /> : <GitMerge className="w-4 h-4" />}
+             {deduping ? 'Merging…' : 'Deduplicate'}
+           </Button>
+           <Button
+             onClick={handleBatchGeocode}
+             variant="outline"
+             size="sm"
+             className="gap-2"
+             disabled={geocoding || isLoading}
+           >
+             {geocoding ? <Loader2 className="w-4 h-4 animate-spin" /> : <MapPinOff className="w-4 h-4" />}
+             {geocoding ? 'Geocoding…' : 'Geocode All'}
+           </Button>
+           <Button
+             variant="outline"
+             size="sm"
+             className="gap-2"
+             onClick={() => navigate(`/route${turfFilter !== 'all' ? `?turf=${encodeURIComponent(turfFilter)}` : ''}`)}
+           >
+             <Navigation className="w-4 h-4" /> Plan Route
+           </Button>
+           <Button 
+             onClick={() => { setEditing(null); setShowForm(true); }} 
+             size="sm"
+             className="gap-2"
+           >
+             <Plus className="w-4 h-4" /> Add Contact
+           </Button>
+         </div>
       </div>
 
       {deduping && (
@@ -191,13 +222,29 @@ export default function Contacts() {
       )}
 
       {dedupeResult && !deduping && (
-        <div className="mb-4 bg-green-50 border border-green-200 rounded-lg px-4 py-3 text-sm text-green-800 flex items-center justify-between">
-          <span>
-            Merged <strong>{dedupeResult.groups}</strong> duplicate groups — kept {dedupeResult.merged} records, removed <strong>{dedupeResult.deleted}</strong> duplicates.
-          </span>
-          <button onClick={() => setDedupeResult(null)} className="text-green-600 hover:text-green-800 ml-4">✕</button>
-        </div>
-      )}
+         <div className="mb-4 bg-green-50 border border-green-200 rounded-lg px-4 py-3 text-sm text-green-800 flex items-center justify-between">
+           <span>
+             Merged <strong>{dedupeResult.groups}</strong> duplicate groups — kept {dedupeResult.merged} records, removed <strong>{dedupeResult.deleted}</strong> duplicates.
+           </span>
+           <button onClick={() => setDedupeResult(null)} className="text-green-600 hover:text-green-800 ml-4">✕</button>
+         </div>
+       )}
+
+       {geocoding && (
+         <div className="mb-4 bg-primary/5 border border-primary/20 rounded-lg px-4 py-3 flex items-center gap-3">
+           <Loader2 className="w-4 h-4 animate-spin text-primary flex-shrink-0" />
+           <p className="text-sm text-primary font-medium">Geocoding contacts using postcodes.io — you can navigate away freely.</p>
+         </div>
+       )}
+
+       {geocodeResult && !geocoding && (
+         <div className="mb-4 bg-green-50 border border-green-200 rounded-lg px-4 py-3 text-sm text-green-800 flex items-center justify-between">
+           <span>
+             Geocoded <strong>{geocodeResult.results.succeeded}</strong> contacts — {geocodeResult.results.failed} failed (no valid postcode).
+           </span>
+           <button onClick={() => setGeocodeResult(null)} className="text-green-600 hover:text-green-800 ml-4">✕</button>
+         </div>
+       )}
 
       <AnimatePresence>
         {showForm && (
