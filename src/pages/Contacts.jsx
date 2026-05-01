@@ -46,6 +46,34 @@ export default function Contacts() {
     }
   }, [contacts, refetch]);
 
+  // Auto-optimize route when filtered contacts change
+  React.useEffect(() => {
+    if (filtered.length > 0 && filtered.length <= 500) {
+      const optimizeRoute = async () => {
+        setOptimizingRoute(true);
+        try {
+          const response = await base44.functions.invoke('optimizeCanvassingRoute', {
+            contacts: filtered.map(c => ({
+              id: c.id,
+              name: c.name,
+              address: c.address,
+              postcode: c.postcode
+            }))
+          });
+          setRouteData(response.data);
+        } catch (error) {
+          console.log('Route optimization skipped:', error.message);
+        } finally {
+          setOptimizingRoute(false);
+        }
+      };
+      
+      // Debounce to avoid excessive calls
+      const timer = setTimeout(optimizeRoute, 2000);
+      return () => clearTimeout(timer);
+    }
+  }, [filtered]);
+
   const createMutation = useMutation({
     mutationFn: (data) => base44.entities.Contact.create(data),
     onSuccess: () => { queryClient.invalidateQueries({ queryKey: ['contacts'] }); setShowForm(false); },
@@ -69,6 +97,8 @@ export default function Contacts() {
   const [assignResult, setAssignResult] = useState(null);
   const [reprocessing, setReprocessing] = useState(false);
   const [reprocessResult, setReprocessResult] = useState(null);
+  const [optimizingRoute, setOptimizingRoute] = useState(false);
+  const [routeData, setRouteData] = useState(null);
 
   const handleDeduplicate = async () => {
     if (!confirm('This will merge duplicate addresses, combining their tags into one record. Continue?')) return;
@@ -295,6 +325,18 @@ export default function Contacts() {
             {deduping ? <Loader2 className="w-4 h-4 animate-spin" /> : <Merge className="w-4 h-4" />}
             Deduplicate
           </Button>
+          {optimizingRoute && (
+            <div className="flex items-center gap-2 text-xs text-primary">
+              <Loader2 className="w-3 h-3 animate-spin" />
+              Optimizing route...
+            </div>
+          )}
+          {routeData && !optimizingRoute && (
+            <div className="flex items-center gap-2 text-xs bg-green-50 border border-green-200 rounded px-2 py-1 text-green-700">
+              <CheckCircle2 className="w-3 h-3" />
+              Route optimized ({routeData.total_distance_km?.toFixed(1) || '?'} km)
+            </div>
+          )}
         </div>
       </div>
 
