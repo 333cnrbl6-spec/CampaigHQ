@@ -226,36 +226,45 @@ Return JSON with:
   };
 
   // ─── Stage 4: Extract & Validate Records ────────────────────────────────────
-  const handleConfirmImport = async (fieldOverrides) => {
-    if (!state.fileUrl || !state.assessment) return;
+   const handleConfirmImport = async (fieldOverrides) => {
+     if (!state.fileUrl || !state.assessment) return;
 
-    update({
-      currentStage: 4,
-      loading: true,
-      error: null,
-      loadingStep: { step: 1, total: 2, label: 'Extracting all records from your file…', detail: 'AI is reading every row and mapping it to the correct fields. Large files can take up to a minute.' },
-    });
+     update({
+       currentStage: 4,
+       loading: true,
+       error: null,
+       loadingStep: { step: 1, total: 2, label: 'Extracting all records from your file…', detail: 'AI is reading every row and mapping it to the correct fields. Large files can take up to a minute.' },
+     });
 
-    try {
-      const fieldMapping = (state.assessment.fields || []).reduce((acc, field) => {
-        const override = fieldOverrides?.[field.name];
-        acc[field.name] = override?.name || field.name;
-        return acc;
-      }, {});
+     try {
+       const fieldMapping = (state.assessment.fields || []).reduce((acc, field) => {
+         const override = fieldOverrides?.[field.name];
+         acc[field.name] = override?.name || field.name;
+         return acc;
+       }, {});
 
-      const mappingInstructions = Object.entries(fieldMapping)
-        .map(([src, tgt]) => `"${src}" → "${tgt}"`)
-        .join(', ');
+       // Detect zone/area/turf columns for tag conversion
+       const zoneFieldNames = Object.keys(fieldMapping).filter(src => 
+         /\b(zone|turf|area|region|tag|district|postcode)\b/i.test(fieldMapping[src])
+       );
+       const zoneMapping = zoneFieldNames.length > 0 
+         ? `Also, for these zone fields: ${zoneFieldNames.map(f => fieldMapping[f]).join(', ')} — convert their values to a tags array. If the field has a value, create tags: [value]. If empty, tags: [].`
+         : '';
 
-      const extractRes = await base44.integrations.Core.InvokeLLM({
-        prompt: `Extract all records from this file using this field mapping: ${mappingInstructions}.
-Map each source column to its corresponding target field. Return ALL records as an array of JSON objects, including incomplete or invalid ones for validation review.`,
-        file_urls: [state.fileUrl],
-        response_json_schema: {
-          type: 'object',
-          properties: { records: { type: 'array', items: { type: 'object' } } },
-        },
-      });
+       const mappingInstructions = Object.entries(fieldMapping)
+         .map(([src, tgt]) => `"${src}" → "${tgt}"`)
+         .join(', ');
+
+       const extractRes = await base44.integrations.Core.InvokeLLM({
+         prompt: `Extract all records from this file using this field mapping: ${mappingInstructions}.
+  ${zoneMapping}
+  Map each source column to its corresponding target field. Return ALL records as an array of JSON objects, including incomplete or invalid ones for validation review.`,
+         file_urls: [state.fileUrl],
+         response_json_schema: {
+           type: 'object',
+           properties: { records: { type: 'array', items: { type: 'object' } } },
+         },
+       });
 
       const records = extractRes?.records || [];
 
