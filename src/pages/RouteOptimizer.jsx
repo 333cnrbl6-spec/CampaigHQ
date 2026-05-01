@@ -47,19 +47,61 @@ function totalRouteDistance(route) {
   return d;
 }
 
-// Geocode a UK address via Nominatim (free, no key required)
+// Geocode a UK address via Nominatim, anchored tightly to the postcode
 const geocodeCache = {};
+
+async function nominatimSearch(query) {
+  const url = `https://nominatim.openstreetmap.org/search?q=${encodeURIComponent(query)}&format=json&limit=3&countrycodes=gb`;
+  const res = await fetch(url, { headers: { 'Accept-Language': 'en', 'User-Agent': 'CampaignCanvasser/1.0' } });
+  return res.json();
+}
+
 async function geocodeAddress(address, postcode) {
-  const query = [address, postcode, 'UK'].filter(Boolean).join(', ');
-  if (geocodeCache[query]) return geocodeCache[query];
-  const url = `https://nominatim.openstreetmap.org/search?q=${encodeURIComponent(query)}&format=json&limit=1&countrycodes=gb`;
-  const res = await fetch(url, { headers: { 'Accept-Language': 'en' } });
-  const data = await res.json();
-  if (data.length > 0) {
-    const coords = [parseFloat(data[0].lat), parseFloat(data[0].lon)];
-    geocodeCache[query] = coords;
-    return coords;
+  const pc = (postcode || '').replace(/\s+/g, '').toUpperCase();
+  const cacheKey = `${pc}|${address}`;
+  if (geocodeCache[cacheKey]) return geocodeCache[cacheKey];
+
+  // Strategy 1: postcode + house number/name only (most precise)
+  // Extract just the first token of the address (house number or name)
+  const firstToken = (address || '').split(/[\s,]+/)[0];
+
+  if (pc) {
+    // Try postcode lookup first to get an anchor centroid
+    const pcData = await nominatimSearch(pc + ', UK');
+    const pcCoords = pcData.length > 0
+      ? [parseFloat(pcData[0].lat), parseFloat(pcData[0].lon)]
+      : null;
+
+    // Try full address + postcode
+    if (address && pc) {
+      const fullData = await nominatimSearch(`${address}, ${pc}, UK`);
+      for (const item of fullData) {
+        const coords = [parseFloat(item.lat), parseFloat(item.lon)];
+        // Accept only if within 2 km of postcode centroid (prevents nationwide matches)
+        if (!pcCoords || haversine(pcCoords, coords) <= 2.0) {
+          geocodeCache[cacheKey] = coords;
+          return coords;
+        }
+      }
+    }
+
+    // Fall back: just postcode centroid (accurate enough for walking routes)
+    if (pcCoords) {
+      geocodeCache[cacheKey] = pcCoords;
+      return pcCoords;
+    }
   }
+
+  // Last resort: address + UK with strict bbox check (no postcode available)
+  if (address) {
+    const data = await nominatimSearch(`${address}, UK`);
+    if (data.length > 0) {
+      const coords = [parseFloat(data[0].lat), parseFloat(data[0].lon)];
+      geocodeCache[cacheKey] = coords;
+      return coords;
+    }
+  }
+
   return null;
 }
 
@@ -126,8 +168,8 @@ export default function RouteOptimizer() {
 
     for (let i = 0; i < toGeocode.length; i++) {
       const c = toGeocode[i];
-      // Small delay to respect Nominatim's 1 req/sec policy
-      if (i > 0) await new Promise(r => setTimeout(r, 1100));
+      // Delay to respect Nominatim's 1 req/sec policy (we may make 2 calls per contact)
+      if (i > 0) await new Promise(r => setTimeout(r, 1200));
       const coords = await geocodeAddress(c.address, c.postcode);
       if (coords) {
         stops.push({ contact: c, coords });
