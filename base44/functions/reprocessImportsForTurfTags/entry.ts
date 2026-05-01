@@ -66,7 +66,7 @@ Return ALL records as a JSON array with name, address, postcode, and tags fields
           }
         });
 
-        const extracted = extractRes.data?.records || [];
+        const extracted = extractRes?.records || [];
 
         // Match extracted records to existing contacts and add tags
         for (const rec of extracted) {
