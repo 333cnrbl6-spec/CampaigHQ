@@ -51,6 +51,8 @@ import LiveTracking from './pages/LiveTracking';
 import CanvassingOptimization from './pages/CanvassingOptimization';
 import RouteAnalysis from './pages/RouteAnalysis';
 import FieldNavigation from './pages/FieldNavigation';
+import VolunteerPerformance from './pages/VolunteerPerformance';
+import VolunteerLiveMap from './pages/VolunteerLiveMap';
 
 const AuthenticatedApp = () => {
   const { isLoadingAuth, isLoadingPublicSettings, authError, navigateToLogin } = useAuth();
@@ -124,6 +126,8 @@ const AuthenticatedApp = () => {
         <Route path="/optimization" element={<CanvassingOptimization />} />
         <Route path="/route-analysis" element={<RouteAnalysis />} />
         <Route path="/field-nav" element={<FieldNavigation />} />
+        <Route path="/performance" element={<VolunteerPerformance />} />
+        <Route path="/live-map" element={<VolunteerLiveMap />} />
       </Route>
       <Route path="*" element={<PageNotFound />} />
     </Routes>
