@@ -36,7 +36,17 @@ export default function Outreach() {
 
   const { data: contacts = [] } = useQuery({
     queryKey: ['contacts', campaign?.id],
-    queryFn: () => base44.entities.Contact.filter({ campaign_id: campaign?.id }, '-created_date', 5000),
+    queryFn: async () => {
+      if (!campaign?.id) return [];
+      try {
+        const all = await base44.entities.Contact.list('-created_date', 50000);
+        return Array.isArray(all) ? all.filter(c => c.campaign_id === campaign.id) : [];
+      } catch (err) {
+        console.error('Failed to fetch contacts:', err);
+        return [];
+      }
+    },
+    enabled: !!campaign?.id,
   });
 
   const audience = useMemo(() => applyFilters(contacts, filters), [contacts, filters]);
