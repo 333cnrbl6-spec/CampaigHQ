@@ -1,6 +1,7 @@
 import React, { useState, useRef } from 'react';
 import { base44 } from '@/api/base44Client';
 import { useQueryClient, useQuery } from '@tanstack/react-query';
+import { useCampaign } from '@/lib/CampaignContext';
 import { useNavigate } from 'react-router-dom';
 import { Loader2, AlertTriangle, Repeat2, FileText, ArrowRight, CheckCircle2, Users } from 'lucide-react';
 import { Button } from '@/components/ui/button';
@@ -31,13 +32,14 @@ const INITIAL_STATE = {
 export default function DataImport() {
   const queryClient = useQueryClient();
   const navigate = useNavigate();
+  const { campaign } = useCampaign();
   const [legacyFileDetected, setLegacyFileDetected] = useState(null);
   const [showCsvWizard, setShowCsvWizard] = useState(false);
   const hasAutoLoaded = useRef(false);
 
   const { data: lastImportLog } = useQuery({
-    queryKey: ['import_logs'],
-    queryFn: () => base44.entities.ImportLog.list('-created_date', 1),
+    queryKey: ['import_logs', campaign?.id],
+    queryFn: () => base44.entities.ImportLog.filter({ campaign_id: campaign?.id }, '-created_date', 1),
     initialData: [],
   });
 
@@ -345,6 +347,7 @@ Return JSON with:
       const recordIds = (createdRecords || []).map(r => r.id);
 
       await base44.entities.ImportLog.create({
+        campaign_id: campaign?.id,
         file_name: currentFile.name,
         file_url: fileUrl,
         entity_type: validationResult.entityName,
@@ -353,8 +356,8 @@ Return JSON with:
         created_record_ids: recordIds,
       });
 
-      queryClient.invalidateQueries({ queryKey: [validationResult.entityName.toLowerCase()] });
-      queryClient.invalidateQueries({ queryKey: ['import_logs'] });
+      queryClient.invalidateQueries({ queryKey: [validationResult.entityName.toLowerCase(), campaign?.id] });
+      queryClient.invalidateQueries({ queryKey: ['import_logs', campaign?.id] });
 
       update({ importStatus: { count: recordIds.length, entity: validationResult.entityName }, loading: false, loadingStep: null });
 

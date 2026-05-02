@@ -1,6 +1,7 @@
 import { useEffect, useRef, useState } from 'react';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { base44 } from '@/api/base44Client';
+import { useCampaign } from '@/lib/CampaignContext';
 import { MapContainer, TileLayer, useMap, Polyline, CircleMarker, Tooltip } from 'react-leaflet';
 import L from 'leaflet';
 import 'leaflet/dist/leaflet.css';
@@ -175,6 +176,7 @@ function TurfLayers({ turfs, selectedId, onSelect }) {
 }
 
 export default function TurfManagement() {
+  const { campaign } = useCampaign();
   const queryClient = useQueryClient();
   const [drawing, setDrawing] = useState(false);
   const [selectedId, setSelectedId] = useState(null);
@@ -190,28 +192,28 @@ export default function TurfManagement() {
   const [showGeocodePanel, setShowGeocodePanel] = useState(false);
 
   const { data: turfs = [] } = useQuery({
-    queryKey: ['turfs'],
-    queryFn: () => base44.entities.Turf.list('-created_date', 100),
+    queryKey: ['turfs', campaign?.id],
+    queryFn: () => base44.entities.Turf.filter({ campaign_id: campaign?.id }, '-created_date', 100),
   });
 
   const { data: contacts = [] } = useQuery({
-    queryKey: ['contacts'],
-    queryFn: () => base44.entities.Contact.list('name', 5000),
+    queryKey: ['contacts', campaign?.id],
+    queryFn: () => base44.entities.Contact.filter({ campaign_id: campaign?.id }, 'name', 5000),
   });
 
   const createTurf = useMutation({
-    mutationFn: (data) => base44.entities.Turf.create(data),
-    onSuccess: () => queryClient.invalidateQueries(['turfs']),
+    mutationFn: (data) => base44.entities.Turf.create({ ...data, campaign_id: campaign?.id }),
+    onSuccess: () => queryClient.invalidateQueries({ queryKey: ['turfs', campaign?.id] }),
   });
 
   const updateTurf = useMutation({
     mutationFn: ({ id, data }) => base44.entities.Turf.update(id, data),
-    onSuccess: () => queryClient.invalidateQueries(['turfs']),
+    onSuccess: () => queryClient.invalidateQueries({ queryKey: ['turfs', campaign?.id] }),
   });
 
   const deleteTurf = useMutation({
     mutationFn: (id) => base44.entities.Turf.delete(id),
-    onSuccess: () => { queryClient.invalidateQueries(['turfs']); setSelectedId(null); },
+    onSuccess: () => { queryClient.invalidateQueries({ queryKey: ['turfs', campaign?.id] }); setSelectedId(null); },
   });
 
   const handleShapeCreated = (geojson) => {
@@ -252,7 +254,7 @@ export default function TurfManagement() {
       });
 
       if (res.data?.geojson) {
-        queryClient.invalidateQueries(['turfs']);
+        queryClient.invalidateQueries({ queryKey: ['turfs', campaign?.id] });
       } else {
         alert('AI boundary generation failed: ' + (res.data?.error || 'Unknown error'));
       }

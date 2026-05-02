@@ -1,6 +1,7 @@
 import React, { useMemo } from 'react';
 import { base44 } from '@/api/base44Client';
 import { useQuery } from '@tanstack/react-query';
+import { useCampaign } from '@/lib/CampaignContext';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { BarChart, Bar, PieChart, Pie, Cell, XAxis, YAxis, CartesianGrid, Tooltip, Legend, ResponsiveContainer, LineChart, Line } from 'recharts';
 import { TrendingUp, Users, MessageSquare, Target, Map } from 'lucide-react';
@@ -16,17 +17,19 @@ const SUPPORT_COLORS = {
 };
 
 export default function OrganizerDashboard() {
+  const { campaign } = useCampaign();
+
   // Fetch all interactions (doors knocked)
   const { data: allInteractions = [], isLoading: loadingInteractions } = useQuery({
-    queryKey: ['all_interactions'],
-    queryFn: () => base44.entities.ContactInteraction.list('-date', 1000),
+    queryKey: ['all_interactions', campaign?.id],
+    queryFn: () => base44.entities.ContactInteraction.filter({ campaign_id: campaign?.id }, '-date', 1000),
     initialData: [],
   });
 
   // Fetch all contacts for support level breakdown
   const { data: allContacts = [], isLoading: loadingContacts } = useQuery({
-    queryKey: ['all_contacts'],
-    queryFn: () => base44.entities.Contact.list('-updated_date', 1000),
+    queryKey: ['all_contacts', campaign?.id],
+    queryFn: () => base44.entities.Contact.filter({ campaign_id: campaign?.id }, '-updated_date', 1000),
     initialData: [],
   });
 
