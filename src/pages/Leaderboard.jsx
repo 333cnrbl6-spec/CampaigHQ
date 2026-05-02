@@ -22,7 +22,8 @@ function StatPill({ icon, value, label }) {
 }
 
 export default function Leaderboard() {
-  const { campaignId } = useCampaign();
+  const { campaign } = useCampaign();
+  const campaignId = campaign?.id;
 
   // Fetch leaderboard data via RLS-protected function
   const { data: leaderboard = [], isLoading, error, refetch } = useSecureData(

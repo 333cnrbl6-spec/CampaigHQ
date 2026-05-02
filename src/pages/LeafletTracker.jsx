@@ -3,6 +3,7 @@ import { base44 } from '@/api/base44Client';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { useNavigate } from 'react-router-dom';
 import { useCampaign } from '@/lib/CampaignContext';
+import useSecureData from '@/hooks/useSecureData';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
@@ -39,6 +40,7 @@ function RoundBadge({ run, round }) {
 export default function LeafletTracker() {
   const navigate = useNavigate();
   const { campaign } = useCampaign();
+  const campaignId = campaign?.id;
   const urlParams = new URLSearchParams(window.location.search);
   const initialTurf = urlParams.get('turf_id') || 'all';
 
@@ -53,29 +55,31 @@ export default function LeafletTracker() {
   const [briefingData, setBriefingData] = useState(null);
   const queryClient = useQueryClient();
 
-  const { data: runs = [], isLoading } = useQuery({
-    queryKey: ['leaflet-runs', campaign?.id],
-    queryFn: () => base44.entities.LeafletRun.filter({ campaign_id: campaign?.id }, '-created_date', 500),
-  });
+  const { data: runs = [], isLoading, refetch } = useSecureData(
+    'getSessionLogs',
+    campaignId ? { campaign_id: campaignId } : null,
+    { staleTime: 120000, refetchInterval: 120000, enabled: !!campaignId }
+  );
 
-  const { data: turfs = [] } = useQuery({
-    queryKey: ['turfs', campaign?.id],
-    queryFn: () => base44.entities.Turf.filter({ campaign_id: campaign?.id }, '-created_date', 100),
-  });
+  const { data: turfs = [] } = useSecureData(
+    'getAssignedTurfs',
+    campaignId ? { campaign_id: campaignId } : null,
+    { staleTime: 120000, refetchInterval: 120000, enabled: !!campaignId }
+  );
 
   const createMutation = useMutation({
-    mutationFn: (data) => base44.entities.LeafletRun.create({ ...data, campaign_id: campaign?.id }),
-    onSuccess: () => { queryClient.invalidateQueries({ queryKey: ['leaflet-runs', campaign?.id] }); setShowForm(false); },
+    mutationFn: (data) => base44.entities.LeafletRun.create({ ...data, campaign_id: campaignId }),
+    onSuccess: () => { refetch(); setShowForm(false); },
   });
 
   const updateMutation = useMutation({
     mutationFn: ({ id, data }) => base44.entities.LeafletRun.update(id, data),
-    onSuccess: () => { queryClient.invalidateQueries({ queryKey: ['leaflet-runs', campaign?.id] }); setEditing(null); setShowForm(false); },
+    onSuccess: () => { refetch(); setEditing(null); setShowForm(false); },
   });
 
   const deleteMutation = useMutation({
     mutationFn: (id) => base44.entities.LeafletRun.delete(id),
-    onSuccess: () => queryClient.invalidateQueries({ queryKey: ['leaflet-runs', campaign?.id] }),
+    onSuccess: () => refetch(),
   });
 
   const handleSubmit = (data) => {

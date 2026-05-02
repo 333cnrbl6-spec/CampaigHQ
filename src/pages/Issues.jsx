@@ -35,12 +35,13 @@ export default function Issues() {
   const [editing, setEditing] = useState(null);
   const [form, setForm] = useState(emptyIssue);
   const queryClient = useQueryClient();
-  const { campaignId } = useCampaign();
+  const { campaign } = useCampaign();
+  const campaignId = campaign?.id;
 
   const { data: issues = [], error: issueError, isLoading, refetch } = useSecureData(
     'getActivityFeed',
-    { campaign_id: campaignId },
-    { staleTime: 180000, refetchInterval: 180000 }
+    campaignId ? { campaign_id: campaignId } : null,
+    { staleTime: 180000, refetchInterval: 180000, enabled: !!campaignId }
   );
 
   const createMutation = useMutation({

@@ -6,6 +6,7 @@ import L from 'leaflet';
 import { useQuery } from '@tanstack/react-query';
 import { base44 } from '@/api/base44Client';
 import { useCampaign } from '@/lib/CampaignContext';
+import useSecureData from '@/hooks/useSecureData';
 import RouteOptimizer from '../components/map/RouteOptimizer';
 
 // Fix default marker icon
@@ -73,12 +74,14 @@ function NumberedMarker({ position, number }) {
 
 export default function WardMap() {
   const { campaign } = useCampaign();
+  const campaignId = campaign?.id;
   const [route, setRoute] = useState([]);
 
-  const { data: contacts = [] } = useQuery({
-    queryKey: ['contacts-map', campaign?.id],
-    queryFn: () => base44.entities.Contact.filter({ campaign_id: campaign?.id }, '-created_date', 1000),
-  });
+  const { data: contacts = [] } = useSecureData(
+    'getContactDetails',
+    campaignId ? { campaign_id: campaignId } : null,
+    { staleTime: 120000, refetchInterval: 120000, enabled: !!campaignId }
+  );
 
   const aggregated = aggregateByPostcode(contacts);
   const routeCoords = route.map(s => s.coords);

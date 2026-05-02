@@ -2,6 +2,7 @@ import React, { useState } from 'react';
 import { base44 } from '@/api/base44Client';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { useCampaign } from '@/lib/CampaignContext';
+import useSecureData from '@/hooks/useSecureData';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
@@ -36,25 +37,27 @@ export default function Tasks() {
   const [statusFilter, setStatusFilter] = useState('all');
   const queryClient = useQueryClient();
   const { campaign } = useCampaign();
+  const campaignId = campaign?.id;
 
-  const { data: tasks = [], isLoading } = useQuery({
-    queryKey: ['tasks', campaign?.id],
-    queryFn: () => base44.entities.Task.filter({ campaign_id: campaign?.id }, '-created_date', 200),
-  });
+  const { data: tasks = [], isLoading, refetch } = useSecureData(
+    'getSessionLogs',
+    campaignId ? { campaign_id: campaignId } : null,
+    { staleTime: 120000, refetchInterval: 120000, enabled: !!campaignId }
+  );
 
   const createMutation = useMutation({
-    mutationFn: (data) => base44.entities.Task.create({ ...data, campaign_id: campaign?.id }),
-    onSuccess: () => { queryClient.invalidateQueries({ queryKey: ['tasks', campaign?.id] }); setDialogOpen(false); setForm(emptyTask); },
+    mutationFn: (data) => base44.entities.Task.create({ ...data, campaign_id: campaignId }),
+    onSuccess: () => { refetch(); setDialogOpen(false); setForm(emptyTask); },
   });
 
   const updateMutation = useMutation({
     mutationFn: ({ id, data }) => base44.entities.Task.update(id, data),
-    onSuccess: () => { queryClient.invalidateQueries({ queryKey: ['tasks', campaign?.id] }); setDialogOpen(false); setEditing(null); setForm(emptyTask); },
+    onSuccess: () => { refetch(); setDialogOpen(false); setEditing(null); setForm(emptyTask); },
   });
 
   const deleteMutation = useMutation({
     mutationFn: (id) => base44.entities.Task.delete(id),
-    onSuccess: () => queryClient.invalidateQueries({ queryKey: ['tasks', campaign?.id] }),
+    onSuccess: () => refetch(),
   });
 
   const handleSubmit = (e) => {
