@@ -71,6 +71,12 @@ import BrandingSettings from './pages/BrandingSettings';
 import TrainingCenter from './pages/TrainingCenter';
 import DemoDataImporter from './pages/DemoDataImporter';
 import PitchPresentation from './pages/PitchPresentation';
+import Pricing from './pages/Pricing';
+import CaseStudies from './pages/CaseStudies';
+import Testimonials from './pages/Testimonials';
+import PartnerProgram from './pages/PartnerProgram';
+import Services from './pages/Services';
+import Compliance from './pages/Compliance';
 
 const AuthenticatedApp = () => {
   const { isLoadingAuth, isLoadingPublicSettings, authError, navigateToLogin } = useAuth();
@@ -204,6 +210,12 @@ function App() {
               <Route path="/" element={<HomeRoute />} />
               <Route path="/vote" element={<LandingPage />} />
               <Route path="/volunteer" element={<VolunteerSignup />} />
+              <Route path="/pricing" element={<Pricing />} />
+              <Route path="/case-studies" element={<CaseStudies />} />
+              <Route path="/testimonials" element={<Testimonials />} />
+              <Route path="/partners" element={<PartnerProgram />} />
+              <Route path="/services" element={<Services />} />
+              <Route path="/compliance" element={<Compliance />} />
               {/* Auth-gated campaign tool routes */}
               <Route path="/*" element={<AuthenticatedApp />} />
             </Routes>
