@@ -1,0 +1,74 @@
+import { useQuery } from '@tanstack/react-query';
+import { base44 } from '@/api/base44Client';
+import { useAuth } from '@/lib/AuthContext';
+
+/**
+ * Hook for securely fetching data from RLS-protected backend functions
+ * Handles 403 access denials gracefully and logs access attempts
+ */
+export const useSecureData = (functionName, params, options = {}) => {
+  const { user } = useAuth();
+
+  const { data, isLoading, error, refetch, isFetching } = useQuery(
+    [functionName, JSON.stringify(params)],
+    async () => {
+      try {
+        const response = await base44.functions.invoke(functionName, params);
+        
+        // Log successful data access
+        base44.analytics.track({
+          eventName: 'secure_data_access',
+          properties: {
+            function: functionName,
+            status: 'success',
+            user_email: user?.email
+          }
+        });
+        
+        return response.data;
+      } catch (err) {
+        // Handle 403 (RLS denial) gracefully
+        if (err.response?.status === 403) {
+          // Log denied access attempt
+          base44.analytics.track({
+            eventName: 'secure_data_access',
+            properties: {
+              function: functionName,
+              status: 'denied',
+              user_email: user?.email
+            }
+          });
+          
+          throw new Error('You do not have access to this data.');
+        }
+        
+        // Handle 401 (not authenticated)
+        if (err.response?.status === 401) {
+          throw new Error('Authentication required. Please log in.');
+        }
+        
+        // Handle other errors
+        throw err;
+      }
+    },
+    {
+      staleTime: 60000, // Default 1 minute
+      cacheTime: 120000, // Default 2 minutes
+      retry: 2,
+      retryDelay: (attemptIndex) => Math.min(1000 * 2 ** attemptIndex, 30000),
+      enabled: !!user, // Only run if user is authenticated
+      ...options
+    }
+  );
+
+  return {
+    data,
+    isLoading,
+    isFetching,
+    error,
+    refetch,
+    isError: !!error
+  };
+};
+
+export default useSecureData;

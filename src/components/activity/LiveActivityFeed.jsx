@@ -4,6 +4,9 @@ import { useQuery } from '@tanstack/react-query';
 import { DoorOpen, Phone, Mail, MessageSquare, Users, Clock } from 'lucide-react';
 import { Badge } from '@/components/ui/badge';
 import { formatDistanceToNow } from 'date-fns';
+import { useSecureData } from '@/hooks/useSecureData';
+import { useCampaign } from '@/lib/CampaignContext';
+import DataFetchError from '@/components/DataFetchError';
 
 const TYPE_ICONS = {
   door_knock: <DoorOpen className="w-3.5 h-3.5" />,
@@ -23,37 +26,22 @@ const OUTCOME_COLORS = {
 
 export default function LiveActivityFeed({ limit = 20 }) {
   const [feed, setFeed] = useState([]);
+  const { campaignId } = useCampaign();
 
-  const { data: interactions = [], isLoading } = useQuery({
-    queryKey: ['interactions-feed'],
-    queryFn: () => base44.entities.ContactInteraction.list('-created_date', limit),
-    refetchInterval: 30000,
-  });
-
-  const { data: contacts = [] } = useQuery({
-    queryKey: ['contacts'],
-    queryFn: () => base44.entities.Contact.list('-created_date', 1000),
-  });
+  // Use getActivityFeed function with RLS protection
+  const { data: activity = [], isLoading, error, refetch } = useSecureData(
+    'getActivityFeed',
+    { campaign_id: campaignId, limit },
+    { staleTime: 30000, refetchInterval: 30000 }
+  );
 
   useEffect(() => {
-    const contactMap = {};
-    contacts.forEach(c => { contactMap[c.id] = c.name; });
-    const enriched = interactions.map(i => ({
-      ...i,
-      contact_name: contactMap[i.contact_id] || 'Unknown',
-    }));
-    setFeed(enriched);
-  }, [interactions, contacts]);
+    setFeed(activity);
+  }, [activity]);
 
-  // Real-time subscription
-  useEffect(() => {
-    const unsub = base44.entities.ContactInteraction.subscribe((event) => {
-      if (event.type === 'create') {
-        setFeed(prev => [event.data, ...prev].slice(0, limit));
-      }
-    });
-    return unsub;
-  }, [limit]);
+  if (error) {
+    return <DataFetchError error={error} onRetry={refetch} title="Unable to Load Activity" />;
+  }
 
   if (isLoading) {
     return (

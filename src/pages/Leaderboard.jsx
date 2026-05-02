@@ -1,8 +1,8 @@
-import { useQuery } from '@tanstack/react-query';
-import { base44 } from '@/api/base44Client';
 import { useCampaign } from '@/lib/CampaignContext';
+import { useSecureData } from '@/hooks/useSecureData';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
+import DataFetchError from '@/components/DataFetchError';
 import { Trophy, Medal, Star, TrendingUp, Users, MessageSquare, DoorOpen } from 'lucide-react';
 
 const RANK_STYLES = [
@@ -22,37 +22,20 @@ function StatPill({ icon, value, label }) {
 }
 
 export default function Leaderboard() {
-  const { campaign } = useCampaign();
+  const { campaignId } = useCampaign();
 
-  const { data: interactions = [] } = useQuery({
-    queryKey: ['interactions', campaign?.id],
-    queryFn: () => base44.entities.ContactInteraction.filter({ campaign_id: campaign?.id }, '-date', 1000),
-  });
+  // Fetch leaderboard data via RLS-protected function
+  const { data: leaderboard = [], isLoading, error, refetch } = useSecureData(
+    'getLeaderboardData',
+    { campaign_id: campaignId },
+    { staleTime: 300000, refetchInterval: 300000 } // Cache for 5 minutes
+  );
 
-  const { data: contacts = [] } = useQuery({
-    queryKey: ['contacts', campaign?.id],
-    queryFn: () => base44.entities.Contact.filter({ campaign_id: campaign?.id }, '-updated_date', 1000),
-  });
-
-  // Build leaderboard from logged_by on interactions
-  const stats = {};
-  interactions.forEach(i => {
-    const key = i.logged_by || 'Unknown';
-    if (!stats[key]) stats[key] = { name: key, total: 0, door_knocks: 0, calls: 0, positives: 0 };
-    stats[key].total += 1;
-    if (i.type === 'door_knock') stats[key].door_knocks += 1;
-    if (i.type === 'phone_call') stats[key].calls += 1;
-    if (i.outcome === 'positive') stats[key].positives += 1;
-  });
-
-  // Also count canvassed contacts by canvass_date (no logged_by on contacts, so use interactions only)
-  const ranked = Object.values(stats).sort((a, b) => b.total - a.total);
-
-  // Summary totals
-  const totalInteractions = interactions.length;
-  const totalDoors = interactions.filter(i => i.type === 'door_knock').length;
-  const totalPositive = interactions.filter(i => i.outcome === 'positive').length;
+  const ranked = leaderboard || [];
   const activeCanvassers = ranked.length;
+  const totalInteractions = ranked.reduce((sum, v) => sum + (v.doors_knocked || 0), 0);
+  const totalDoors = totalInteractions;
+  const totalPositive = ranked.reduce((sum, v) => sum + (v.positive_responses || 0), 0);
 
   return (
     <div className="p-6 lg:p-10 max-w-3xl mx-auto space-y-8">
@@ -81,8 +64,17 @@ export default function Leaderboard() {
         ))}
       </div>
 
-      {/* Ranked list */}
-      {ranked.length === 0 ? (
+      {error && <DataFetchError error={error} onRetry={refetch} title="Unable to Load Leaderboard" />}
+
+      {isLoading && (
+        <div className="space-y-3">
+          {[1,2,3].map(i => (
+            <div key={i} className="h-20 bg-muted animate-pulse rounded-lg" />
+          ))}
+        </div>
+      )}
+
+      {!isLoading && ranked.length === 0 ? (
         <Card>
           <CardContent className="py-12 text-center text-muted-foreground">
             <Trophy className="w-10 h-10 mx-auto mb-3 opacity-30" />
@@ -104,16 +96,16 @@ export default function Leaderboard() {
 
                 {/* Name + email */}
                 <div className="flex-1 min-w-0">
-                  <p className="font-semibold truncate">{canvasser.name}</p>
-                  <p className="text-xs text-muted-foreground">{persuasion}% positive rate</p>
+                  <p className="font-semibold truncate">{canvasser.name || canvasser.email}</p>
+                  <p className="text-xs text-muted-foreground">{Math.round((canvasser.positive_responses / (canvasser.doors_knocked || 1)) * 100)}% positive rate</p>
                 </div>
 
                 {/* Stats */}
-                <div className="flex gap-2 flex-shrink-0">
-                  <StatPill icon={<MessageSquare className="w-3 h-3" />} value={canvasser.total} label="Total" />
-                  <StatPill icon={<DoorOpen className="w-3 h-3" />} value={canvasser.door_knocks} label="Doors" />
-                  <StatPill icon={<TrendingUp className="w-3 h-3" />} value={canvasser.positives} label="Positive" />
-                </div>
+                 <div className="flex gap-2 flex-shrink-0">
+                    <StatPill icon={<MessageSquare className="w-3 h-3" />} value={canvasser.doors_knocked || 0} label="Total" />
+                    <StatPill icon={<DoorOpen className="w-3 h-3" />} value={canvasser.doors_knocked || 0} label="Doors" />
+                    <StatPill icon={<TrendingUp className="w-3 h-3" />} value={canvasser.positive_responses || 0} label="Positive" />
+                  </div>
               </div>
             );
           })}
