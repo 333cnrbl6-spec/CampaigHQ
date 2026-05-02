@@ -117,19 +117,31 @@ export const AuthProvider = ({ children }) => {
   const logout = (shouldRedirect = true) => {
     setUser(null);
     setIsAuthenticated(false);
+    setAuthChecked(false);
     
-    if (shouldRedirect) {
-      // Use the SDK's logout method which handles token cleanup and redirect
-      base44.auth.logout(window.location.href);
-    } else {
-      // Just remove the token without redirect
-      base44.auth.logout();
+    try {
+      if (shouldRedirect) {
+        // Use the SDK's logout method which handles token cleanup and redirect
+        base44.auth.logout(window.location.href);
+      } else {
+        // Just remove the token without redirect
+        base44.auth.logout();
+      }
+    } catch (err) {
+      console.error('Logout error:', err);
+      // Still clear local state even if SDK logout fails
+      window.location.href = '/';
     }
   };
 
   const navigateToLogin = () => {
-    // Use the SDK's redirectToLogin method
-    base44.auth.redirectToLogin(window.location.href);
+    try {
+      // Use the SDK's redirectToLogin method
+      base44.auth.redirectToLogin(window.location.href);
+    } catch (err) {
+      console.error('Navigation to login failed:', err);
+      window.location.href = '/';
+    }
   };
 
   return (

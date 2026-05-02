@@ -99,24 +99,35 @@ export default function FieldMode() {
   useEffect(() => {
     requestLocation();
     const interval = setInterval(async () => {
-      requestLocation();
-      if (location) {
-        const battery = navigator.getBattery ? (await navigator.getBattery().catch(() => null))?.level * 100 : null;
-        base44.functions.invoke('updateVolunteerLocation', {
-          latitude: location.latitude,
-          longitude: location.longitude,
-          postcode: contacts[currentIndex]?.postcode,
-          turf_id: contacts[currentIndex]?.turf_id,
-          turf_name: contacts[currentIndex]?.turf_name,
-          current_contact_id: contacts[currentIndex]?.id,
-          doors_knocked_today: currentIndex,
-          battery_level: battery,
-          status: 'active',
-        }).catch(() => {});
+      try {
+        requestLocation();
+        if (location && currentContact?.id) {
+          let battery = null;
+          try {
+            const batteryStatus = navigator.getBattery ? await navigator.getBattery().catch(() => null) : null;
+            battery = batteryStatus?.level ? batteryStatus.level * 100 : null;
+          } catch (err) {
+            console.warn('Battery API unavailable:', err);
+          }
+
+          base44.functions.invoke('updateVolunteerLocation', {
+            latitude: location.latitude,
+            longitude: location.longitude,
+            postcode: currentContact?.postcode || '',
+            turf_id: currentContact?.turf_id || '',
+            turf_name: currentContact?.turf_name || '',
+            current_contact_id: currentContact.id,
+            doors_knocked_today: currentIndex + 1,
+            battery_level: battery,
+            status: 'active',
+          }).catch(err => console.warn('Location update failed:', err));
+        }
+      } catch (err) {
+        console.error('Location update error:', err);
       }
     }, 30000);
     return () => clearInterval(interval);
-  }, []);
+  }, [location, currentContact, currentIndex]);
 
   // Welfare check-in: if no check-in in 20 mins, show alert
   useEffect(() => {
@@ -257,17 +268,30 @@ export default function FieldMode() {
       await logInteraction(interactionPayload, contactUpdatePayload);
 
       // Update volunteer location
-      if (location?.latitude && location?.longitude) {
-        base44.functions.invoke('updateVolunteerLocation', {
-          latitude: location.latitude,
-          longitude: location.longitude,
-          postcode: currentContact.postcode,
-          turf_id: currentContact.turf_id,
-          turf_name: currentContact.turf_name,
-          current_contact_id: currentContact.id,
-          doors_knocked_today: (currentIndex + 1),
-          battery_level: navigator.getBattery ? (await navigator.getBattery()).level * 100 : null,
-        }).catch(err => console.error('Location update failed:', err));
+      if (location?.latitude && location?.longitude && currentContact?.id) {
+        try {
+          let battery = null;
+          try {
+            const batteryStatus = navigator.getBattery ? await navigator.getBattery().catch(() => null) : null;
+            battery = batteryStatus?.level ? batteryStatus.level * 100 : null;
+          } catch (err) {
+            console.warn('Battery API unavailable:', err);
+          }
+
+          await base44.functions.invoke('updateVolunteerLocation', {
+            latitude: location.latitude,
+            longitude: location.longitude,
+            postcode: currentContact.postcode || '',
+            turf_id: currentContact.turf_id || '',
+            turf_name: currentContact.turf_name || '',
+            current_contact_id: currentContact.id,
+            doors_knocked_today: (currentIndex + 1),
+            battery_level: battery,
+            status: 'active',
+          });
+        } catch (err) {
+          console.warn('Location update failed:', err);
+        }
       }
 
       setShowInteractionDialog(false);

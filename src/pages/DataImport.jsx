@@ -240,21 +240,26 @@ Return JSON with:
   };
 
   // ─── Stage 4: Extract & Validate Records ────────────────────────────────────
-   const handleConfirmImport = async (fieldOverrides) => {
-      if (!state.fileUrl || !state.assessment || !campaign?.id) {
-        update({ error: 'Campaign or file missing — please reload' });
-        return;
-      }
+  const handleConfirmImport = async (fieldOverrides) => {
+    if (!state.fileUrl || !state.assessment || !campaign?.id) {
+      update({ error: 'Campaign or file missing — please reload' });
+      return;
+    }
 
-     update({
-       currentStage: 4,
-       loading: true,
-       error: null,
-       loadingStep: { step: 1, total: 2, label: 'Extracting all records from your file…', detail: 'AI is reading every row and mapping it to the correct fields. Large files can take up to a minute.' },
-     });
+    update({
+      currentStage: 4,
+      loading: true,
+      error: null,
+      loadingStep: { step: 1, total: 2, label: 'Extracting all records from your file…', detail: 'AI is reading every row and mapping it to the correct fields. Large files can take up to a minute.' },
+    });
 
      try {
-       const fieldMapping = (state.assessment.fields || []).reduce((acc, field) => {
+       if (!state.assessment?.fields || !Array.isArray(state.assessment.fields)) {
+         update({ error: 'Assessment data missing or invalid', loading: false, loadingStep: null });
+         return;
+       }
+
+       const fieldMapping = state.assessment.fields.reduce((acc, field) => {
          const override = fieldOverrides?.[field.name];
          acc[field.name] = override?.name || field.name;
          return acc;
@@ -285,7 +290,7 @@ Return JSON with:
 
       const records = extractRes?.records || [];
 
-      if (records.length === 0) {
+      if (!Array.isArray(records) || records.length === 0) {
         update({ error: 'No records could be extracted from the file', loading: false, loadingStep: null });
         return;
       }
@@ -298,13 +303,13 @@ Return JSON with:
       const VALID_ENTITIES = ['Contact', 'LeafletRun', 'Turf', 'Issue', 'Task', 'CanvassingLog'];
       const rawSuggested = state.assessment?.suggestedEntity || 'Contact';
       const entityName = VALID_ENTITIES.includes(rawSuggested) ? rawSuggested : 'Contact';
-      
+
       let entitySchema = {};
       try {
-        entitySchema = await base44.entities[entityName].schema();
-        if (!entitySchema || typeof entitySchema !== 'object') {
-          update({ error: `Failed to load schema for ${entityName}` });
-          return;
+        const schemaResult = await base44.entities[entityName].schema();
+        entitySchema = schemaResult && typeof schemaResult === 'object' ? schemaResult : {};
+        if (!entitySchema || Object.keys(entitySchema).length === 0) {
+          console.warn(`Schema for ${entityName} is empty or invalid`);
         }
       } catch (err) {
         console.error(`Failed to fetch schema for ${entityName}:`, err);
@@ -316,6 +321,11 @@ Return JSON with:
       const validRecords = [];
 
       records.forEach((record, idx) => {
+        if (!record || typeof record !== 'object') {
+          validationErrors.push({ recordIndex: idx + 1, errors: ['Invalid record format'], record });
+          return;
+        }
+
         const recordErrors = [];
 
         (entitySchema.required || []).forEach(field => {
@@ -326,7 +336,7 @@ Return JSON with:
         });
 
         Object.entries(entitySchema.properties || {}).forEach(([field, fieldSchema]) => {
-          if (!(field in record)) return;
+          if (!(field in record) || !fieldSchema) return;
           const value = record[field];
           if (fieldSchema.enum && !fieldSchema.enum.includes(value)) {
             recordErrors.push(`"${field}" value "${value}" must be one of: ${fieldSchema.enum.join(', ')}`);
@@ -352,15 +362,16 @@ Return JSON with:
         loading: false,
         loadingStep: null,
       });
-    } catch (err) {
+      } catch (err) {
+      console.error('Extraction/validation error:', err);
       update({ error: err.message || 'Failed to extract and validate records', loading: false, loadingStep: null });
-    }
-  };
+      }
+      };
 
   // ─── Stage 5: Final Import ───────────────────────────────────────────────────
   const handleFinalImport = async () => {
     const { validationResult, currentFile, fileUrl } = state;
-    if (!validationResult?.validRecords?.length || !campaign?.id) {
+    if (!validationResult?.validRecords || !Array.isArray(validationResult.validRecords) || validationResult.validRecords.length === 0 || !campaign?.id) {
       update({ error: 'No valid records to import or campaign missing' });
       return;
     }
@@ -370,10 +381,13 @@ Return JSON with:
     try {
       let createdRecords = [];
       try {
+        if (!base44.entities[validationResult.entityName]) {
+          throw new Error(`Entity ${validationResult.entityName} not found`);
+        }
         createdRecords = await base44.entities[validationResult.entityName].bulkCreate(validationResult.validRecords);
       } catch (err) {
         console.error('Bulk create failed:', err);
-        update({ error: `Failed to create records: ${err.message}` });
+        update({ error: `Failed to create records: ${err.message}`, loading: false, loadingStep: null });
         return;
       }
       

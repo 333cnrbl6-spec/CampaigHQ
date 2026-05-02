@@ -109,12 +109,15 @@ export default function VolunteerProfileSetup() {
   });
 
   const toggle = (field, value) => {
-    setForm(f => ({
-      ...f,
-      [field]: f[field].includes(value)
-        ? f[field].filter(v => v !== value)
-        : [...f[field], value],
-    }));
+    setForm(f => {
+      const currentArray = Array.isArray(f[field]) ? f[field] : [];
+      return {
+        ...f,
+        [field]: currentArray.includes(value)
+          ? currentArray.filter(v => v !== value)
+          : [...currentArray, value],
+      };
+    });
   };
 
   const handleSave = () => {

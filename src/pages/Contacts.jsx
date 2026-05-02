@@ -155,31 +155,44 @@ export default function Contacts() {
 
   const bulkTagMutation = useMutation({
     mutationFn: async ({ tags, mode }) => {
-      const selectedContacts = contacts.filter(c => selectedIds.has(c.id));
-      await Promise.all(
-        selectedContacts.map(contact => {
-          let newTags;
-          if (mode === 'apply') {
-            newTags = [...new Set([...(contact.tags || []), ...tags])];
-          } else if (mode === 'remove') {
-            newTags = (contact.tags || []).filter(t => !tags.includes(t));
-          } else {
-            // replace
-            newTags = tags;
-          }
-          return base44.entities.Contact.update(contact.id, { tags: newTags });
-        })
-      );
+      if (!Array.isArray(tags) || tags.length === 0) {
+        throw new Error('No tags provided');
+      }
+      const selectedContacts = Array.isArray(contacts) ? contacts.filter(c => selectedIds.has(c?.id)) : [];
+      if (selectedContacts.length === 0) {
+        throw new Error('No contacts selected');
+      }
+      
+      const updates = selectedContacts.map(contact => {
+        let newTags;
+        if (mode === 'apply') {
+          newTags = [...new Set([...(Array.isArray(contact.tags) ? contact.tags : []), ...tags])];
+        } else if (mode === 'remove') {
+          newTags = (Array.isArray(contact.tags) ? contact.tags : []).filter(t => !tags.includes(t));
+        } else {
+          // replace
+          newTags = tags;
+        }
+        return base44.entities.Contact.update(contact.id, { tags: newTags });
+      });
+      
+      return Promise.all(updates);
     },
     onSuccess: () => {
       refetch();
       setSelectedIds(new Set());
       setShowTagDialog(false);
     },
+    onError: (err) => {
+      console.error('Bulk tag error:', err);
+      alert('Failed to apply tags: ' + err.message);
+    },
   });
 
-  // Derive all turf zones from tags
-  const allTurfs = [...new Set(contacts.flatMap(c => c.tags || []))].filter(Boolean).sort();
+  // Derive all turf zones from tags (defensive against non-array)
+  const allTurfs = Array.isArray(contacts) 
+    ? [...new Set(contacts.flatMap(c => Array.isArray(c?.tags) ? c.tags : []))].filter(Boolean).sort()
+    : [];
 
   const filtered = contacts.filter(c => {
     const matchesSearch = !search || c.name?.toLowerCase().includes(search.toLowerCase()) ||

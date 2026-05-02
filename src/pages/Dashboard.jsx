@@ -18,8 +18,10 @@ import WeeklySummaryWidget from '../components/dashboard/WeeklySummaryWidget';
 
 export default function Dashboard() {
   const [geocodingStatus, setGecodingStatus] = useState(null);
-  const [showOptimizationHint, setShowOptimizationHint] = useState(true);
-  const { campaignId } = useCampaign();
+  const { campaign } = useCampaign();
+  
+  // Defensive: campaign might not have loaded yet
+  const campaignId = campaign?.id;
 
   // Fetch RLS-protected data with secure data hooks — defensive loading with defaults
   const { data: contacts = [], error: contactError, refetch: refetchContacts } = useSecureData(
