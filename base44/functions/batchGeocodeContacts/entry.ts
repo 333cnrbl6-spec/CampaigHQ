@@ -49,7 +49,7 @@ Deno.serve(async (req) => {
       processed: toProcess.length,
       succeeded: 0,
       failed: 0,
-      more_remaining: totalRemaining > limit,
+      more_remaining: false, // set after processing
     };
 
     const batchSize = 10;
@@ -92,9 +92,16 @@ Deno.serve(async (req) => {
       }
     }
 
+    // After processing, check how many still need geocoding
+    const afterAll = await base44.asServiceRole.entities.Contact.list('name', 5000);
+    const stillRemaining = afterAll.filter(c =>
+      (!c.latitude || !c.longitude) && (c.postcode || c.address)
+    ).length;
+    results.more_remaining = stillRemaining > 0;
+
     return Response.json({
       success: true,
-      message: `Geocoded ${results.succeeded}. ${results.more_remaining ? `${totalRemaining - limit} still remaining.` : 'All done!'}`,
+      message: `Geocoded ${results.succeeded}. ${results.more_remaining ? `${stillRemaining} still remaining.` : 'All done!'}`,
       results,
     });
   } catch (error) {

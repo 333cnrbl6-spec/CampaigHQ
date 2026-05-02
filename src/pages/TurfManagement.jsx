@@ -12,7 +12,8 @@ import BulkAssignDialog from '../components/turf/BulkAssignDialog';
 import TurfBoundaryMap from '../components/map/TurfBoundaryMap';
 import UnassignedStreetsOverlay from '../components/map/UnassignedStreetsOverlay';
 import { Button } from '@/components/ui/button';
-import { Pencil, Trash2, Layers, Route, Wand2, Map, Eye, EyeOff } from 'lucide-react';
+import { Pencil, Trash2, Layers, Route, Wand2, Map, Eye, EyeOff, Database } from 'lucide-react';
+import GeocodePanel from '../components/turf/GeocodePanel';
 
 // Fix leaflet default marker icons
 delete L.Icon.Default.prototype._getIconUrl;
@@ -186,6 +187,7 @@ export default function TurfManagement() {
   const [autoDrawing, setAutoDrawing] = useState(false);
   const [showBoundaryMap, setShowBoundaryMap] = useState(false);
   const [showUnassignedPanel, setShowUnassignedPanel] = useState(false);
+  const [showGeocodePanel, setShowGeocodePanel] = useState(false);
 
   const { data: turfs = [] } = useQuery({
     queryKey: ['turfs'],
@@ -323,6 +325,15 @@ export default function TurfManagement() {
             {showUnassignedPanel ? <EyeOff className="w-4 h-4" /> : <Eye className="w-4 h-4" />}
             Unassigned Streets
           </Button>
+          <Button
+            size="sm"
+            variant={showGeocodePanel ? 'default' : 'outline'}
+            className="gap-2"
+            onClick={() => setShowGeocodePanel(p => !p)}
+          >
+            <Database className="w-4 h-4" />
+            Geocode DB
+          </Button>
           {selectedId && (
             <>
               <Button
@@ -404,6 +415,11 @@ export default function TurfManagement() {
             </>
           )}
         </MapContainer>
+
+        {/* Geocode panel */}
+        {showGeocodePanel && (
+          <GeocodePanel onClose={() => setShowGeocodePanel(false)} />
+        )}
 
         {/* Route panel */}
         {showRoute && selectedId && (
