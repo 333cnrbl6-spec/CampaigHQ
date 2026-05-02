@@ -16,16 +16,24 @@ Deno.serve(async (req) => {
     const body = await req.json();
     const { action, campaign_id, target_user_email, role } = body;
 
-    // Verify user has permission to manage this campaign
-    const userMembership = currentUser.campaign_memberships?.find(
-      m => m.campaign_id === campaign_id && m.status === 'active'
-    );
+    if (!campaign_id) {
+      return Response.json({ error: 'campaign_id is required' }, { status: 400 });
+    }
+
+    // Verify campaign exists and user has permission
+    const campaign = await base44.asServiceRole.entities.Campaign.list();
+    const targetCampaign = campaign.find(c => c.id === campaign_id);
     
-    if (!userMembership || !['campaign_admin', 'organiser'].includes(userMembership.role)) {
-      // National admin can manage any campaign
-      if (currentUser.role !== 'admin') {
-        return Response.json({ error: 'Permission denied' }, { status: 403 });
-      }
+    if (!targetCampaign) {
+      return Response.json({ error: 'Campaign not found' }, { status: 404 });
+    }
+
+    // Check if current user is owner or admin
+    const isOwner = targetCampaign.owner_email === currentUser.email;
+    const isAdmin = currentUser.role === 'admin';
+    
+    if (!isOwner && !isAdmin) {
+      return Response.json({ error: 'Permission denied' }, { status: 403 });
     }
 
     if (action === 'add_member') {

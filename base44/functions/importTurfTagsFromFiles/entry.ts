@@ -9,13 +9,16 @@ Deno.serve(async (req) => {
       return Response.json({ error: 'Unauthorized' }, { status: 401 });
     }
 
-    const { file_urls } = await req.json();
+    const { campaign_id, file_urls } = await req.json();
+    if (!campaign_id) {
+      return Response.json({ error: 'campaign_id is required' }, { status: 400 });
+    }
     if (!file_urls || !Array.isArray(file_urls)) {
       return Response.json({ error: 'file_urls array required' }, { status: 400 });
     }
 
-    // Get all contacts for matching
-    const allContacts = await base44.entities.Contact.list('name', 10000);
+    // Get all contacts for this campaign
+    const allContacts = await base44.asServiceRole.entities.Contact.filter({ campaign_id }, 'name', 10000);
     const contactsByPostcode = {};
     const contactsByAddress = {};
     

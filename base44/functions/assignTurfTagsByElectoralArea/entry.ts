@@ -9,10 +9,17 @@ Deno.serve(async (req) => {
       return Response.json({ error: 'Unauthorized' }, { status: 401 });
     }
 
-    // Fetch all contacts and turfs
+    const body = await req.json();
+    const { campaign_id } = body;
+
+    if (!campaign_id) {
+      return Response.json({ error: 'campaign_id is required' }, { status: 400 });
+    }
+
+    // Fetch contacts and turfs for this campaign
     const [contacts, turfs] = await Promise.all([
-      base44.entities.Contact.list('name', 10000),
-      base44.entities.Turf.list('name', 1000)
+      base44.asServiceRole.entities.Contact.filter({ campaign_id }, 'name', 10000),
+      base44.asServiceRole.entities.Turf.filter({ campaign_id }, 'name', 1000)
     ]);
 
     // Build turf name map from TYL codes

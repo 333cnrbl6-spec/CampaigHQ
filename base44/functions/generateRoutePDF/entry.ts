@@ -10,8 +10,11 @@ Deno.serve(async (req) => {
       return Response.json({ error: 'Unauthorized' }, { status: 401 });
     }
 
-    const { route, turf_name, contact_details } = await req.json();
+    const { campaign_id, route, turf_name, contact_details } = await req.json();
 
+    if (!campaign_id) {
+      return Response.json({ error: 'campaign_id is required' }, { status: 400 });
+    }
     if (!route || !contact_details) {
       return Response.json({ error: 'Missing route or contact_details' }, { status: 400 });
     }

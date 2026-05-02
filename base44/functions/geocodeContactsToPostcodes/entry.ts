@@ -10,21 +10,24 @@ Deno.serve(async (req) => {
     }
 
     const body = await req.json().catch(() => ({}));
-    const { contactIds, turf } = body;
+    const { campaign_id, contactIds, turf } = body;
 
-    // Fetch contacts to geocode
+    if (!campaign_id) {
+      return Response.json({ error: 'campaign_id is required' }, { status: 400 });
+    }
+
+    // Fetch contacts to geocode for this campaign
     let contacts = [];
     if (contactIds?.length) {
-      contacts = await Promise.all(
-        contactIds.map(id => base44.entities.Contact.get(id))
-      );
+      const allContacts = await base44.asServiceRole.entities.Contact.filter({ campaign_id }, '', 10000);
+      contacts = allContacts.filter(c => contactIds.includes(c.id));
     } else if (turf) {
-      // Fetch all contacts for the turf
-      const allContacts = await base44.entities.Contact.list('', 10000);
+      // Fetch all contacts for the turf in this campaign
+      const allContacts = await base44.asServiceRole.entities.Contact.filter({ campaign_id }, '', 10000);
       contacts = allContacts.filter(c => c.tags?.includes(turf) || c.address?.includes(turf));
     } else {
-      // Fetch all contacts without postcodes
-      const allContacts = await base44.entities.Contact.list('', 10000);
+      // Fetch all contacts without postcodes in this campaign
+      const allContacts = await base44.asServiceRole.entities.Contact.filter({ campaign_id }, '', 10000);
       contacts = allContacts.filter(c => !c.postcode);
     }
 

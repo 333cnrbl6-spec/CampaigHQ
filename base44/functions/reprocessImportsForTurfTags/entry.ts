@@ -9,8 +9,15 @@ Deno.serve(async (req) => {
       return Response.json({ error: 'Unauthorized' }, { status: 401 });
     }
 
-    // Get recent import logs
-    const importLogs = await base44.entities.ImportLog.list('-created_date', 20);
+    const body = await req.json();
+    const { campaign_id } = body;
+
+    if (!campaign_id) {
+      return Response.json({ error: 'campaign_id is required' }, { status: 400 });
+    }
+
+    // Get recent import logs for this campaign
+    const importLogs = await base44.asServiceRole.entities.ImportLog.filter({ campaign_id }, '-created_date', 20);
     const contactsWithUrls = importLogs.filter(log => log.file_url && log.entity_type === 'Contact');
 
     if (contactsWithUrls.length === 0) {
@@ -22,8 +29,8 @@ Deno.serve(async (req) => {
       });
     }
 
-    // Get all contacts for matching
-    const allContacts = await base44.entities.Contact.list('name', 10000);
+    // Get all contacts for this campaign
+    const allContacts = await base44.asServiceRole.entities.Contact.filter({ campaign_id }, 'name', 10000);
     const contactsByPostcode = {};
     const contactsByAddress = {};
     

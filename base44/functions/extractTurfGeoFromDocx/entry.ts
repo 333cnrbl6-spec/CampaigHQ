@@ -8,7 +8,8 @@ Deno.serve(async (req) => {
     const user = await base44.auth.me();
     if (!user) return Response.json({ error: 'Unauthorized' }, { status: 401 });
 
-    const { file_url, turf_id, streets } = await req.json();
+    const { campaign_id, file_url, turf_id, streets } = await req.json();
+    if (!campaign_id) return Response.json({ error: 'campaign_id is required' }, { status: 400 });
     if (!file_url) return Response.json({ error: 'file_url required' }, { status: 400 });
 
     // Download the docx file

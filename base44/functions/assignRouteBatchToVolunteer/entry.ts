@@ -11,6 +11,7 @@ Deno.serve(async (req) => {
 
     const body = await req.json();
     const { 
+      campaign_id,
       volunteer_email,
       volunteer_name,
       contact_ids,
@@ -19,6 +20,9 @@ Deno.serve(async (req) => {
       notes = ''
     } = body;
 
+    if (!campaign_id) {
+      return Response.json({ error: 'campaign_id is required' }, { status: 400 });
+    }
     if (!volunteer_email || !contact_ids || contact_ids.length === 0) {
       return Response.json({ 
         error: 'Provide volunteer_email and contact_ids' 
@@ -26,8 +30,8 @@ Deno.serve(async (req) => {
     }
 
     // Create a canvassing shift assignment record
-    // (This would be a CanvassingShift entity, or you could create a new RouteBatch entity)
     const shiftData = {
+      campaign_id,
       title: `Route Batch ${batch_number} — ${contact_ids.length} contacts`,
       date: target_date,
       start_time: '10:00',
@@ -44,6 +48,7 @@ Deno.serve(async (req) => {
 
     // Create signup record linking volunteer to shift
     const signupData = {
+      campaign_id,
       shift_id: shift.id,
       volunteer_email,
       volunteer_name,
@@ -54,7 +59,7 @@ Deno.serve(async (req) => {
     const signup = await base44.entities.ShiftSignup.create(signupData);
 
     // Tag all contacts with the volunteer's email for tracking
-    const allContacts = await base44.entities.Contact.list('name', 5000);
+    const allContacts = await base44.asServiceRole.entities.Contact.filter({ campaign_id }, 'name', 5000);
     const contactsToUpdate = allContacts.filter(c => contact_ids.includes(c.id));
 
     for (const contact of contactsToUpdate) {

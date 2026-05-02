@@ -3,10 +3,23 @@ import { createClientFromRequest } from 'npm:@base44/sdk@0.8.25';
 Deno.serve(async (req) => {
   try {
     const base44 = createClientFromRequest(req);
+    const user = await base44.auth.me();
 
-    // Find all scheduled messages that are due
+    if (!user) {
+      return Response.json({ error: 'Unauthorized' }, { status: 401 });
+    }
+
+    const body = await req.json();
+    const { campaign_id } = body;
+
+    if (!campaign_id) {
+      return Response.json({ error: 'campaign_id is required' }, { status: 400 });
+    }
+
+    // Find all scheduled messages that are due for this campaign
     const now = new Date().toISOString();
     const logs = await base44.asServiceRole.entities.OutreachLog.filter({
+      campaign_id,
       status: 'scheduled',
     });
 

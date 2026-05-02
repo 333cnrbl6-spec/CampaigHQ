@@ -73,6 +73,13 @@ Deno.serve(async (req) => {
     const user = await base44.auth.me();
     if (!user) return Response.json({ error: 'Unauthorized' }, { status: 401 });
 
+    const body = await req.json();
+    const { campaign_id } = body;
+
+    if (!campaign_id) {
+      return Response.json({ error: 'campaign_id is required' }, { status: 400 });
+    }
+
     // Fetch real postcode data from postcodes.io
     const validPostcodes = [];
     const postcodeStreetMap = {};
@@ -175,10 +182,10 @@ Deno.serve(async (req) => {
       count++;
     }
 
-    // Bulk create in batches of 100
+    // Bulk create in batches of 100 with campaign_id injected
     let created = 0;
     for (let i = 0; i < contacts.length; i += 100) {
-      const batch = contacts.slice(i, i + 100);
+      const batch = contacts.slice(i, i + 100).map(c => ({ ...c, campaign_id }));
       await base44.entities.Contact.bulkCreate(batch);
       created += batch.length;
     }

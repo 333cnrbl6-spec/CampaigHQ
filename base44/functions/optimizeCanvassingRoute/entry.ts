@@ -69,17 +69,21 @@ Deno.serve(async (req) => {
     }
 
     const body = await req.json();
-    const { contact_ids, turf_id, max_contacts_per_route } = body;
+    const { campaign_id, contact_ids, turf_id, max_contacts_per_route } = body;
 
-    // Fetch contacts to optimize
+    if (!campaign_id) {
+      return Response.json({ error: 'campaign_id is required' }, { status: 400 });
+    }
+
+    // Fetch contacts to optimize for this campaign
     let contacts = [];
     if (contact_ids && contact_ids.length > 0) {
-      // Get specific contacts
-      const allContacts = await base44.entities.Contact.list('name', 5000);
+      // Get specific contacts from campaign
+      const allContacts = await base44.asServiceRole.entities.Contact.filter({ campaign_id }, 'name', 5000);
       contacts = allContacts.filter(c => contact_ids.includes(c.id));
     } else if (turf_id) {
-      // Get all contacts in a turf
-      const allContacts = await base44.entities.Contact.list('name', 5000);
+      // Get all contacts in a turf for this campaign
+      const allContacts = await base44.asServiceRole.entities.Contact.filter({ campaign_id }, 'name', 5000);
       contacts = allContacts.filter(c => 
         c.tags && c.tags.includes(turf_id)
       );

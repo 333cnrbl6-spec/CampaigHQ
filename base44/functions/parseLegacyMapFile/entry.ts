@@ -47,7 +47,8 @@ Deno.serve(async (req) => {
     if (!user) return Response.json({ error: 'Unauthorized' }, { status: 401 });
 
     // Accepts either pre-extracted text content OR file_url for mammoth conversion
-    const { filename, text_content, streets: clientStreets, file_url } = await req.json();
+    const { campaign_id, filename, text_content, streets: clientStreets, file_url } = await req.json();
+    if (!campaign_id) return Response.json({ error: 'campaign_id is required' }, { status: 400 });
     if (!filename) return Response.json({ error: 'filename is required' }, { status: 400 });
 
     const meta = parseFilename(filename);
@@ -60,8 +61,9 @@ Deno.serve(async (req) => {
       streets = parseStreetsFromText(text_content);
     }
 
-    // Create Turf record
+    // Create Turf record with campaign_id
     const turf = await base44.asServiceRole.entities.Turf.create({
+      campaign_id,
       name: `${meta.turf_name} (${meta.route_label})`,
       notes: `Imported from legacy map file. ${meta.route_label} — ${meta.total_households} total households.`,
       status: 'unassigned',
@@ -72,11 +74,12 @@ Deno.serve(async (req) => {
       ...(file_url ? { file_url } : {}),
     });
 
-    // Create LeafletRun records per street
+    // Create LeafletRun records per street with campaign_id
     const leafletRuns = [];
     for (const street of streets) {
       if (!street.street_name) continue;
       const run = await base44.asServiceRole.entities.LeafletRun.create({
+        campaign_id,
         street_name: street.street_name,
         area: meta.area,
         turf_id: turf.id,
