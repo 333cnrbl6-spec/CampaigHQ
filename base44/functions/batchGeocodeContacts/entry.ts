@@ -30,37 +30,46 @@ Deno.serve(async (req) => {
       return Response.json({ error: 'Admin access required' }, { status: 403 });
     }
 
+    // Accept a limit param so frontend can call in chunks
+    let body = {};
+    try { body = await req.json(); } catch {}
+    const limit = body.limit || 150; // process up to 150 per call
+
     // Fetch all contacts that lack location data
     const allContacts = await base44.asServiceRole.entities.Contact.list('name', 5000);
     const needsGeocoding = allContacts.filter(c => 
       (!c.latitude || !c.longitude) && (c.postcode || c.address)
     );
 
-    console.log(`Batch geocoding ${needsGeocoding.length} contacts...`);
+    // Total remaining across ALL contacts (for progress reporting)
+    const totalRemaining = needsGeocoding.length;
+
+    // Only process up to `limit` this invocation
+    const toProcess = needsGeocoding.slice(0, limit);
+
+    console.log(`Batch geocoding ${toProcess.length} contacts (${totalRemaining} remaining total)...`);
 
     const results = {
-      total: needsGeocoding.length,
+      total_remaining_before: totalRemaining,
+      processed: toProcess.length,
       succeeded: 0,
       failed: 0,
-      skipped: 0,
-      updated_ids: [],
+      more_remaining: totalRemaining > limit,
     };
 
-    // Process in batches to avoid rate limiting
+    // Process in batches of 10 to avoid rate limiting
     const batchSize = 10;
-    for (let i = 0; i < needsGeocoding.length; i += batchSize) {
-      const batch = needsGeocoding.slice(i, i + batchSize);
+    for (let i = 0; i < toProcess.length; i += batchSize) {
+      const batch = toProcess.slice(i, i + batchSize);
       
       const geocodingPromises = batch.map(async (contact) => {
         try {
           let coords = null;
 
-          // Try postcode first
           if (contact.postcode) {
             coords = await geocodePostcode(contact.postcode);
           }
 
-          // If no postcode, try extracting from address
           if (!coords && contact.address) {
             const postcodeMatch = contact.address.match(/\b([A-Z]{1,2}\d{1,2}[A-Z]?\s*\d[A-Z]{2})\b/i);
             if (postcodeMatch) {
@@ -69,19 +78,14 @@ Deno.serve(async (req) => {
           }
 
           if (coords) {
-            // Update contact with coordinates
             await base44.asServiceRole.entities.Contact.update(contact.id, {
               latitude: coords.latitude,
               longitude: coords.longitude,
               postcode: coords.postcode,
             });
-
             results.succeeded += 1;
-            results.updated_ids.push(contact.id);
-            console.log(`✓ Geocoded ${contact.name}`);
           } else {
             results.failed += 1;
-            console.log(`✗ Failed to geocode ${contact.name} - no valid postcode`);
           }
         } catch (error) {
           results.failed += 1;
@@ -91,15 +95,14 @@ Deno.serve(async (req) => {
 
       await Promise.all(geocodingPromises);
       
-      // Rate limiting pause between batches
-      if (i + batchSize < needsGeocoding.length) {
-        await new Promise(resolve => setTimeout(resolve, 500));
+      if (i + batchSize < toProcess.length) {
+        await new Promise(resolve => setTimeout(resolve, 300));
       }
     }
 
     return Response.json({
       success: true,
-      message: `Batch geocoding complete: ${results.succeeded} updated, ${results.failed} failed`,
+      message: `Geocoded ${results.succeeded} contacts. ${results.more_remaining ? (totalRemaining - limit) + ' still remaining.' : 'All done!'}`,
       results,
     });
   } catch (error) {

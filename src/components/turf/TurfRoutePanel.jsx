@@ -114,28 +114,32 @@ export default function TurfRoutePanel({ turf, onRouteReady, onClose }) {
     setGeocoding(true);
     setGeocodeStatus(null);
 
-    // Poll the DB every 3s while the backend function runs, so we show live progress
-    let pollInterval = setInterval(async () => {
-      try {
-        const fresh = await base44.entities.Contact.list('name', 5000);
-        const done = fresh.filter(c => c.latitude != null).length;
-        const total = fresh.filter(c => c.address?.trim()).length;
-        setGeocodeStatus({ done, total, polling: true });
-      } catch {}
-    }, 3000);
-
     try {
-      const res = await base44.functions.invoke('batchGeocodeContacts', {});
-      clearInterval(pollInterval);
-      setGeocodeStatus({
-        done: res.data?.results?.succeeded ?? 0,
-        total: res.data?.results?.total ?? 0,
-        polling: false,
-      });
+      // Get initial totals
+      const initial = await base44.entities.Contact.list('name', 5000);
+      const totalAddressed = initial.filter(c => c.address?.trim()).length;
+      let doneCount = initial.filter(c => c.latitude != null).length;
+
+      setGeocodeStatus({ done: doneCount, total: totalAddressed, polling: true });
+
+      // Call in chunks of 150 until nothing left to geocode
+      let moreRemaining = true;
+      while (moreRemaining) {
+        const res = await base44.functions.invoke('batchGeocodeContacts', { limit: 150 });
+        const r = res.data?.results;
+        moreRemaining = r?.more_remaining ?? false;
+        doneCount += r?.succeeded ?? 0;
+        setGeocodeStatus({ done: doneCount, total: totalAddressed, polling: moreRemaining });
+
+        // Small pause between chunks
+        if (moreRemaining) {
+          await new Promise(resolve => setTimeout(resolve, 500));
+        }
+      }
+
       await refetchContacts();
       buildRoute();
     } finally {
-      clearInterval(pollInterval);
       setGeocoding(false);
     }
   }
