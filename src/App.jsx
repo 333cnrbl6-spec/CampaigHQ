@@ -66,6 +66,7 @@ import LoadTestDashboard from './pages/LoadTestDashboard';
 import NationalDashboard from './pages/NationalDashboard';
 import NationalReporting from './pages/NationalReporting';
 import MobileFieldWork from './pages/MobileFieldWork';
+import ComplianceAudit from './pages/ComplianceAudit';
 
 const AuthenticatedApp = () => {
   const { isLoadingAuth, isLoadingPublicSettings, authError, navigateToLogin } = useAuth();
@@ -156,6 +157,7 @@ const AuthenticatedApp = () => {
         <Route path="/national" element={<NationalDashboard />} />
         <Route path="/national-reporting" element={<NationalReporting />} />
         <Route path="/mobile-field" element={<MobileFieldWork />} />
+        <Route path="/compliance" element={<ComplianceAudit />} />
       </Route>
       <Route path="*" element={<PageNotFound />} />
     </Routes>
