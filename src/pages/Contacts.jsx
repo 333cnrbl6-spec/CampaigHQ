@@ -44,7 +44,7 @@ export default function Contacts() {
   // Ensure campaignId exists before fetching
   const { data: contacts = [], error: contactError, isLoading, refetch } = useSecureData(
     'getContactDetails',
-    campaignId ? { campaign_id: campaignId } : null,
+    campaignId ? {} : null,
     { staleTime: 120000, refetchInterval: 120000, enabled: !!campaignId }
   );
 
