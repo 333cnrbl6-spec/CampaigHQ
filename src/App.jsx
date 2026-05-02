@@ -58,6 +58,7 @@ import AutomatedSequences from './pages/AutomatedSequences';
 import VolunteerProfileSetup from './pages/VolunteerProfileSetup';
 import VolunteerProfiles from './pages/VolunteerProfiles';
 import CampaignSettings from './pages/CampaignSettings';
+import VolunteerSignup from './pages/VolunteerSignup';
 
 const AuthenticatedApp = () => {
   const { isLoadingAuth, isLoadingPublicSettings, authError, navigateToLogin } = useAuth();
@@ -178,6 +179,7 @@ function App() {
               {/* Public routes — redirect to dashboard if authenticated */}
               <Route path="/" element={<HomeRoute />} />
               <Route path="/vote" element={<LandingPage />} />
+              <Route path="/volunteer" element={<VolunteerSignup />} />
               {/* Auth-gated campaign tool routes */}
               <Route path="/*" element={<AuthenticatedApp />} />
             </Routes>

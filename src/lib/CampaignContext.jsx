@@ -50,8 +50,8 @@ export const CampaignProvider = ({ children }) => {
     setIsLoadingCampaign(false);
   };
 
-  const joinCampaign = async (campaignRecord) => {
-    await base44.auth.updateMe({ campaign_id: campaignRecord.id, campaign_role: 'canvasser' });
+  const joinCampaign = async (campaignRecord, role = 'canvasser') => {
+    await base44.auth.updateMe({ campaign_id: campaignRecord.id, campaign_role: role });
     setCampaign(campaignRecord);
     setNeedsSetup(false);
   };

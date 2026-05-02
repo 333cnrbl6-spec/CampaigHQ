@@ -77,7 +77,7 @@ export default function CampaignSetup() {
             <MapPin className="w-8 h-8 text-primary-foreground" />
           </div>
           <h1 className="text-2xl font-heading font-bold text-foreground">Campaign Manager</h1>
-          <p className="text-muted-foreground">Set up your campaign to get started</p>
+          <p className="text-muted-foreground">Organisers: create a campaign. Volunteers: join with your invite code.</p>
         </div>
 
         <Card>
@@ -85,18 +85,21 @@ export default function CampaignSetup() {
             <CardHeader className="pb-2">
               <TabsList className="w-full">
                 <TabsTrigger value="create" className="flex-1 gap-2">
-                  <Plus className="w-4 h-4" /> Create Campaign
+                  <Plus className="w-4 h-4" /> New Campaign
                 </TabsTrigger>
                 <TabsTrigger value="join" className="flex-1 gap-2">
-                  <LogIn className="w-4 h-4" /> Join with Code
+                  <LogIn className="w-4 h-4" /> Join Existing
                 </TabsTrigger>
               </TabsList>
             </CardHeader>
 
             {/* CREATE */}
-            <TabsContent value="create">
+             <TabsContent value="create">
               <form onSubmit={handleCreate}>
                 <CardContent className="space-y-4">
+                  <div className="bg-primary/10 border border-primary/20 rounded-lg p-3 text-sm text-primary/90">
+                    📢 You're an organiser? Create your campaign here and invite your team.
+                  </div>
                   <div className="space-y-1.5">
                     <Label>Campaign Name *</Label>
                     <Input
@@ -158,13 +161,16 @@ export default function CampaignSetup() {
             </TabsContent>
 
             {/* JOIN */}
-            <TabsContent value="join">
+             <TabsContent value="join">
               <form onSubmit={handleJoin}>
                 <CardContent className="space-y-4">
+                  <div className="bg-accent/10 border border-accent/20 rounded-lg p-3 text-sm text-accent/90">
+                    👥 A volunteer? Your organiser will have shared an invite code with you.
+                  </div>
                   <div className="flex flex-col items-center gap-3 py-4 text-center">
                     <Users className="w-10 h-10 text-primary" />
                     <p className="text-muted-foreground text-sm">
-                      Your organiser will have given you a campaign invite code. Enter it below to join their campaign.
+                      Enter your campaign invite code to join and start helping.
                     </p>
                   </div>
                   <div className="space-y-1.5">

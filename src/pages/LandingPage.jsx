@@ -195,8 +195,8 @@ function HeroSection({ countdown }) {
           <a href="#pledges" className="bg-white text-green-800 hover:bg-green-50 font-bold px-8 py-3.5 rounded-full text-base transition-colors shadow-lg">
             My Pledges for the Ward →
           </a>
-          <a href="#about" className="border-2 border-white/50 hover:border-white text-white font-semibold px-8 py-3.5 rounded-full text-base transition-colors backdrop-blur-sm">
-            About Paul
+          <a href="/volunteer" className="border-2 border-emerald-300 hover:border-white text-white font-semibold px-8 py-3.5 rounded-full text-base transition-colors backdrop-blur-sm hover:bg-white/10">
+            🙋 Volunteer Now
           </a>
         </div>
 
@@ -439,9 +439,9 @@ function GetInvolvedSection() {
   const [name, setName] = useState('');
 
   const actions = [
-    { icon: Vote, label: 'Vote on 7 May', desc: 'Polls open 7am – 10pm. Your polling station is listed on your polling card.', cta: null },
-    { icon: Users, label: 'Volunteer', desc: 'Join Paul\'s team — canvassing, leafleting, or helping online. Every hour counts.', cta: 'paulwnlgreen@gmail.com' },
-    { icon: Mail, label: 'Share the Message', desc: 'Tell your neighbours, share on social media, and help spread Paul\'s message across the ward.', cta: null },
+    { icon: Vote, label: 'Vote on 7 May', desc: 'Polls open 7am – 10pm. Your polling station is listed on your polling card.', cta: null, href: null },
+    { icon: Users, label: 'Volunteer', desc: 'Join Paul\'s team — canvassing, leafleting, or helping online. Every hour counts.', cta: 'Join the Team', href: '/volunteer' },
+    { icon: Mail, label: 'Share the Message', desc: 'Tell your neighbours, share on social media, and help spread Paul\'s message across the ward.', cta: null, href: null },
   ];
 
   return (
@@ -454,14 +454,19 @@ function GetInvolvedSection() {
         </div>
 
         <div className="grid md:grid-cols-3 gap-6 mb-14">
-          {actions.map(({ icon: Icon, label, desc, cta }) => (
+          {actions.map(({ icon: Icon, label, desc, cta, href }) => (
             <div key={label} className="bg-card border border-border/60 rounded-2xl p-7 text-center hover:shadow-md transition-shadow space-y-4">
               <div className="w-14 h-14 rounded-2xl bg-primary/10 flex items-center justify-center mx-auto">
                 <Icon className="w-7 h-7 text-primary" />
               </div>
               <h3 className="font-semibold text-lg">{label}</h3>
               <p className="text-sm text-muted-foreground leading-relaxed">{desc}</p>
-              {cta && (
+              {cta && href && (
+                <a href={href} className="inline-flex items-center gap-2 text-primary text-sm font-semibold hover:underline bg-primary/10 px-4 py-2 rounded-full transition-colors hover:bg-primary/20">
+                  {cta} <ArrowRight className="w-4 h-4" />
+                </a>
+              )}
+              {cta && !href && (
                 <a href={`mailto:${cta}`} className="inline-flex items-center gap-2 text-primary text-sm font-semibold hover:underline">
                   <Mail className="w-4 h-4" /> {cta}
                 </a>
