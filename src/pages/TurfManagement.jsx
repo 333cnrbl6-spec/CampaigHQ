@@ -197,14 +197,14 @@ export default function TurfManagement() {
   // Fetch RLS-protected turfs and contacts
   const { data: turfs = [], error: turfError, refetch: refetchTurfs } = useSecureData(
     'getAssignedTurfs',
-    { campaign_id: campaignId },
-    { staleTime: 120000, refetchInterval: 120000 }
+    campaignId ? {} : null,
+    { staleTime: 120000, refetchInterval: 120000, enabled: !!campaignId }
   );
 
   const { data: contacts = [], error: contactError, refetch: refetchContacts } = useSecureData(
     'getContactsForTurf',
-    { campaign_id: campaignId },
-    { staleTime: 180000, refetchInterval: 180000 }
+    campaignId ? {} : null,
+    { staleTime: 180000, refetchInterval: 180000, enabled: !!campaignId }
   );
 
   const createTurf = useMutation({

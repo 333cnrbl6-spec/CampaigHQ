@@ -79,7 +79,7 @@ export default function WardMap() {
 
   const { data: contacts = [] } = useSecureData(
     'getContactDetails',
-    campaignId ? { campaign_id: campaignId } : null,
+    campaignId ? {} : null,
     { staleTime: 120000, refetchInterval: 120000, enabled: !!campaignId }
   );
 

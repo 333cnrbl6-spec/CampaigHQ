@@ -210,13 +210,13 @@ export default function RouteOptimizer() {
 
   const { data: contacts = [], isLoading, refetch: refetchContacts } = useSecureData(
     'getContactDetails',
-    campaignId ? { campaign_id: campaignId } : null,
+    campaignId ? {} : null,
     { staleTime: 120000, refetchInterval: 120000, enabled: !!campaignId }
   );
 
   const { data: turfs = [] } = useSecureData(
     'getAssignedTurfs',
-    campaignId ? { campaign_id: campaignId } : null,
+    campaignId ? {} : null,
     { staleTime: 120000, refetchInterval: 120000, enabled: !!campaignId }
   );
 
