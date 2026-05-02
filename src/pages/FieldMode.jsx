@@ -9,6 +9,7 @@ import { useOfflineFieldMode } from '../hooks/useOfflineFieldMode';
 import { useGeolocation } from '@/hooks/useGeolocation';
 import { base44 } from '@/api/base44Client';
 import { useQuery } from '@tanstack/react-query';
+import { useCampaign } from '@/lib/CampaignContext';
 import MobileContactCard, { openWalkingDirections } from '@/components/field/MobileContactCard';
 import MobileInteractionForm from '@/components/field/MobileInteractionForm';
 
@@ -112,11 +113,13 @@ export default function FieldMode() {
     return () => clearTimeout(welfareTimer);
   }, [welfareCheckedIn]);
 
+  const { campaign } = useCampaign();
+
   // Fetch interaction history for current contact
   const { data: interactions = [] } = useQuery({
-    queryKey: ['interactions', contacts[currentIndex]?.id],
-    queryFn: () => base44.entities.ContactInteraction.filter({ contact_id: contacts[currentIndex]?.id }, '-date', 10),
-    enabled: !!contacts[currentIndex]?.id && isOnline,
+    queryKey: ['interactions', campaign?.id, contacts[currentIndex]?.id],
+    queryFn: () => base44.entities.ContactInteraction.filter({ contact_id: contacts[currentIndex]?.id, campaign_id: campaign?.id }, '-date', 10),
+    enabled: !!contacts[currentIndex]?.id && isOnline && !!campaign?.id,
   });
 
   // Sort contacts by proximity to field rep, then apply search

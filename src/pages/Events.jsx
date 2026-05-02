@@ -1,6 +1,7 @@
 import React, { useState } from 'react';
 import { base44 } from '@/api/base44Client';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
+import { useCampaign } from '@/lib/CampaignContext';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
@@ -22,25 +23,26 @@ export default function Events() {
   const [editing, setEditing] = useState(null);
   const [form, setForm] = useState(emptyEvent);
   const queryClient = useQueryClient();
+  const { campaign } = useCampaign();
 
   const { data: events = [], isLoading } = useQuery({
-    queryKey: ['events'],
-    queryFn: () => base44.entities.CampaignEvent.list('-date', 100),
+    queryKey: ['events', campaign?.id],
+    queryFn: () => base44.entities.CampaignEvent.filter({ campaign_id: campaign?.id }, '-date', 100),
   });
 
   const createMutation = useMutation({
-    mutationFn: (data) => base44.entities.CampaignEvent.create(data),
-    onSuccess: () => { queryClient.invalidateQueries({ queryKey: ['events'] }); setDialogOpen(false); setForm(emptyEvent); },
+    mutationFn: (data) => base44.entities.CampaignEvent.create({ ...data, campaign_id: campaign?.id }),
+    onSuccess: () => { queryClient.invalidateQueries({ queryKey: ['events', campaign?.id] }); setDialogOpen(false); setForm(emptyEvent); },
   });
 
   const updateMutation = useMutation({
     mutationFn: ({ id, data }) => base44.entities.CampaignEvent.update(id, data),
-    onSuccess: () => { queryClient.invalidateQueries({ queryKey: ['events'] }); setDialogOpen(false); setEditing(null); setForm(emptyEvent); },
+    onSuccess: () => { queryClient.invalidateQueries({ queryKey: ['events', campaign?.id] }); setDialogOpen(false); setEditing(null); setForm(emptyEvent); },
   });
 
   const deleteMutation = useMutation({
     mutationFn: (id) => base44.entities.CampaignEvent.delete(id),
-    onSuccess: () => queryClient.invalidateQueries({ queryKey: ['events'] }),
+    onSuccess: () => queryClient.invalidateQueries({ queryKey: ['events', campaign?.id] }),
   });
 
   const handleSubmit = (e) => {

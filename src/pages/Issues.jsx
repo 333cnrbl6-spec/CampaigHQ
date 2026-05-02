@@ -1,6 +1,7 @@
 import React, { useState } from 'react';
 import { base44 } from '@/api/base44Client';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
+import { useCampaign } from '@/lib/CampaignContext';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
@@ -32,25 +33,26 @@ export default function Issues() {
   const [editing, setEditing] = useState(null);
   const [form, setForm] = useState(emptyIssue);
   const queryClient = useQueryClient();
+  const { campaign } = useCampaign();
 
   const { data: issues = [], isLoading } = useQuery({
-    queryKey: ['issues'],
-    queryFn: () => base44.entities.Issue.list('-priority', 100),
+    queryKey: ['issues', campaign?.id],
+    queryFn: () => base44.entities.Issue.filter({ campaign_id: campaign?.id }, '-priority', 100),
   });
 
   const createMutation = useMutation({
-    mutationFn: (data) => base44.entities.Issue.create(data),
-    onSuccess: () => { queryClient.invalidateQueries({ queryKey: ['issues'] }); setDialogOpen(false); setForm(emptyIssue); },
+    mutationFn: (data) => base44.entities.Issue.create({ ...data, campaign_id: campaign?.id }),
+    onSuccess: () => { queryClient.invalidateQueries({ queryKey: ['issues', campaign?.id] }); setDialogOpen(false); setForm(emptyIssue); },
   });
 
   const updateMutation = useMutation({
     mutationFn: ({ id, data }) => base44.entities.Issue.update(id, data),
-    onSuccess: () => { queryClient.invalidateQueries({ queryKey: ['issues'] }); setDialogOpen(false); setEditing(null); setForm(emptyIssue); },
+    onSuccess: () => { queryClient.invalidateQueries({ queryKey: ['issues', campaign?.id] }); setDialogOpen(false); setEditing(null); setForm(emptyIssue); },
   });
 
   const deleteMutation = useMutation({
     mutationFn: (id) => base44.entities.Issue.delete(id),
-    onSuccess: () => queryClient.invalidateQueries({ queryKey: ['issues'] }),
+    onSuccess: () => queryClient.invalidateQueries({ queryKey: ['issues', campaign?.id] }),
   });
 
   const handleSubmit = (e) => {
@@ -69,7 +71,7 @@ export default function Issues() {
         <div className="flex gap-2">
           <SmartDataImporter
             entityName="Issue"
-            onComplete={() => queryClient.invalidateQueries({ queryKey: ['issues'] })}
+            onComplete={() => queryClient.invalidateQueries({ queryKey: ['issues', campaign?.id] })}
             trigger={{
               type: Button,
               props: { variant: 'outline', className: 'gap-2', children: [<Upload key="icon" className="w-4 h-4" />, 'Import Data'] }

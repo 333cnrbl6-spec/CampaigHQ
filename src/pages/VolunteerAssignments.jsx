@@ -1,6 +1,7 @@
 import React, { useState } from 'react';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { base44 } from '@/api/base44Client';
+import { useCampaign } from '@/lib/CampaignContext';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
@@ -23,28 +24,29 @@ export default function VolunteerAssignments() {
   const [formData, setFormData] = useState({ status: 'invited' });
 
   const queryClient = useQueryClient();
+  const { campaign } = useCampaign();
 
   const { data: events = [] } = useQuery({
-    queryKey: ['events'],
-    queryFn: () => base44.entities.CampaignEvent.list(),
+    queryKey: ['events', campaign?.id],
+    queryFn: () => base44.entities.CampaignEvent.filter({ campaign_id: campaign?.id }),
   });
 
   const { data: volunteers = [] } = useQuery({
-    queryKey: ['event_volunteers'],
-    queryFn: () => base44.entities.EventVolunteer.list(),
+    queryKey: ['event_volunteers', campaign?.id],
+    queryFn: () => base44.entities.EventVolunteer.filter({ campaign_id: campaign?.id }),
   });
 
   const { data: contacts = [] } = useQuery({
-    queryKey: ['contacts'],
-    queryFn: () => base44.entities.Contact.list(),
+    queryKey: ['contacts', campaign?.id],
+    queryFn: () => base44.entities.Contact.filter({ campaign_id: campaign?.id }),
   });
 
   const volunteerContacts = contacts.filter(c => c.volunteer);
 
   const createAssignmentMutation = useMutation({
-    mutationFn: (data) => base44.entities.EventVolunteer.create(data),
+    mutationFn: (data) => base44.entities.EventVolunteer.create({ ...data, campaign_id: campaign?.id }),
     onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ['event_volunteers'] });
+      queryClient.invalidateQueries({ queryKey: ['event_volunteers', campaign?.id] });
       setFormData({ status: 'invited' });
       setShowAssignForm(false);
     },
@@ -53,14 +55,14 @@ export default function VolunteerAssignments() {
   const updateAssignmentMutation = useMutation({
     mutationFn: ({ id, data }) => base44.entities.EventVolunteer.update(id, data),
     onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ['event_volunteers'] });
+      queryClient.invalidateQueries({ queryKey: ['event_volunteers', campaign?.id] });
     },
   });
 
   const deleteAssignmentMutation = useMutation({
     mutationFn: (id) => base44.entities.EventVolunteer.delete(id),
     onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ['event_volunteers'] });
+      queryClient.invalidateQueries({ queryKey: ['event_volunteers', campaign?.id] });
     },
   });
 
