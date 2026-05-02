@@ -55,7 +55,7 @@ export const CampaignProvider = ({ children }) => {
         }
       } else {
         // If no explicit membership, check if user email matches owner_email
-        const userCampaigns = allCampaigns.filter(c => c.owner_email === currentUser.email);
+        const userCampaigns = allCampaigns.filter(c => c.owner_email === currentUser.email && c.status === 'active');
         for (const camp of userCampaigns) {
           campaignsList.push({
             ...camp,
@@ -82,9 +82,18 @@ export const CampaignProvider = ({ children }) => {
       if (activeCampaign) {
         setCampaign(activeCampaign);
         setUserRole(activeCampaign.userRole);
-        // Auto-set as default if not already set
-        if (!currentUser.default_campaign_id) {
-          await base44.auth.updateMe({ default_campaign_id: activeCampaign.id });
+        // Auto-set as default if not already set & sync campaign_memberships if missing
+        if (!currentUser.default_campaign_id || !currentUser.campaign_memberships?.length) {
+          const updates = { default_campaign_id: activeCampaign.id };
+          if (!currentUser.campaign_memberships?.length) {
+            updates.campaign_memberships = [{
+              campaign_id: activeCampaign.id,
+              role: activeCampaign.userRole || 'campaign_admin',
+              added_date: new Date().toISOString(),
+              status: 'active',
+            }];
+          }
+          await base44.auth.updateMe(updates);
         }
       } else {
         // User is not member of any campaigns
