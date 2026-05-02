@@ -3,7 +3,7 @@ import { Link, useLocation } from 'react-router-dom';
 import { 
   LayoutDashboard, Users, Calendar, Leaf, ClipboardList, 
   MapPin, ChevronLeft, ChevronRight, LogOut, BarChart3, MessageSquare,
-  History, Zap, Printer, Send, Trophy, Target, Radio, Share2, Globe, Upload, Route, Wand2, FileText, Shield, BookOpen, ListChecks, Shuffle
+  History, Zap, Printer, Send, Trophy, Target, Radio, Share2, Globe, Upload, Route, Wand2, FileText, Shield, BookOpen, ListChecks, Shuffle, UserCircle
 } from 'lucide-react';
 import { base44 } from '@/api/base44Client';
 import { cn } from '@/lib/utils';
@@ -50,6 +50,9 @@ const navSections = [
       { path: '/shifts', label: 'Shift Management', icon: Calendar },
       { path: '/calendar', label: 'Volunteer Calendar', icon: Calendar },
       { path: '/volunteers', label: 'Volunteer Assignments', icon: Users },
+      { path: '/volunteer-profiles', label: 'Volunteer Profiles', icon: Users },
+      { path: '/volunteer-setup', label: 'My Volunteer Profile', icon: UserCircle },
+      { path: '/live-map', label: 'Volunteer Live Map', icon: MapPin },
       { path: '/distribute', label: 'Auto-Distribute Contacts', icon: Shuffle },
       { path: '/election-day', label: 'Election Day', icon: ClipboardList },
     ],

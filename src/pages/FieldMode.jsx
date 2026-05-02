@@ -30,6 +30,8 @@ const SUPPORT_LEVELS = {
 };
 
 export default function FieldMode() {
+  const [profileChecked, setProfileChecked] = useState(false);
+  const [profileComplete, setProfileComplete] = useState(true);
   const [currentIndex, setCurrentIndex] = useState(0);
   const [showInteractionDialog, setShowInteractionDialog] = useState(false);
   const [searchQuery, setSearchQuery] = useState('');
@@ -37,6 +39,18 @@ export default function FieldMode() {
   const [isSubmittingInteraction, setIsSubmittingInteraction] = useState(false);
   const [welfareCheckedIn, setWelfareCheckedIn] = useState(false);
   const [showWelfareAlert, setShowWelfareAlert] = useState(false);
+
+  // Gate: check volunteer profile on mount
+  useEffect(() => {
+    base44.auth.me().then(user => {
+      if (!user) return;
+      base44.entities.VolunteerProfile.filter({ user_email: user.email }).then(profiles => {
+        const complete = profiles.some(p => p.setup_complete && p.gdpr_consent);
+        setProfileComplete(complete);
+        setProfileChecked(true);
+      }).catch(() => setProfileChecked(true));
+    }).catch(() => setProfileChecked(true));
+  }, []);
 
   const urlParams = new URLSearchParams(window.location.search);
   const routeIdsParam = urlParams.get('route_ids');
@@ -154,6 +168,30 @@ export default function FieldMode() {
     if (!location || !nextContact?.latitude || !nextContact?.longitude) return null;
     return haversineMeters(location.latitude, location.longitude, nextContact.latitude, nextContact.longitude);
   }, [location, nextContact]);
+
+  // Profile gate
+  if (!profileChecked) {
+    return <div className="flex items-center justify-center h-screen"><div className="w-8 h-8 border-4 border-primary border-t-transparent rounded-full animate-spin" /></div>;
+  }
+  if (!profileComplete) {
+    return (
+      <div className="flex items-center justify-center h-screen bg-background p-6">
+        <Card className="w-full max-w-sm text-center">
+          <CardContent className="pt-8 pb-6 space-y-4">
+            <ShieldAlert className="w-10 h-10 text-amber-500 mx-auto" />
+            <h2 className="text-lg font-bold font-heading">Profile Setup Required</h2>
+            <p className="text-sm text-muted-foreground">
+              Before going out canvassing, we need a few details from you — including an emergency contact and your consent to location sharing for welfare purposes.
+            </p>
+            <p className="text-xs text-muted-foreground">This takes about 2 minutes.</p>
+            <Button className="w-full" onClick={() => window.location.href = '/volunteer-setup'}>
+              Complete My Profile →
+            </Button>
+          </CardContent>
+        </Card>
+      </div>
+    );
+  }
 
   if (isLoadingContacts) {
     return (

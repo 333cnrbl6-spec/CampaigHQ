@@ -1,0 +1,114 @@
+{
+  "name": "VolunteerProfile",
+  "type": "object",
+  "properties": {
+    "user_email": {
+      "type": "string",
+      "description": "Email address matching the logged-in user (links profile to account)"
+    },
+    "full_name": {
+      "type": "string",
+      "description": "Full name of the volunteer"
+    },
+    "phone": {
+      "type": "string",
+      "description": "Mobile phone number \u2014 used for day-of contact and welfare checks"
+    },
+    "emergency_contact_name": {
+      "type": "string",
+      "description": "Name of emergency/ICE contact"
+    },
+    "emergency_contact_phone": {
+      "type": "string",
+      "description": "Phone number for emergency contact"
+    },
+    "emergency_contact_relation": {
+      "type": "string",
+      "description": "Relationship (e.g. Partner, Parent, Friend)"
+    },
+    "location_tracking_consent": {
+      "type": "boolean",
+      "default": false,
+      "description": "Volunteer has consented to GPS location sharing during canvassing sessions for welfare and coordination"
+    },
+    "location_consent_date": {
+      "type": "string",
+      "format": "date",
+      "description": "Date consent was given"
+    },
+    "availability": {
+      "type": "array",
+      "items": {
+        "type": "string",
+        "enum": [
+          "Monday",
+          "Tuesday",
+          "Wednesday",
+          "Thursday",
+          "Friday",
+          "Saturday",
+          "Sunday",
+          "Evenings",
+          "Weekends"
+        ]
+      },
+      "description": "Days/times the volunteer is generally available"
+    },
+    "areas_preferred": {
+      "type": "array",
+      "items": {
+        "type": "string"
+      },
+      "description": "Preferred canvassing areas (e.g. Tyldesley, Astley, Mosley Common)"
+    },
+    "has_vehicle": {
+      "type": "boolean",
+      "default": false,
+      "description": "Whether volunteer has a car (useful for remote turf access)"
+    },
+    "languages": {
+      "type": "array",
+      "items": {
+        "type": "string"
+      },
+      "description": "Languages spoken (helps with diverse-community canvassing)"
+    },
+    "assigned_turf_ids": {
+      "type": "array",
+      "items": {
+        "type": "string"
+      },
+      "description": "IDs of turfs assigned to this volunteer by an organiser"
+    },
+    "assigned_leaflet_run_ids": {
+      "type": "array",
+      "items": {
+        "type": "string"
+      },
+      "description": "IDs of leaflet runs assigned to this volunteer"
+    },
+    "team_lead_email": {
+      "type": "string",
+      "description": "Email of assigned team lead / welfare contact"
+    },
+    "notes": {
+      "type": "string",
+      "description": "Organiser notes (not visible to the volunteer)"
+    },
+    "setup_complete": {
+      "type": "boolean",
+      "default": false,
+      "description": "Whether the volunteer has completed their profile setup"
+    },
+    "gdpr_consent": {
+      "type": "boolean",
+      "default": false,
+      "description": "Volunteer has read and accepted the data processing statement"
+    }
+  },
+  "required": [
+    "user_email",
+    "full_name",
+    "phone"
+  ]
+}
