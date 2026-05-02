@@ -37,14 +37,18 @@ export default function Contacts() {
   const navigate = useNavigate();
   const { campaignId } = useCampaign();
 
+  // Ensure campaignId exists before fetching
   const { data: contacts = [], error: contactError, isLoading, refetch } = useSecureData(
     'getContactDetails',
-    { campaign_id: campaignId },
-    { staleTime: 120000, refetchInterval: 120000 }
+    campaignId ? { campaign_id: campaignId } : null,
+    { staleTime: 120000, refetchInterval: 120000, enabled: !!campaignId }
   );
 
   const createMutation = useMutation({
-    mutationFn: (data) => base44.entities.Contact.create({ ...data, campaign_id: campaignId }),
+    mutationFn: (data) => {
+      if (!campaignId) throw new Error('Campaign ID is required');
+      return base44.entities.Contact.create({ ...data, campaign_id: campaignId });
+    },
     onSuccess: () => { refetch(); setShowForm(false); },
   });
 
@@ -69,6 +73,10 @@ export default function Contacts() {
   const [showInfraPanel, setShowInfraPanel] = useState(false);
 
   const handleDeduplicate = async () => {
+    if (!campaignId) {
+      alert('Campaign not loaded');
+      return;
+    }
     if (!confirm('This will merge duplicate addresses, combining their tags into one record. Continue?')) return;
     setDeduping(true);
     setDedupeResult(null);
@@ -77,12 +85,19 @@ export default function Contacts() {
       refetch();
       setPage(1);
       setDedupeResult(response.data);
+    } catch (err) {
+      console.error('Deduplication failed:', err);
+      alert('Deduplication failed — see console for details');
     } finally {
       setDeduping(false);
     }
   };
 
   const handleBatchGeocode = async () => {
+    if (!campaignId) {
+      alert('Campaign not loaded');
+      return;
+    }
     if (!confirm('Geocode all contacts lacking location data? This may take a few minutes.')) return;
     setGeocoding(true);
     setGeocodeResult(null);
@@ -90,12 +105,19 @@ export default function Contacts() {
       const response = await base44.functions.invoke('batchGeocodeContacts', { campaign_id: campaignId });
       refetch();
       setGeocodeResult(response.data);
+    } catch (err) {
+      console.error('Geocoding failed:', err);
+      alert('Geocoding failed — see console for details');
     } finally {
       setGeocoding(false);
     }
   };
 
   const handleAssignTurfs = async () => {
+    if (!campaignId) {
+      alert('Campaign not loaded');
+      return;
+    }
     if (!confirm('Extract electoral area codes from postcodes and assign turf zones? This may take a minute.')) return;
     setAssigning(true);
     setAssignResult(null);
@@ -103,12 +125,19 @@ export default function Contacts() {
       const response = await base44.functions.invoke('assignTurfTagsByElectoralArea', { campaign_id: campaignId });
       refetch();
       setAssignResult(response.data);
+    } catch (err) {
+      console.error('Turf assignment failed:', err);
+      alert('Turf assignment failed — see console for details');
     } finally {
       setAssigning(false);
     }
   };
 
   const handleReprocessImports = async () => {
+    if (!campaignId) {
+      alert('Campaign not loaded');
+      return;
+    }
     if (!confirm('Re-analyze recent import files to recover zone data? This may take a few minutes.')) return;
     setReprocessing(true);
     setReprocessResult(null);
@@ -116,6 +145,9 @@ export default function Contacts() {
       const response = await base44.functions.invoke('reprocessImportsForTurfTags', { campaign_id: campaignId });
       refetch();
       setReprocessResult(response.data);
+    } catch (err) {
+      console.error('Reprocess failed:', err);
+      alert('Reprocess failed — see console for details');
     } finally {
       setReprocessing(false);
     }

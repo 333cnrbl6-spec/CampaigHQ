@@ -65,21 +65,35 @@ export default function VolunteerProfileSetup() {
   const queryClient = useQueryClient();
 
   useEffect(() => {
-    base44.auth.me().then(u => {
-      if (u) {
-        setUser(u);
-        setForm(f => ({ ...f, full_name: u.full_name || '' }));
+    const loadUser = async () => {
+      try {
+        const u = await base44.auth.me();
+        if (u && u.email) {
+          setUser(u);
+          setForm(f => ({ ...f, full_name: u.full_name || '' }));
+        }
+      } catch (err) {
+        console.error('Failed to load user:', err);
       }
-    });
+    };
+    loadUser();
   }, []);
 
-  // Check if profile already exists
-  const { data: profiles = [], isLoading: loadingProfile } = useQuery({
+  // Check if profile already exists — with proper error handling
+  const { data: profiles = [], isLoading: loadingProfile, error: profileError } = useQuery({
     queryKey: ['volunteer_profile_me', user?.email],
-    queryFn: () => base44.entities.VolunteerProfile.filter({ user_email: user.email }),
+    queryFn: async () => {
+      if (!user?.email) return [];
+      try {
+        return await base44.entities.VolunteerProfile.filter({ user_email: user.email });
+      } catch (err) {
+        console.error('Error loading volunteer profile:', err);
+        return [];
+      }
+    },
     enabled: !!user?.email,
   });
-  const existingProfile = profiles[0];
+  const existingProfile = profiles?.[0];
 
   const saveMutation = useMutation({
     mutationFn: async (data) => {
@@ -104,6 +118,10 @@ export default function VolunteerProfileSetup() {
   };
 
   const handleSave = () => {
+    if (!user?.email) {
+      console.error('User email missing');
+      return;
+    }
     const { langInput, ...rest } = form;
     saveMutation.mutate({
       ...rest,
