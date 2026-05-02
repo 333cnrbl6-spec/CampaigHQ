@@ -2,6 +2,10 @@
   "name": "CampaignEvent",
   "type": "object",
   "properties": {
+    "campaign_id": {
+      "type": "string",
+      "description": "ID of the Campaign this event belongs to"
+    },
     "title": {
       "type": "string",
       "description": "Event title"

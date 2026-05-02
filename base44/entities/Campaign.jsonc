@@ -1,0 +1,83 @@
+{
+  "name": "Campaign",
+  "type": "object",
+  "properties": {
+    "name": {
+      "type": "string",
+      "description": "Campaign name (e.g. 'Tyldesley Green Party 2026')"
+    },
+    "party": {
+      "type": "string",
+      "description": "Political party (e.g. 'Green Party', 'Labour', 'Liberal Democrats')"
+    },
+    "candidate_name": {
+      "type": "string",
+      "description": "Name of the candidate"
+    },
+    "constituency": {
+      "type": "string",
+      "description": "Constituency or ward name"
+    },
+    "area": {
+      "type": "string",
+      "description": "Geographic area (town, borough, region)"
+    },
+    "slug": {
+      "type": "string",
+      "description": "URL-friendly identifier (e.g. 'tyldesley-green-2026')"
+    },
+    "owner_email": {
+      "type": "string",
+      "description": "Email of the campaign owner / lead organiser"
+    },
+    "status": {
+      "type": "string",
+      "enum": [
+        "active",
+        "completed",
+        "archived"
+      ],
+      "default": "active",
+      "description": "Campaign status"
+    },
+    "election_date": {
+      "type": "string",
+      "format": "date",
+      "description": "Date of the election"
+    },
+    "target_votes": {
+      "type": "number",
+      "description": "Vote target to win"
+    },
+    "description": {
+      "type": "string",
+      "description": "Brief description of the campaign"
+    },
+    "logo_url": {
+      "type": "string",
+      "description": "URL of campaign or party logo"
+    },
+    "primary_color": {
+      "type": "string",
+      "description": "Brand hex colour (e.g. '#00B140' for Green Party)"
+    },
+    "invite_code": {
+      "type": "string",
+      "description": "Short code volunteers use to join this campaign"
+    },
+    "party_tier": {
+      "type": "string",
+      "enum": [
+        "local",
+        "regional",
+        "national"
+      ],
+      "default": "local",
+      "description": "Tier \u2014 national campaigns can see all sub-campaigns"
+    }
+  },
+  "required": [
+    "name",
+    "owner_email"
+  ]
+}

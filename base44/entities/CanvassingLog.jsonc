@@ -2,6 +2,10 @@
   "name": "CanvassingLog",
   "type": "object",
   "properties": {
+    "campaign_id": {
+      "type": "string",
+      "description": "ID of the Campaign this log belongs to"
+    },
     "volunteer_name": {
       "type": "string",
       "description": "Name of the volunteer who did the session"

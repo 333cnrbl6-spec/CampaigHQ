@@ -2,6 +2,10 @@
   "name": "Issue",
   "type": "object",
   "properties": {
+    "campaign_id": {
+      "type": "string",
+      "description": "ID of the Campaign this issue belongs to"
+    },
     "title": {
       "type": "string",
       "description": "Issue title"
@@ -25,7 +29,7 @@
     },
     "policy_position": {
       "type": "string",
-      "description": "Paul's position on this issue"
+      "description": "Candidate's position on this issue"
     },
     "priority": {
       "type": "string",

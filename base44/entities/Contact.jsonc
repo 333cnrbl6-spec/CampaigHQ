@@ -2,6 +2,10 @@
   "name": "Contact",
   "type": "object",
   "properties": {
+    "campaign_id": {
+      "type": "string",
+      "description": "ID of the Campaign this contact belongs to"
+    },
     "name": {
       "type": "string",
       "description": "Full name of the voter/contact"

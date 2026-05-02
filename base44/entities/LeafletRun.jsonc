@@ -2,6 +2,10 @@
   "name": "LeafletRun",
   "type": "object",
   "properties": {
+    "campaign_id": {
+      "type": "string",
+      "description": "ID of the Campaign this leaflet run belongs to"
+    },
     "street_name": {
       "type": "string",
       "description": "Street or road name"

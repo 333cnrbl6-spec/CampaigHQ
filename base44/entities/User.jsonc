@@ -13,6 +13,21 @@
       "default": "viewer",
       "description": "User's primary role"
     },
+    "campaign_id": {
+      "type": "string",
+      "description": "ID of the Campaign this user belongs to"
+    },
+    "campaign_role": {
+      "type": "string",
+      "enum": [
+        "campaign_admin",
+        "organizer",
+        "canvasser",
+        "viewer"
+      ],
+      "default": "canvasser",
+      "description": "Role within their specific campaign"
+    },
     "custom_permissions": {
       "type": "array",
       "items": {
@@ -27,5 +42,9 @@
       },
       "description": "Permissions explicitly removed from the role defaults"
     }
-  }
+  },
+  "required": [
+    "custom_permissions",
+    "revoked_permissions"
+  ]
 }

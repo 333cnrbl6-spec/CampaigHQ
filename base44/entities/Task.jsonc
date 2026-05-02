@@ -2,6 +2,10 @@
   "name": "Task",
   "type": "object",
   "properties": {
+    "campaign_id": {
+      "type": "string",
+      "description": "ID of the Campaign this task belongs to"
+    },
     "title": {
       "type": "string"
     },

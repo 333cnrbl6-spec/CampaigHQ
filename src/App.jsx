@@ -4,6 +4,8 @@ import { queryClientInstance } from '@/lib/query-client'
 import { BrowserRouter as Router, Route, Routes, Navigate } from 'react-router-dom';
 import PageNotFound from './lib/PageNotFound';
 import { AuthProvider, useAuth } from '@/lib/AuthContext';
+import { CampaignProvider, useCampaign } from '@/lib/CampaignContext';
+import CampaignSetup from './pages/CampaignSetup';
 import { useHardRefreshListener } from '@/hooks/useHardRefreshListener';
 import UserNotRegisteredError from '@/components/UserNotRegisteredError';
 import AppLayout from './components/layout/AppLayout';
@@ -55,13 +57,15 @@ import VolunteerLiveMap from './pages/VolunteerLiveMap';
 import AutomatedSequences from './pages/AutomatedSequences';
 import VolunteerProfileSetup from './pages/VolunteerProfileSetup';
 import VolunteerProfiles from './pages/VolunteerProfiles';
+import CampaignSettings from './pages/CampaignSettings';
 
 const AuthenticatedApp = () => {
   const { isLoadingAuth, isLoadingPublicSettings, authError, navigateToLogin } = useAuth();
+  const { isLoadingCampaign, needsSetup } = useCampaign();
   useHardRefreshListener();
 
   // Show loading spinner while checking app public settings or auth
-  if (isLoadingPublicSettings || isLoadingAuth) {
+  if (isLoadingPublicSettings || isLoadingAuth || isLoadingCampaign) {
     return (
       <div className="fixed inset-0 flex items-center justify-center">
         <div className="w-8 h-8 border-4 border-slate-200 border-t-slate-800 rounded-full animate-spin"></div>
@@ -74,10 +78,14 @@ const AuthenticatedApp = () => {
     if (authError.type === 'user_not_registered') {
       return <UserNotRegisteredError />;
     } else if (authError.type === 'auth_required') {
-      // Redirect to login automatically
       navigateToLogin();
       return null;
     }
+  }
+
+  // User hasn't set up or joined a campaign yet
+  if (needsSetup) {
+    return <CampaignSetup />;
   }
 
   // Render the main app
@@ -132,6 +140,7 @@ const AuthenticatedApp = () => {
         <Route path="/sequences" element={<AutomatedSequences />} />
         <Route path="/volunteer-setup" element={<VolunteerProfileSetup />} />
         <Route path="/volunteer-profiles" element={<VolunteerProfiles />} />
+        <Route path="/campaign-settings" element={<CampaignSettings />} />
       </Route>
       <Route path="*" element={<PageNotFound />} />
     </Routes>
@@ -164,13 +173,15 @@ function App() {
     <AuthProvider>
       <QueryClientProvider client={queryClientInstance}>
         <Router>
-          <Routes>
-            {/* Public routes — redirect to dashboard if authenticated */}
-            <Route path="/" element={<HomeRoute />} />
-            <Route path="/vote" element={<LandingPage />} />
-            {/* Auth-gated campaign tool routes */}
-            <Route path="/*" element={<AuthenticatedApp />} />
-          </Routes>
+          <CampaignProvider>
+            <Routes>
+              {/* Public routes — redirect to dashboard if authenticated */}
+              <Route path="/" element={<HomeRoute />} />
+              <Route path="/vote" element={<LandingPage />} />
+              {/* Auth-gated campaign tool routes */}
+              <Route path="/*" element={<AuthenticatedApp />} />
+            </Routes>
+          </CampaignProvider>
         </Router>
         <Toaster />
       </QueryClientProvider>

@@ -2,6 +2,10 @@
   "name": "Turf",
   "type": "object",
   "properties": {
+    "campaign_id": {
+      "type": "string",
+      "description": "ID of the Campaign this turf belongs to"
+    },
     "name": {
       "type": "string",
       "description": "Name of this turf area (e.g. 'North Tyldesley Block A')"
