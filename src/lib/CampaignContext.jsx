@@ -26,15 +26,17 @@ export const CampaignProvider = ({ children }) => {
         return;
       }
 
-      // Load all campaigns user is member of
+      // Fetch all campaigns once (don't refetch for each membership)
+      const allCampaigns = await base44.entities.Campaign.list('name', 1000);
+
+      // Load campaigns user is member of
       const campaignsList = [];
       if (currentUser.campaign_memberships && Array.isArray(currentUser.campaign_memberships)) {
         // User has new campaign_memberships structure
         const activeMemberships = currentUser.campaign_memberships.filter(m => m.status === 'active');
         
         for (const membership of activeMemberships) {
-          const camp = await base44.entities.Campaign.list('name', 1000);
-          const found = camp.find(c => c.id === membership.campaign_id);
+          const found = allCampaigns.find(c => c.id === membership.campaign_id);
           if (found) {
             campaignsList.push({
               ...found,
@@ -44,12 +46,20 @@ export const CampaignProvider = ({ children }) => {
         }
       } else if (currentUser.campaign_id) {
         // Fallback: user has old single campaign_id
-        const camp = await base44.entities.Campaign.list('name', 1000);
-        const found = camp.find(c => c.id === currentUser.campaign_id);
+        const found = allCampaigns.find(c => c.id === currentUser.campaign_id);
         if (found) {
           campaignsList.push({
             ...found,
             userRole: 'organiser', // Assume organiser for legacy users
+          });
+        }
+      } else {
+        // If no explicit membership, check if user email matches owner_email
+        const userCampaigns = allCampaigns.filter(c => c.owner_email === currentUser.email);
+        for (const camp of userCampaigns) {
+          campaignsList.push({
+            ...camp,
+            userRole: 'campaign_admin',
           });
         }
       }
@@ -58,9 +68,13 @@ export const CampaignProvider = ({ children }) => {
 
       // Determine which campaign to load
       let activeCampaign = null;
+      
+      // Priority 1: Load user's default campaign if set
       if (currentUser.default_campaign_id) {
         activeCampaign = campaignsList.find(c => c.id === currentUser.default_campaign_id);
       }
+      
+      // Priority 2: Load first available campaign
       if (!activeCampaign && campaignsList.length > 0) {
         activeCampaign = campaignsList[0];
       }
@@ -68,6 +82,10 @@ export const CampaignProvider = ({ children }) => {
       if (activeCampaign) {
         setCampaign(activeCampaign);
         setUserRole(activeCampaign.userRole);
+        // Auto-set as default if not already set
+        if (!currentUser.default_campaign_id) {
+          await base44.auth.updateMe({ default_campaign_id: activeCampaign.id });
+        }
       } else {
         // User is not member of any campaigns
         setNeedsSetup(true);
