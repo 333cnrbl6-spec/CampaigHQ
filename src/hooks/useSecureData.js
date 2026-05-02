@@ -9,9 +9,9 @@ import { useAuth } from '@/lib/AuthContext';
 export const useSecureData = (functionName, params, options = {}) => {
   const { user } = useAuth();
 
-  const { data, isLoading, error, refetch, isFetching } = useQuery(
-    [functionName, JSON.stringify(params)],
-    async () => {
+  const { data, isLoading, error, refetch, isFetching } = useQuery({
+    queryKey: [functionName, JSON.stringify(params)],
+    queryFn: async () => {
       if (!functionName || !params) {
         throw new Error('Function name and params are required');
       }
@@ -69,15 +69,13 @@ export const useSecureData = (functionName, params, options = {}) => {
         throw err;
       }
     },
-    {
-      staleTime: 60000, // Default 1 minute
-      cacheTime: 120000, // Default 2 minutes
-      retry: 2,
-      retryDelay: (attemptIndex) => Math.min(1000 * 2 ** attemptIndex, 30000),
-      enabled: !!(user && params && functionName), // Only run if user, params, and functionName present
-      ...options
-    }
-  );
+    staleTime: 60000, // Default 1 minute
+    gcTime: 120000, // Renamed from cacheTime in v5
+    retry: 2,
+    retryDelay: (attemptIndex) => Math.min(1000 * 2 ** attemptIndex, 30000),
+    enabled: !!(user && params && functionName), // Only run if user, params, and functionName present
+    ...options
+  });
 
   return {
     data,
