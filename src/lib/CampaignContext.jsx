@@ -53,7 +53,7 @@ export const CampaignProvider = ({ children }) => {
         return;
       }
 
-      const activeCampaigns = allCampaigns.filter(c => c?.status === 'active');
+      const activeCampaigns = Array.isArray(allCampaigns) ? allCampaigns.filter(c => c?.status === 'active') : [];
       const accessibleCampaigns = [];
 
       // 1. Check campaign_memberships (modern structure)
@@ -81,6 +81,15 @@ export const CampaignProvider = ({ children }) => {
             userRole: 'campaign_admin',
           });
         }
+      }
+
+      // 3. Fallback: if no memberships/ownership found but there's exactly ONE active campaign, auto-assign (for "Act as User" scenarios)
+      if (accessibleCampaigns.length === 0 && activeCampaigns.length === 1) {
+        console.warn(`⚠ User ${currentUser.email} has no campaign memberships, but found 1 active campaign. Auto-assigning for testing/demo.`);
+        accessibleCampaigns.push({
+          ...activeCampaigns[0],
+          userRole: 'volunteer',
+        });
       }
 
       setCampaigns(accessibleCampaigns);
