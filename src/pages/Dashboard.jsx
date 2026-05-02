@@ -1,7 +1,9 @@
 import React, { useState } from 'react';
 import { useCampaign } from '@/lib/CampaignContext';
 import useSecureData from '@/hooks/useSecureData';
+import { useCampaignStats } from '@/hooks/useCampaignMemo';
 import DataFetchError from '@/components/DataFetchError';
+import ErrorBoundary from '@/components/ErrorBoundary';
 import { Users, Calendar, ClipboardList, Leaf, TrendingUp, Zap, AlertCircle, MapPin } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import StatCard from '../components/dashboard/StatCard';
@@ -60,13 +62,9 @@ export default function Dashboard() {
   // For issues, use a simple empty array since we don't have a dedicated function yet
   const issues = [];
 
-  const canvassed = Array.isArray(contacts) ? contacts.filter(c => c?.canvassed).length : 0;
-  const supporters = Array.isArray(contacts) ? contacts.filter(c => ['strong_supporter', 'leaning'].includes(c?.support_level)).length : 0;
+  // Use memoized stats calculations
+  const stats = useCampaignStats(contacts, logs, tasks);
   const upcomingEvents = Array.isArray(events) ? events.filter(e => e?.status === 'upcoming') : [];
-  const activeTasks = Array.isArray(tasks) ? tasks.filter(t => t?.status !== 'done').length : 0;
-  // Exclude latitude=0 sentinel (permanently failed) from "needs geocoding" count
-  const needsGeocoding = Array.isArray(contacts) ? contacts.filter(c => (!c?.latitude || !c?.longitude) && c?.latitude !== 0).length : 0;
-  const doorsThisWeek = Array.isArray(logs) ? logs.reduce((sum, l) => sum + (l?.doors_knocked || 0), 0) : 0;
 
   // Show data fetch error if present
   const dataError = contactError || eventError || taskError;
@@ -91,10 +89,11 @@ export default function Dashboard() {
       <div className="mb-8">
         <p className="text-sm font-medium text-primary uppercase tracking-wider">Campaign HQ</p>
         <h1 className="font-heading text-3xl lg:text-4xl font-bold mt-1">
-          Tyldesley & Mosley Common
+          {campaign?.name || 'Campaign'}
         </h1>
         <p className="text-muted-foreground mt-1">
-          Green Party — Paul Binns for Council
+          {campaign?.party ? `${campaign.party} — ` : ''}{campaign?.candidate_name || 'Candidate'}
+          {campaign?.constituency ? ` for ${campaign.constituency}` : ''}
         </p>
       </div>
 
@@ -102,26 +101,26 @@ export default function Dashboard() {
       <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4 mb-8">
         <StatCard
           title="Doors Knocked"
-          value={canvassed}
-          subtitle={`of ${contacts.length} contacts`}
+          value={stats.canvassed}
+          subtitle={`of ${stats.totalContacts} contacts`}
           icon={Users}
         />
         <StatCard
           title="Supporters"
-          value={supporters}
-          subtitle={contacts.length > 0 ? `${Math.round((supporters / contacts.length) * 100)}% of contacts` : 'Start canvassing'}
+          value={stats.supporters}
+          subtitle={stats.totalContacts > 0 ? `${stats.supportPercentage}% of contacts` : 'Start canvassing'}
           icon={TrendingUp}
         />
         <StatCard
           title="This Week"
-          value={doorsThisWeek}
+          value={stats.doorsThisWeek}
           subtitle="doors knocked"
           icon={MapPin}
         />
         <StatCard
           title="Active Tasks"
-          value={activeTasks}
-          subtitle={`${tasks.filter(t => t.status === 'done').length} completed`}
+          value={stats.activeTasks}
+          subtitle={`${Array.isArray(tasks) ? tasks.filter(t => t.status === 'done').length : 0} completed`}
           icon={ClipboardList}
         />
       </div>
@@ -129,8 +128,8 @@ export default function Dashboard() {
       {/* Infrastructure & Alerts */}
       <div className="mb-8">
         <InfrastructureStatus 
-          contactsNeedingGeocode={needsGeocoding}
-          totalContacts={contacts.length}
+          contactsNeedingGeocode={stats.needsGeocoding}
+          totalContacts={stats.totalContacts}
           onGeocodeClick={() => setGecodingStatus('processing')}
           onOptimizeClick={() => window.location.href = '/route-analysis'}
           geocodingInProgress={geocodingStatus === 'processing'}
@@ -138,25 +137,33 @@ export default function Dashboard() {
       </div>
 
       {/* Canvassing Map */}
-      <div className="bg-card rounded-2xl p-6 border border-border/50 shadow-sm mb-6">
-        <h3 className="font-heading text-lg font-semibold mb-4">Ward Canvassing Map</h3>
-        <CanvassingMap contacts={contacts} />
-      </div>
+      <ErrorBoundary>
+        <div className="bg-card rounded-2xl p-6 border border-border/50 shadow-sm mb-6">
+          <h3 className="font-heading text-lg font-semibold mb-4">Ward Canvassing Map</h3>
+          <CanvassingMap contacts={contacts} />
+        </div>
+      </ErrorBoundary>
 
       {/* Support Level Widget — full width */}
-      <div className="mb-6">
-        <SupportLevelWidget contacts={contacts} />
-      </div>
+      <ErrorBoundary>
+        <div className="mb-6">
+          <SupportLevelWidget contacts={Array.isArray(contacts) ? contacts : []} />
+        </div>
+      </ErrorBoundary>
 
       {/* Support Analytics — pie chart + undecided hotspots */}
-      <div className="mb-6">
-        <SupportAnalytics contacts={contacts} />
-      </div>
+      <ErrorBoundary>
+        <div className="mb-6">
+          <SupportAnalytics contacts={Array.isArray(contacts) ? contacts : []} />
+        </div>
+      </ErrorBoundary>
 
       {/* Volunteer Gamification — full width */}
-      <div className="mb-6">
-        <VolunteerGamification />
-      </div>
+      <ErrorBoundary>
+        <div className="mb-6">
+          <VolunteerGamification />
+        </div>
+      </ErrorBoundary>
 
       {/* Weekly Summary */}
       <div className="mb-8">

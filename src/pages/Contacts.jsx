@@ -2,7 +2,9 @@ import React, { useState } from 'react';
 import { useMutation, useQueryClient } from '@tanstack/react-query';
 import { useCampaign } from '@/lib/CampaignContext';
 import useSecureData from '@/hooks/useSecureData';
+import useAuditLog from '@/hooks/useAuditLog';
 import DataFetchError from '@/components/DataFetchError';
+import ErrorBoundary from '@/components/ErrorBoundary';
 import { base44 } from '@/api/base44Client';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
@@ -35,7 +37,9 @@ export default function Contacts() {
   const PAGE_SIZE = 100;
   const queryClient = useQueryClient();
   const navigate = useNavigate();
-  const { campaignId } = useCampaign();
+  const { campaign } = useCampaign();
+  const { log: auditLog } = useAuditLog();
+  const campaignId = campaign?.id;
 
   // Ensure campaignId exists before fetching
   const { data: contacts = [], error: contactError, isLoading, refetch } = useSecureData(
@@ -49,17 +53,29 @@ export default function Contacts() {
       if (!campaignId) throw new Error('Campaign ID is required');
       return base44.entities.Contact.create({ ...data, campaign_id: campaignId });
     },
-    onSuccess: () => { refetch(); setShowForm(false); },
+    onSuccess: (newContact) => {
+      auditLog({ action: 'create', entityType: 'contact', entityId: newContact.id, changes: newContact });
+      refetch();
+      setShowForm(false);
+    },
   });
 
   const updateMutation = useMutation({
     mutationFn: ({ id, data }) => base44.entities.Contact.update(id, data),
-    onSuccess: () => { refetch(); setEditing(null); setShowForm(false); },
+    onSuccess: (updated) => {
+      auditLog({ action: 'update', entityType: 'contact', entityId: updated.id, changes: updated });
+      refetch();
+      setEditing(null);
+      setShowForm(false);
+    },
   });
 
   const deleteMutation = useMutation({
     mutationFn: (id) => base44.entities.Contact.delete(id),
-    onSuccess: () => refetch(),
+    onSuccess: (_, id) => {
+      auditLog({ action: 'delete', entityType: 'contact', entityId: id });
+      refetch();
+    },
   });
 
   const [deduping, setDeduping] = useState(false);
