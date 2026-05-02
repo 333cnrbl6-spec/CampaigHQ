@@ -1,7 +1,9 @@
-import React, { useState, useEffect } from 'react';
-import { base44 } from '@/api/base44Client';
-import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
+import React, { useState } from 'react';
+import { useMutation, useQueryClient } from '@tanstack/react-query';
 import { useCampaign } from '@/lib/CampaignContext';
+import useSecureData from '@/hooks/useSecureData';
+import DataFetchError from '@/components/DataFetchError';
+import { base44 } from '@/api/base44Client';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
@@ -33,34 +35,27 @@ export default function Contacts() {
   const PAGE_SIZE = 100;
   const queryClient = useQueryClient();
   const navigate = useNavigate();
-  const { campaign } = useCampaign();
+  const { campaignId } = useCampaign();
 
-  const { data: contacts = [], isLoading, refetch } = useQuery({
-    queryKey: ['contacts', campaign?.id],
-    queryFn: () => base44.entities.Contact.filter({ campaign_id: campaign?.id }, 'name', 10000),
-  });
-
-  // Auto-refresh if turf dropdown is empty but we expect data
-  React.useEffect(() => {
-    const allTurfs = [...new Set(contacts.flatMap(c => c.tags || []))].filter(Boolean);
-    if (contacts.length > 0 && allTurfs.length === 0) {
-      refetch();
-    }
-  }, [contacts, refetch]);
+  const { data: contacts = [], error: contactError, isLoading, refetch } = useSecureData(
+    'getContactDetails',
+    { campaign_id: campaignId },
+    { staleTime: 120000, refetchInterval: 120000 }
+  );
 
   const createMutation = useMutation({
-    mutationFn: (data) => base44.entities.Contact.create({ ...data, campaign_id: campaign?.id }),
-    onSuccess: () => { queryClient.invalidateQueries({ queryKey: ['contacts', campaign?.id] }); setShowForm(false); },
+    mutationFn: (data) => base44.entities.Contact.create({ ...data, campaign_id: campaignId }),
+    onSuccess: () => { refetch(); setShowForm(false); },
   });
 
   const updateMutation = useMutation({
     mutationFn: ({ id, data }) => base44.entities.Contact.update(id, data),
-    onSuccess: () => { queryClient.invalidateQueries({ queryKey: ['contacts', campaign?.id] }); setEditing(null); setShowForm(false); },
+    onSuccess: () => { refetch(); setEditing(null); setShowForm(false); },
   });
 
   const deleteMutation = useMutation({
     mutationFn: (id) => base44.entities.Contact.delete(id),
-    onSuccess: () => queryClient.invalidateQueries({ queryKey: ['contacts', campaign?.id] }),
+    onSuccess: () => refetch(),
   });
 
   const [deduping, setDeduping] = useState(false);
@@ -78,8 +73,8 @@ export default function Contacts() {
     setDeduping(true);
     setDedupeResult(null);
     try {
-      const response = await base44.functions.invoke('deduplicateContacts', { campaign_id: campaign?.id });
-      queryClient.invalidateQueries({ queryKey: ['contacts', campaign?.id] });
+      const response = await base44.functions.invoke('deduplicateContacts', { campaign_id: campaignId });
+      refetch();
       setPage(1);
       setDedupeResult(response.data);
     } finally {
@@ -92,8 +87,8 @@ export default function Contacts() {
     setGeocoding(true);
     setGeocodeResult(null);
     try {
-      const response = await base44.functions.invoke('batchGeocodeContacts', { campaign_id: campaign?.id });
-      queryClient.invalidateQueries({ queryKey: ['contacts', campaign?.id] });
+      const response = await base44.functions.invoke('batchGeocodeContacts', { campaign_id: campaignId });
+      refetch();
       setGeocodeResult(response.data);
     } finally {
       setGeocoding(false);
@@ -105,8 +100,8 @@ export default function Contacts() {
     setAssigning(true);
     setAssignResult(null);
     try {
-      const response = await base44.functions.invoke('assignTurfTagsByElectoralArea', { campaign_id: campaign?.id });
-      queryClient.invalidateQueries({ queryKey: ['contacts', campaign?.id] });
+      const response = await base44.functions.invoke('assignTurfTagsByElectoralArea', { campaign_id: campaignId });
+      refetch();
       setAssignResult(response.data);
     } finally {
       setAssigning(false);
@@ -118,8 +113,8 @@ export default function Contacts() {
     setReprocessing(true);
     setReprocessResult(null);
     try {
-      const response = await base44.functions.invoke('reprocessImportsForTurfTags', { campaign_id: campaign?.id });
-      queryClient.invalidateQueries({ queryKey: ['contacts', campaign?.id] });
+      const response = await base44.functions.invoke('reprocessImportsForTurfTags', { campaign_id: campaignId });
+      refetch();
       setReprocessResult(response.data);
     } finally {
       setReprocessing(false);
@@ -145,7 +140,7 @@ export default function Contacts() {
       );
     },
     onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ['contacts', campaign?.id] });
+      refetch();
       setSelectedIds(new Set());
       setShowTagDialog(false);
     },
@@ -213,6 +208,11 @@ export default function Contacts() {
 
   return (
     <div className="p-6 lg:p-10 max-w-[1400px] mx-auto">
+      {contactError && (
+        <div className="mb-6">
+          <DataFetchError error={contactError} onRetry={refetch} title="Unable to Load Contacts" />
+        </div>
+      )}
       <div className="mb-8">
         <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 mb-6">
           <div>

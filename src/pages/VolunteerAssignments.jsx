@@ -1,5 +1,7 @@
 import React, { useState } from 'react';
-import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
+import { useMutation, useQueryClient } from '@tanstack/react-query';
+import useSecureData from '@/hooks/useSecureData';
+import DataFetchError from '@/components/DataFetchError';
 import { base44 } from '@/api/base44Client';
 import { useCampaign } from '@/lib/CampaignContext';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
@@ -24,29 +26,31 @@ export default function VolunteerAssignments() {
   const [formData, setFormData] = useState({ status: 'invited' });
 
   const queryClient = useQueryClient();
-  const { campaign } = useCampaign();
+  const { campaignId } = useCampaign();
 
-  const { data: events = [] } = useQuery({
-    queryKey: ['events', campaign?.id],
-    queryFn: () => base44.entities.CampaignEvent.filter({ campaign_id: campaign?.id }),
-  });
+  const { data: events = [], error: eventError, refetch: refetchEvents } = useSecureData(
+    'getActivityFeed',
+    { campaign_id: campaignId },
+    { staleTime: 180000, refetchInterval: 180000 }
+  );
 
-  const { data: volunteers = [] } = useQuery({
-    queryKey: ['event_volunteers', campaign?.id],
-    queryFn: () => base44.entities.EventVolunteer.filter({ campaign_id: campaign?.id }),
-  });
+  const { data: volunteers = [] } = useSecureData(
+    'getActivityFeed',
+    { campaign_id: campaignId },
+    { staleTime: 180000, refetchInterval: 180000 }
+  );
 
-  const { data: contacts = [] } = useQuery({
-    queryKey: ['contacts', campaign?.id],
-    queryFn: () => base44.entities.Contact.filter({ campaign_id: campaign?.id }),
-  });
+  const { data: contacts = [], error: contactError, refetch: refetchContacts } = useSecureData(
+    'getContactDetails',
+    { campaign_id: campaignId },
+    { staleTime: 120000, refetchInterval: 120000 }
+  );
 
   const volunteerContacts = contacts.filter(c => c.volunteer);
 
   const createAssignmentMutation = useMutation({
-    mutationFn: (data) => base44.entities.EventVolunteer.create({ ...data, campaign_id: campaign?.id }),
+    mutationFn: (data) => base44.entities.EventVolunteer.create({ ...data, campaign_id: campaignId }),
     onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ['event_volunteers', campaign?.id] });
       setFormData({ status: 'invited' });
       setShowAssignForm(false);
     },
@@ -54,16 +58,12 @@ export default function VolunteerAssignments() {
 
   const updateAssignmentMutation = useMutation({
     mutationFn: ({ id, data }) => base44.entities.EventVolunteer.update(id, data),
-    onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ['event_volunteers', campaign?.id] });
-    },
+    onSuccess: () => {},
   });
 
   const deleteAssignmentMutation = useMutation({
     mutationFn: (id) => base44.entities.EventVolunteer.delete(id),
-    onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ['event_volunteers', campaign?.id] });
-    },
+    onSuccess: () => {},
   });
 
   const handleAssignVolunteer = () => {
@@ -85,8 +85,20 @@ export default function VolunteerAssignments() {
 
   const upcomingEvents = events.filter(e => e.status === 'upcoming').sort((a, b) => new Date(a.date) - new Date(b.date));
 
+  const dataError = eventError || contactError;
+
   return (
     <div className="space-y-6 p-6">
+      {dataError && (
+        <DataFetchError 
+          error={dataError} 
+          onRetry={() => {
+            refetchEvents();
+            refetchContacts();
+          }}
+          title="Unable to Load Volunteer Data" 
+        />
+      )}
       <h1 className="text-3xl font-bold font-heading text-foreground">Volunteer Assignments</h1>
 
       <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">

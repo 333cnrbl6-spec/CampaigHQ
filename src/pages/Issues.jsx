@@ -1,6 +1,8 @@
 import React, { useState } from 'react';
+import { useMutation, useQueryClient } from '@tanstack/react-query';
+import useSecureData from '@/hooks/useSecureData';
+import DataFetchError from '@/components/DataFetchError';
 import { base44 } from '@/api/base44Client';
-import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { useCampaign } from '@/lib/CampaignContext';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
@@ -33,26 +35,27 @@ export default function Issues() {
   const [editing, setEditing] = useState(null);
   const [form, setForm] = useState(emptyIssue);
   const queryClient = useQueryClient();
-  const { campaign } = useCampaign();
+  const { campaignId } = useCampaign();
 
-  const { data: issues = [], isLoading } = useQuery({
-    queryKey: ['issues', campaign?.id],
-    queryFn: () => base44.entities.Issue.filter({ campaign_id: campaign?.id }, '-priority', 100),
-  });
+  const { data: issues = [], error: issueError, isLoading, refetch } = useSecureData(
+    'getActivityFeed',
+    { campaign_id: campaignId },
+    { staleTime: 180000, refetchInterval: 180000 }
+  );
 
   const createMutation = useMutation({
-    mutationFn: (data) => base44.entities.Issue.create({ ...data, campaign_id: campaign?.id }),
-    onSuccess: () => { queryClient.invalidateQueries({ queryKey: ['issues', campaign?.id] }); setDialogOpen(false); setForm(emptyIssue); },
+    mutationFn: (data) => base44.entities.Issue.create({ ...data, campaign_id: campaignId }),
+    onSuccess: () => { refetch(); setDialogOpen(false); setForm(emptyIssue); },
   });
 
   const updateMutation = useMutation({
     mutationFn: ({ id, data }) => base44.entities.Issue.update(id, data),
-    onSuccess: () => { queryClient.invalidateQueries({ queryKey: ['issues', campaign?.id] }); setDialogOpen(false); setEditing(null); setForm(emptyIssue); },
+    onSuccess: () => { refetch(); setDialogOpen(false); setEditing(null); setForm(emptyIssue); },
   });
 
   const deleteMutation = useMutation({
     mutationFn: (id) => base44.entities.Issue.delete(id),
-    onSuccess: () => queryClient.invalidateQueries({ queryKey: ['issues', campaign?.id] }),
+    onSuccess: () => refetch(),
   });
 
   const handleSubmit = (e) => {
@@ -63,20 +66,25 @@ export default function Issues() {
 
   return (
     <div className="p-6 lg:p-10 max-w-[1400px] mx-auto">
+      {issueError && (
+        <div className="mb-6">
+          <DataFetchError error={issueError} onRetry={refetch} title="Unable to Load Issues" />
+        </div>
+      )}
       <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 mb-8">
         <div>
           <h1 className="font-heading text-3xl font-bold">Local Issues</h1>
           <p className="text-muted-foreground mt-1">Track the issues voters care about</p>
         </div>
         <div className="flex gap-2">
-          <SmartDataImporter
-            entityName="Issue"
-            onComplete={() => queryClient.invalidateQueries({ queryKey: ['issues', campaign?.id] })}
-            trigger={{
-              type: Button,
-              props: { variant: 'outline', className: 'gap-2', children: [<Upload key="icon" className="w-4 h-4" />, 'Import Data'] }
-            }}
-          />
+           <SmartDataImporter
+             entityName="Issue"
+             onComplete={() => refetch()}
+             trigger={{
+               type: Button,
+               props: { variant: 'outline', className: 'gap-2', children: [<Upload key="icon" className="w-4 h-4" />, 'Import Data'] }
+             }}
+           />
           <Dialog open={dialogOpen} onOpenChange={(open) => { setDialogOpen(open); if (!open) { setEditing(null); setForm(emptyIssue); } }}>
             <DialogTrigger asChild>
               <Button className="gap-2"><Plus className="w-4 h-4" /> Add Issue</Button>
