@@ -1,7 +1,7 @@
-import { useEffect, useRef } from 'react';
+import React, { useEffect, useRef } from 'react';
 import { base44 } from '@/api/base44Client';
 
-export function useHardRefreshListener() {
+export const useHardRefreshListener = () => {
   const versionRef = useRef(null);
 
   useEffect(() => {
@@ -26,4 +26,4 @@ export function useHardRefreshListener() {
 
     return () => clearInterval(interval);
   }, []);
-}
+};
