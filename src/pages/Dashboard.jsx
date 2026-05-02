@@ -1,6 +1,8 @@
 import React, { useState } from 'react';
 import { useCampaign } from '@/lib/CampaignContext';
 import useSecureData from '@/hooks/useSecureData';
+import { useQuery } from '@tanstack/react-query';
+import { base44 } from '@/api/base44Client';
 import { useCampaignStats } from '@/hooks/useCampaignMemo';
 import DataFetchError from '@/components/DataFetchError';
 import ErrorBoundary from '@/components/ErrorBoundary';
@@ -25,12 +27,23 @@ export default function Dashboard() {
   // Defensive: campaign might not have loaded yet
   const campaignId = campaign?.id;
 
-  // Fetch RLS-protected data with secure data hooks — defensive loading with defaults
-  const { data: contacts = [], error: contactError, refetch: refetchContacts } = useSecureData(
-    'getContactDetails',
-    campaignId ? {} : null,
-    { staleTime: 120000, refetchInterval: 120000, enabled: !!campaignId }
-  );
+  // Fetch all contacts for campaign via entity list (RLS-scoped by campaign_id)
+  const { data: contacts = [], error: contactError, refetch: refetchContacts } = useQuery({
+    queryKey: ['contacts', campaignId],
+    queryFn: async () => {
+      if (!campaignId) return [];
+      try {
+        const all = await base44.entities.Contact.list('-created_date', 10000);
+        return Array.isArray(all) ? all.filter(c => c.campaign_id === campaignId) : [];
+      } catch (err) {
+        console.error('Failed to fetch contacts:', err);
+        throw err;
+      }
+    },
+    enabled: !!campaignId,
+    staleTime: 120000,
+    refetchInterval: 120000,
+  });
 
   const { data: events = [], error: eventError, refetch: refetchEvents } = useSecureData(
     'getActivityFeed',
