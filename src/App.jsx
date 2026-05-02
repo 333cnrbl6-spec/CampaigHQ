@@ -62,6 +62,7 @@ import CampaignSettings from './pages/CampaignSettings';
 import VolunteerSignup from './pages/VolunteerSignup';
 import DataExport from './pages/DataExport';
 import HelpCenter from './pages/HelpCenter';
+import LoadTestDashboard from './pages/LoadTestDashboard';
 import NationalDashboard from './pages/NationalDashboard';
 
 const AuthenticatedApp = () => {
@@ -149,6 +150,7 @@ const AuthenticatedApp = () => {
         <Route path="/campaign-settings" element={<CampaignSettings />} />
         <Route path="/export" element={<DataExport />} />
         <Route path="/help" element={<HelpCenter />} />
+        <Route path="/load-test" element={<LoadTestDashboard />} />
         <Route path="/national" element={<NationalDashboard />} />
       </Route>
       <Route path="*" element={<PageNotFound />} />
