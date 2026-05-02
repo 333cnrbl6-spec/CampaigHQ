@@ -4,7 +4,7 @@ import { useAuth } from '@/lib/AuthContext';
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
-import { Globe, MapPin, Users, TrendingUp, AlertCircle, BarChart3, Map, Calendar, Book, Target, Send, Zap, Shield } from 'lucide-react';
+import { Globe, MapPin, Users, TrendingUp, AlertCircle, BarChart3, Map, Calendar, Book, Target, Send, Zap, Shield, Flame } from 'lucide-react';
 import { useState } from 'react';
 import ConstituencyGrid from '@/components/national/ConstituencyGrid';
 import VolunteerCapacityMeter from '@/components/national/VolunteerCapacityMeter';
@@ -15,6 +15,7 @@ import VoterTargeting from '@/components/national/VoterTargeting';
 import OutreachAutomation from '@/components/national/OutreachAutomation';
 import ElectoralIntelligence from '@/components/national/ElectoralIntelligence';
 import GdprComplianceDashboard from '@/components/national/GdprComplianceDashboard';
+import PostElectionConverter from '@/components/national/PostElectionConverter';
 
 export default function NationalDashboard() {
   const { user } = useAuth();
@@ -95,6 +96,7 @@ export default function NationalDashboard() {
               { id: 'outreach', label: '📧 Outreach', icon: Send },
               { id: 'electoral', label: '⚡ Electoral Intel', icon: Zap },
               { id: 'compliance', label: '🛡️ GDPR', icon: Shield },
+              { id: 'conversion', label: '🔥 Post-Election', icon: Flame },
             ].map(tab => (
               <button
                 key={tab.id}
@@ -208,6 +210,7 @@ export default function NationalDashboard() {
         {activeTab === 'outreach' && <OutreachAutomation />}
         {activeTab === 'electoral' && <ElectoralIntelligence campaigns={campaignStats} />}
         {activeTab === 'compliance' && <GdprComplianceDashboard />}
+        {activeTab === 'conversion' && <PostElectionConverter />}
 
         {/* Export all data */}
         <Card>

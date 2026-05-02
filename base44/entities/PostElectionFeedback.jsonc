@@ -1,0 +1,114 @@
+{
+  "name": "PostElectionFeedback",
+  "type": "object",
+  "properties": {
+    "contact_id": {
+      "type": "string",
+      "description": "Link to Contact record"
+    },
+    "contact_name": {
+      "type": "string",
+      "description": "Contact name for reference"
+    },
+    "interview_date": {
+      "type": "string",
+      "format": "date",
+      "description": "Date of post-election door knock"
+    },
+    "volunteer_name": {
+      "type": "string",
+      "description": "Who conducted the interview"
+    },
+    "voted": {
+      "type": "boolean",
+      "description": "Did they vote?"
+    },
+    "voted_for_party": {
+      "type": "string",
+      "enum": [
+        "green",
+        "labour",
+        "conservative",
+        "libdem",
+        "other",
+        "spoiled",
+        "abstained"
+      ],
+      "description": "Who they voted for"
+    },
+    "voted_for_candidate": {
+      "type": "string",
+      "description": "Candidate name if known"
+    },
+    "why_voted_for": {
+      "type": "string",
+      "description": "Voter's explanation for their choice"
+    },
+    "why_not_green": {
+      "type": "string",
+      "description": "If didn't vote Green, why not?"
+    },
+    "policy_agreement_score": {
+      "type": "number",
+      "description": "1-10 alignment score with Green policies (from assessment quiz)"
+    },
+    "top_concern": {
+      "type": "string",
+      "enum": [
+        "climate",
+        "housing",
+        "nhs",
+        "cost_of_living",
+        "education",
+        "workers_rights",
+        "immigration",
+        "economy",
+        "other"
+      ],
+      "description": "Voter's primary concern"
+    },
+    "policy_gaps": {
+      "type": "array",
+      "items": {
+        "type": "string"
+      },
+      "description": "Green Party policies they felt were missing"
+    },
+    "conversion_likelihood": {
+      "type": "string",
+      "enum": [
+        "very_likely",
+        "likely",
+        "possible",
+        "unlikely",
+        "no_chance"
+      ],
+      "description": "Could they become a Green supporter?"
+    },
+    "next_engagement": {
+      "type": "string",
+      "enum": [
+        "volunteer",
+        "donate",
+        "campaign_activity",
+        "local_meeting",
+        "policy_discussion"
+      ],
+      "description": "Recommended next step for engagement"
+    },
+    "quiz_responses": {
+      "type": "object",
+      "description": "Responses to policy alignment quiz questions"
+    },
+    "notes": {
+      "type": "string",
+      "description": "Volunteer notes from conversation"
+    }
+  },
+  "required": [
+    "contact_id",
+    "contact_name",
+    "interview_date",
+    "volunteer_name"
+  ]
+}
