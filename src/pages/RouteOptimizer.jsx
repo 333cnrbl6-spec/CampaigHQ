@@ -7,12 +7,14 @@ import { Badge } from '@/components/ui/badge';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import {
   MapPin, Navigation, Download, ArrowRight, Loader2,
-  Search, XCircle, RotateCcw, Map, Footprints, Printer, ClipboardList, Info, FileText, RefreshCw, FileText as FilePdf
+  Search, XCircle, RotateCcw, Map, Footprints, Printer, ClipboardList, Info, FileText, RefreshCw, FileText as FilePdf,
+  Zap
 } from 'lucide-react';
 import CanvassingRouteMap from '@/components/map/CanvassingRouteMap';
 import ContactsZoneMap from '@/components/map/ContactsZoneMap';
 import TurfBoundaryMap from '@/components/map/TurfBoundaryMap';
 import WalkSheetPrint from '@/components/canvassing/WalkSheetPrint';
+import RouteBatchAssignment from '@/components/route/RouteBatchAssignment';
 import { useNavigate } from 'react-router-dom';
 
 // ---------------------------------------------------------------------------
@@ -200,6 +202,7 @@ export default function RouteOptimizer() {
   const [showWalkSheet, setShowWalkSheet] = useState(false);
   const [exportingPDF, setExportingPDF] = useState(false);
   const [showTurfBoundaries, setShowTurfBoundaries] = useState(false);
+  const [showBatchAssignment, setShowBatchAssignment] = useState(false);
 
   const { data: contacts = [], isLoading, refetch: refetchContacts } = useQuery({
     queryKey: ['contacts'],
@@ -325,6 +328,14 @@ export default function RouteOptimizer() {
                <Badge variant="secondary" className="text-sm px-3 py-1">
                  {route.length} stops · {uniquePostcodesInRoute} postcodes · {totalDist.toFixed(1)} km
                </Badge>
+               <Button 
+                 variant="outline" 
+                 size="sm" 
+                 className="gap-1.5"
+                 onClick={() => setShowBatchAssignment(!showBatchAssignment)}
+               >
+                 <Zap className="w-4 h-4" /> Batch Assign
+               </Button>
                <Button variant="outline" size="sm" className="gap-1.5" onClick={handleDownload}>
                  <Download className="w-4 h-4" /> Export CSV
                </Button>
@@ -622,6 +633,33 @@ export default function RouteOptimizer() {
           title={turfFilter !== 'all' ? `${turfFilter} — ${route.length} stops` : `${route.length} stops`}
           onClose={() => setShowWalkSheet(false)}
         />
+      )}
+
+      {/* Batch assignment modal */}
+      {showBatchAssignment && route && (
+        <div className="fixed inset-0 z-50 bg-black/50 flex items-center justify-center p-4 overflow-y-auto">
+          <div className="bg-background rounded-xl max-w-3xl w-full my-8 shadow-xl">
+            <div className="px-6 py-4 border-b border-border flex items-center justify-between sticky top-0">
+              <h2 className="text-lg font-semibold flex items-center gap-2">
+                <Zap className="w-5 h-5" />
+                Batch Assign Route
+              </h2>
+              <Button
+                variant="ghost"
+                size="icon"
+                onClick={() => setShowBatchAssignment(false)}
+              >
+                <XCircle className="w-5 h-5" />
+              </Button>
+            </div>
+            <div className="p-6 overflow-y-auto max-h-[calc(100vh-12rem)]">
+              <RouteBatchAssignment
+                turfId={turfFilter !== 'all' ? turfFilter : null}
+                contactIds={route.map(s => s.contact.id)}
+              />
+            </div>
+          </div>
+        </div>
       )}
     </div>
   );
