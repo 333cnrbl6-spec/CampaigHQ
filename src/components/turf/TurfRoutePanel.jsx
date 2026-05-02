@@ -113,16 +113,29 @@ export default function TurfRoutePanel({ turf, onRouteReady, onClose }) {
   async function runBatchGeocode() {
     setGeocoding(true);
     setGeocodeStatus(null);
+
+    // Poll the DB every 3s while the backend function runs, so we show live progress
+    let pollInterval = setInterval(async () => {
+      try {
+        const fresh = await base44.entities.Contact.list('name', 5000);
+        const done = fresh.filter(c => c.latitude != null).length;
+        const total = fresh.filter(c => c.address?.trim()).length;
+        setGeocodeStatus({ done, total, polling: true });
+      } catch {}
+    }, 3000);
+
     try {
       const res = await base44.functions.invoke('batchGeocodeContacts', {});
+      clearInterval(pollInterval);
       setGeocodeStatus({
         done: res.data?.results?.succeeded ?? 0,
         total: res.data?.results?.total ?? 0,
+        polling: false,
       });
-      // Reload contacts with fresh coords and rebuild route
       await refetchContacts();
       buildRoute();
     } finally {
+      clearInterval(pollInterval);
       setGeocoding(false);
     }
   }
@@ -177,16 +190,35 @@ export default function TurfRoutePanel({ turf, onRouteReady, onClose }) {
             </div>
           )}
 
-          {geocoding && (
-            <div className="flex items-center gap-2 text-sm text-muted-foreground py-2">
-              <div className="w-4 h-4 border-2 border-primary border-t-transparent rounded-full animate-spin shrink-0" />
-              Geocoding all contacts… this may take a minute.
+          {geocoding && geocodeStatus && (
+            <div className="space-y-2 py-1">
+              <div className="flex items-center gap-2 text-sm font-medium text-foreground">
+                <div className="w-4 h-4 border-2 border-primary border-t-transparent rounded-full animate-spin shrink-0" />
+                Geocoding contacts…
+              </div>
+              <div className="w-full bg-muted rounded-full h-2 overflow-hidden">
+                <div
+                  className="bg-primary h-2 rounded-full transition-all duration-500"
+                  style={{ width: geocodeStatus.total > 0 ? `${Math.round((geocodeStatus.done / geocodeStatus.total) * 100)}%` : '0%' }}
+                />
+              </div>
+              <div className="flex justify-between text-xs text-muted-foreground">
+                <span>{geocodeStatus.done} of {geocodeStatus.total} geocoded</span>
+                <span>{geocodeStatus.total > 0 ? Math.round((geocodeStatus.done / geocodeStatus.total) * 100) : 0}%</span>
+              </div>
             </div>
           )}
 
-          {geocodeStatus && (
+          {geocoding && !geocodeStatus && (
+            <div className="flex items-center gap-2 text-sm text-muted-foreground py-2">
+              <div className="w-4 h-4 border-2 border-primary border-t-transparent rounded-full animate-spin shrink-0" />
+              Starting geocode job…
+            </div>
+          )}
+
+          {!geocoding && geocodeStatus && !geocodeStatus.polling && (
             <p className="text-xs text-green-700 font-medium">
-              ✓ Geocoded {geocodeStatus.done} of {geocodeStatus.total} contacts.
+              ✓ Geocoded {geocodeStatus.done} of {geocodeStatus.total} contacts successfully.
             </p>
           )}
 
