@@ -70,6 +70,7 @@ import ComplianceAudit from './pages/ComplianceAudit';
 import BrandingSettings from './pages/BrandingSettings';
 import TrainingCenter from './pages/TrainingCenter';
 import DemoDataImporter from './pages/DemoDataImporter';
+import PitchPresentation from './pages/PitchPresentation';
 
 const AuthenticatedApp = () => {
   const { isLoadingAuth, isLoadingPublicSettings, authError, navigateToLogin } = useAuth();
@@ -164,6 +165,7 @@ const AuthenticatedApp = () => {
         <Route path="/branding" element={<BrandingSettings />} />
         <Route path="/training" element={<TrainingCenter />} />
         <Route path="/demo-import" element={<DemoDataImporter />} />
+        <Route path="/pitch" element={<PitchPresentation />} />
       </Route>
       <Route path="*" element={<PageNotFound />} />
     </Routes>
