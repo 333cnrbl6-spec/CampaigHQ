@@ -178,7 +178,8 @@ function TurfLayers({ turfs, selectedId, onSelect }) {
 }
 
 export default function TurfManagement() {
-  const { campaignId } = useCampaign();
+  const { campaign } = useCampaign();
+  const campaignId = campaign?.id;
   const queryClient = useQueryClient();
   const [drawing, setDrawing] = useState(false);
   const [selectedId, setSelectedId] = useState(null);
