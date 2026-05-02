@@ -104,13 +104,17 @@ export default function TurfRoutePanel({ turf, onRouteReady, onClose }) {
   const [totalDist, setTotalDist] = useState(0);
   const [showWalkSheet, setShowWalkSheet] = useState(false);
 
-  const { data: contacts = [] } = useQuery({
+  const { data: contacts = [], isSuccess: contactsLoaded } = useQuery({
     queryKey: ['contacts'],
-    queryFn: () => base44.entities.Contact.list(),
+    queryFn: () => base44.entities.Contact.list('name', 5000),
   });
 
-  // Note: Auto-geocoding removed to prevent blocking page renders
-  // Users can manually trigger route building with the Retry button
+  // Auto-build route once contacts are loaded and turf has a boundary
+  useEffect(() => {
+    if (contactsLoaded && turf?.geojson && contacts.length > 0) {
+      buildRoute();
+    }
+  }, [contactsLoaded, turf?.id]);
 
   async function buildRoute() {
     setLoading(true);
@@ -188,8 +192,12 @@ export default function TurfRoutePanel({ turf, onRouteReady, onClose }) {
           ) : route.length === 0 ? (
             <div className="text-center py-4 text-sm text-muted-foreground">
               <MapPin className="w-6 h-6 mx-auto mb-1 opacity-40" />
-              No contacts found inside this zone.
-              <Button size="sm" variant="outline" className="mt-3 w-full" onClick={buildRoute}>Retry</Button>
+              {!turf?.geojson
+                ? 'No boundary drawn for this zone yet.'
+                : 'No contacts with addresses found inside this zone.'}
+              <Button size="sm" variant="outline" className="mt-3 w-full" onClick={buildRoute}>
+                {!turf?.geojson ? 'Draw a boundary first' : 'Retry'}
+              </Button>
             </div>
           ) : (
             <>
