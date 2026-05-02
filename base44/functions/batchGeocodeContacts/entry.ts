@@ -31,13 +31,22 @@ Deno.serve(async (req) => {
     const base44 = createClientFromRequest(req);
     const user = await base44.auth.me();
 
-    if (!user?.role || user.role !== 'admin') {
-      return Response.json({ error: 'Admin access required' }, { status: 403 });
+    if (!user) {
+      return Response.json({ error: 'Unauthorized' }, { status: 401 });
     }
 
-    // Fetch all contacts, find those still needing geocoding.
-    // latitude=0 sentinel means "permanently failed with no postcode" — skip those.
-    const allContacts = await base44.asServiceRole.entities.Contact.list('name', 5000);
+    const body = await req.json();
+    const { campaign_id } = body;
+
+    // Campaign_id required for non-admins
+    if (!campaign_id && user.role !== 'admin') {
+      return Response.json({ error: 'campaign_id required for non-admin users' }, { status: 400 });
+    }
+
+    // Fetch contacts needing geocoding, filtered by campaign if provided
+    const allContacts = campaign_id
+      ? await base44.asServiceRole.entities.Contact.filter({ campaign_id }, 'name', 5000)
+      : await base44.asServiceRole.entities.Contact.list('name', 5000);
     const needsGeocoding = allContacts.filter(c => {
       const hasCoords = c.latitude != null && c.latitude !== 0 && c.longitude != null && c.longitude !== 0;
       if (hasCoords) return false;

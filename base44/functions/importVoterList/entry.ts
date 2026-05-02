@@ -45,8 +45,9 @@ Deno.serve(async (req) => {
   const user = await base44.auth.me();
   if (!user) return Response.json({ error: 'Unauthorized' }, { status: 401 });
 
-  const { file_url, file_name, is_postal } = await req.json();
+  const { file_url, file_name, is_postal, campaign_id } = await req.json();
   if (!file_url) return Response.json({ error: 'file_url is required' }, { status: 400 });
+  if (!campaign_id) return Response.json({ error: 'campaign_id is required' }, { status: 400 });
 
   // Download the file
   const fileRes = await fetch(file_url);
@@ -68,7 +69,7 @@ Deno.serve(async (req) => {
   const delay = (ms) => new Promise(r => setTimeout(r, ms));
 
   for (let i = 0; i < allRecords.length; i += BATCH_SIZE) {
-    const batch = allRecords.slice(i, i + BATCH_SIZE);
+    const batch = allRecords.slice(i, i + BATCH_SIZE).map(r => ({ ...r, campaign_id }));
     for (let attempt = 1; attempt <= 5; attempt++) {
       try {
         const created = await base44.asServiceRole.entities.Contact.bulkCreate(batch);
@@ -87,6 +88,7 @@ Deno.serve(async (req) => {
     record_count: createdIds.length,
     status: 'completed',
     created_record_ids: createdIds,
+    campaign_id,
   });
 
   return Response.json({ imported: createdIds.length, total: allRecords.length });

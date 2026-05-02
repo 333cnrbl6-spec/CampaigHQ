@@ -14,8 +14,15 @@ Deno.serve(async (req) => {
 
     // Determine which campaign to filter by
     const campaignId = filter_campaign_id || user.campaign_id;
-    if (!campaignId && !user.role === 'admin') {
+    
+    // Non-admins must have campaign_id
+    if (!campaignId && user.role !== 'admin') {
       return Response.json({ error: 'No campaign selected and user has no default campaign' }, { status: 400 });
+    }
+    
+    // Admins exporting without campaign_id should be logged
+    if (!campaignId && user.role === 'admin') {
+      console.warn(`Admin ${user.email} exporting all data without campaign filter`);
     }
 
     let records = [];

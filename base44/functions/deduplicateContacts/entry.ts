@@ -5,6 +5,13 @@ Deno.serve(async (req) => {
   const user = await base44.auth.me();
   if (!user) return Response.json({ error: 'Unauthorized' }, { status: 401 });
 
+  const body = await req.json();
+  const { campaign_id } = body;
+
+  if (!campaign_id) {
+    return Response.json({ error: 'campaign_id is required' }, { status: 400 });
+  }
+
   const delay = (ms) => new Promise(r => setTimeout(r, ms));
 
   // Retry with exponential backoff, specifically handles 429 rate limits
@@ -42,8 +49,8 @@ Deno.serve(async (req) => {
     return results;
   };
 
-  // Fetch all contacts (up to 10k)
-  const contacts = await base44.asServiceRole.entities.Contact.list('name', 10000);
+  // Fetch contacts for this campaign only
+  const contacts = await base44.asServiceRole.entities.Contact.filter({ campaign_id }, 'name', 10000);
 
   // Group by normalised address + name to find true duplicates
   const groups = {};
