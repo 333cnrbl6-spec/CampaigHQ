@@ -77,23 +77,28 @@ Deno.serve(async (req) => {
     // Step 2: bulk lookup (max 100 per call — already within limit)
     const postcodeMap = uniquePostcodes.length > 0 ? await bulkGeocodePostcodes(uniquePostcodes) : {};
 
-    // Step 3: update all contacts in parallel
-    await Promise.all(toProcess.map(async (contact, idx) => {
-      const pc = contactPostcodes[idx];
-      const coords = pc ? postcodeMap[pc] : null;
-
-      if (coords) {
-        await base44.asServiceRole.entities.Contact.update(contact.id, {
-          latitude: coords.latitude,
-          longitude: coords.longitude,
-        });
-        results.succeeded += 1;
-      } else {
-        // No valid postcode — mark as permanently failed sentinel so it's skipped next time
-        await base44.asServiceRole.entities.Contact.update(contact.id, { latitude: 0, longitude: 0 });
-        results.failed += 1;
+    // Step 3: update contacts in small sequential batches to avoid rate limiting
+    const WRITE_BATCH = 5;
+    for (let i = 0; i < toProcess.length; i += WRITE_BATCH) {
+      const chunk = toProcess.slice(i, i + WRITE_BATCH);
+      await Promise.all(chunk.map(async (contact, j) => {
+        const pc = contactPostcodes[i + j];
+        const coords = pc ? postcodeMap[pc] : null;
+        if (coords) {
+          await base44.asServiceRole.entities.Contact.update(contact.id, {
+            latitude: coords.latitude,
+            longitude: coords.longitude,
+          });
+          results.succeeded += 1;
+        } else {
+          await base44.asServiceRole.entities.Contact.update(contact.id, { latitude: 0, longitude: 0 });
+          results.failed += 1;
+        }
+      }));
+      if (i + WRITE_BATCH < toProcess.length) {
+        await new Promise(resolve => setTimeout(resolve, 300));
       }
-    }));
+    }
 
     return Response.json({
       success: true,
