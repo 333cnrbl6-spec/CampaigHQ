@@ -103,6 +103,7 @@ export default function TurfRoutePanel({ turf, onRouteReady, onClose }) {
   const [expanded, setExpanded] = useState(true);
   const [totalDist, setTotalDist] = useState(0);
   const [showWalkSheet, setShowWalkSheet] = useState(false);
+  const [progress, setProgress] = useState({ stage: '', current: 0, total: 0, found: 0 });
 
   const { data: contacts = [], isSuccess: contactsLoaded } = useQuery({
     queryKey: ['contacts'],
@@ -119,37 +120,41 @@ export default function TurfRoutePanel({ turf, onRouteReady, onClose }) {
   async function buildRoute() {
     setLoading(true);
     setRoute([]);
+    setProgress({ stage: 'Preparing…', current: 0, total: 0, found: 0 });
 
     let geo;
     try { geo = JSON.parse(turf.geojson); } catch { setLoading(false); return; }
     const rings = extractPolygonRings(geo);
     if (rings.length === 0) { setLoading(false); return; }
 
-    // Filter contacts with addresses — try to match by postcode against turf polygon bbox first
-    // then geocode and do point-in-polygon test
+    // Only process contacts that have an address
+    const addressedContacts = contacts.filter(c => c.address);
+    const total = addressedContacts.length;
+    setProgress({ stage: 'Checking contacts…', current: 0, total, found: 0 });
+
     const candidatePoints = [];
 
-    for (const contact of contacts) {
-      if (!contact.address) continue;
+    for (let i = 0; i < addressedContacts.length; i++) {
+      const contact = addressedContacts[i];
+      setProgress({ stage: 'Geocoding addresses…', current: i + 1, total, found: candidatePoints.length });
       const coords = await geocodeAddress(contact.address, contact.postcode);
       if (!coords) continue;
-      // Test against every ring
       const inside = rings.some(ring => pointInPolygon(coords, ring));
       if (inside) candidatePoints.push({ contact, coords });
     }
 
+    setProgress({ stage: 'Optimising route…', current: total, total, found: candidatePoints.length });
+
     const ordered = nearestNeighbourRoute(candidatePoints);
     setRoute(ordered);
 
-    // Compute total walking distance
     let dist = 0;
     for (let i = 1; i < ordered.length; i++) {
       dist += haversine(ordered[i - 1].coords, ordered[i].coords);
     }
     setTotalDist(Math.round(dist));
 
-    // Emit route coordinates to parent for map overlay
-    if (onRouteReady) onRouteReady(ordered.map(p => [p.coords[1], p.coords[0]])); // [lat,lng] for Leaflet
+    if (onRouteReady) onRouteReady(ordered.map(p => [p.coords[1], p.coords[0]]));
 
     setLoading(false);
   }
@@ -185,9 +190,25 @@ export default function TurfRoutePanel({ turf, onRouteReady, onClose }) {
       {expanded && (
         <div className="p-4 space-y-3">
           {loading ? (
-            <div className="flex flex-col items-center py-6 gap-2 text-muted-foreground text-sm">
-              <div className="w-6 h-6 border-2 border-primary border-t-transparent rounded-full animate-spin" />
-              Geocoding addresses & optimising route…
+            <div className="py-4 space-y-3">
+              <div className="flex items-center gap-2 text-sm font-medium text-foreground">
+                <div className="w-4 h-4 border-2 border-primary border-t-transparent rounded-full animate-spin shrink-0" />
+                {progress.stage}
+              </div>
+              {progress.total > 0 && (
+                <>
+                  <div className="w-full bg-muted rounded-full h-2 overflow-hidden">
+                    <div
+                      className="bg-primary h-2 rounded-full transition-all duration-200"
+                      style={{ width: `${Math.round((progress.current / progress.total) * 100)}%` }}
+                    />
+                  </div>
+                  <div className="flex justify-between text-xs text-muted-foreground">
+                    <span>{progress.current} of {progress.total} addresses checked</span>
+                    <span className="text-primary font-medium">{progress.found} found in zone</span>
+                  </div>
+                </>
+              )}
             </div>
           ) : route.length === 0 ? (
             <div className="text-center py-4 text-sm text-muted-foreground">
