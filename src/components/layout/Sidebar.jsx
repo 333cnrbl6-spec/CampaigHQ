@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { Link, useLocation } from 'react-router-dom';
 import { 
   LayoutDashboard, Users, Calendar, Leaf, ClipboardList, 
@@ -65,7 +65,12 @@ const navSections = [
 
 export default function Sidebar() {
   const [collapsed, setCollapsed] = useState(false);
+  const [user, setUser] = useState(null);
   const location = useLocation();
+
+  useEffect(() => {
+    base44.auth.me().then(setUser).catch(() => setUser(null));
+  }, []);
 
   return (
     <aside className={cn(
@@ -80,8 +85,12 @@ export default function Sidebar() {
           </div>
           {!collapsed && (
             <div className="overflow-hidden">
-              <h1 className="font-heading text-lg font-bold text-sidebar-foreground leading-tight">Paul Binns</h1>
-              <p className="text-xs text-sidebar-foreground/60 leading-tight">Green Party Campaign</p>
+              <h1 className="font-heading text-lg font-bold text-sidebar-foreground leading-tight">
+                {user?.email === 'greenpartypaul@gmail.com' ? 'Paul Binns' : 'Green Party'}
+              </h1>
+              <p className="text-xs text-sidebar-foreground/60 leading-tight">
+                {user?.email === 'greenpartypaul@gmail.com' ? 'Campaign Tool' : 'National Hub'}
+              </p>
             </div>
           )}
         </div>
