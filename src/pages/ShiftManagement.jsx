@@ -1,6 +1,7 @@
 import React, { useState } from 'react';
 import { base44 } from '@/api/base44Client';
 import { useQuery, useQueryClient, useMutation } from '@tanstack/react-query';
+import { useCampaign } from '@/lib/CampaignContext';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
@@ -12,6 +13,7 @@ import { format } from 'date-fns';
 
 export default function ShiftManagement() {
   const queryClient = useQueryClient();
+  const { campaign } = useCampaign();
   const [showDialog, setShowDialog] = useState(false);
   const [editingShift, setEditingShift] = useState(null);
   const [formData, setFormData] = useState({
@@ -28,19 +30,19 @@ export default function ShiftManagement() {
   });
 
   const { data: shifts = [] } = useQuery({
-    queryKey: ['canvassing_shifts'],
-    queryFn: () => base44.entities.CanvassingShift.list('-date', 100),
+    queryKey: ['canvassing_shifts', campaign?.id],
+    queryFn: () => base44.entities.CanvassingShift.filter({ campaign_id: campaign?.id }, '-date', 100),
   });
 
   const { data: signups = [] } = useQuery({
-    queryKey: ['shift_signups'],
-    queryFn: () => base44.entities.ShiftSignup.list('-signed_up_date', 500),
+    queryKey: ['shift_signups', campaign?.id],
+    queryFn: () => base44.entities.ShiftSignup.filter({ campaign_id: campaign?.id }, '-signed_up_date', 500),
   });
 
   const createMutation = useMutation({
-    mutationFn: (data) => base44.entities.CanvassingShift.create(data),
+    mutationFn: (data) => base44.entities.CanvassingShift.create({ ...data, campaign_id: campaign?.id }),
     onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ['canvassing_shifts'] });
+      queryClient.invalidateQueries({ queryKey: ['canvassing_shifts', campaign?.id] });
       resetForm();
     },
   });
@@ -48,7 +50,7 @@ export default function ShiftManagement() {
   const updateMutation = useMutation({
     mutationFn: (data) => base44.entities.CanvassingShift.update(editingShift.id, data),
     onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ['canvassing_shifts'] });
+      queryClient.invalidateQueries({ queryKey: ['canvassing_shifts', campaign?.id] });
       resetForm();
     },
   });
@@ -56,7 +58,7 @@ export default function ShiftManagement() {
   const deleteMutation = useMutation({
     mutationFn: (id) => base44.entities.CanvassingShift.delete(id),
     onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ['canvassing_shifts'] });
+      queryClient.invalidateQueries({ queryKey: ['canvassing_shifts', campaign?.id] });
     },
   });
 

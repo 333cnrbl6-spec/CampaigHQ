@@ -2,10 +2,12 @@ import { useState, useEffect } from 'react';
 import { base44 } from '@/api/base44Client';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { ClipboardList, BarChart2 } from 'lucide-react';
+import { useCampaign } from '@/lib/CampaignContext';
 import SessionLogForm from '@/components/canvassing/SessionLogForm';
 import SessionSummaryDashboard from '@/components/canvassing/SessionSummaryDashboard';
 
 export default function CanvassingActivity() {
+  const { campaign } = useCampaign();
   const [user, setUser] = useState(null);
   const [isAdmin, setIsAdmin] = useState(false);
 

@@ -1,6 +1,7 @@
 import { useState, useMemo } from 'react';
 import { useQuery } from '@tanstack/react-query';
 import { base44 } from '@/api/base44Client';
+import { useCampaign } from '@/lib/CampaignContext';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
 import { Send, CheckCircle2, AlertCircle, Loader2, Mail, MessageSquare } from 'lucide-react';
@@ -25,6 +26,7 @@ function applyFilters(contacts, filters) {
 }
 
 export default function Outreach() {
+  const { campaign } = useCampaign();
   const [filters, setFilters] = useState(DEFAULT_FILTERS);
   const [channel, setChannel] = useState('email');
   const [subject, setSubject] = useState('');
@@ -33,8 +35,8 @@ export default function Outreach() {
   const [result, setResult] = useState(null);
 
   const { data: contacts = [] } = useQuery({
-    queryKey: ['contacts'],
-    queryFn: () => base44.entities.Contact.list('-created_date', 5000),
+    queryKey: ['contacts', campaign?.id],
+    queryFn: () => base44.entities.Contact.filter({ campaign_id: campaign?.id }, '-created_date', 5000),
   });
 
   const audience = useMemo(() => applyFilters(contacts, filters), [contacts, filters]);
