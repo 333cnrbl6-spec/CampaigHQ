@@ -144,8 +144,8 @@ export default function FieldMode() {
     queryKey: ['interactions', campaign?.id, contacts[currentIndex]?.id],
     queryFn: async () => {
       try {
-        const result = await base44.entities.ContactInteraction.filter({ contact_id: contacts[currentIndex]?.id, campaign_id: campaign?.id }, '-date', 10);
-        return Array.isArray(result) ? result : [];
+        const result = await base44.entities.ContactInteraction.list('-date', 100);
+        return Array.isArray(result) ? result.filter(r => r.contact_id === contacts[currentIndex]?.id).slice(0, 10) : [];
       } catch (err) {
         console.error('Failed to fetch interactions:', err);
         return [];

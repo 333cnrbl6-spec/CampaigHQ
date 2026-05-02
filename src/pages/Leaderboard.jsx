@@ -28,8 +28,8 @@ export default function Leaderboard() {
   // Fetch leaderboard data via RLS-protected function
   const { data: leaderboard = [], isLoading, error, refetch } = useSecureData(
     'getLeaderboardData',
-    { campaign_id: campaignId },
-    { staleTime: 300000, refetchInterval: 300000 } // Cache for 5 minutes
+    campaignId ? {} : null,
+    { staleTime: 300000, refetchInterval: 300000, enabled: !!campaignId } // Cache for 5 minutes
   );
 
   const ranked = leaderboard || [];

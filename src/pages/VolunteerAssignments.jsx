@@ -26,24 +26,25 @@ export default function VolunteerAssignments() {
   const [formData, setFormData] = useState({ status: 'invited' });
 
   const queryClient = useQueryClient();
-  const { campaignId } = useCampaign();
+  const { campaign } = useCampaign();
+  const campaignId = campaign?.id;
 
   const { data: events = [], error: eventError, refetch: refetchEvents } = useSecureData(
     'getActivityFeed',
-    { campaign_id: campaignId },
-    { staleTime: 180000, refetchInterval: 180000 }
+    campaignId ? {} : null,
+    { staleTime: 180000, refetchInterval: 180000, enabled: !!campaignId }
   );
 
   const { data: volunteers = [] } = useSecureData(
     'getActivityFeed',
-    { campaign_id: campaignId },
-    { staleTime: 180000, refetchInterval: 180000 }
+    campaignId ? {} : null,
+    { staleTime: 180000, refetchInterval: 180000, enabled: !!campaignId }
   );
 
   const { data: contacts = [], error: contactError, refetch: refetchContacts } = useSecureData(
     'getContactDetails',
-    { campaign_id: campaignId },
-    { staleTime: 120000, refetchInterval: 120000 }
+    campaignId ? {} : null,
+    { staleTime: 120000, refetchInterval: 120000, enabled: !!campaignId }
   );
 
   const volunteerContacts = contacts.filter(c => c.volunteer);
