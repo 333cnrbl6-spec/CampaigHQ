@@ -26,21 +26,8 @@ export const CampaignProvider = ({ children }) => {
 
       setUser(currentUser);
 
-      // CRITICAL: In "Act as User" mode, user record may not have campaign_memberships populated.
-      // Fetch the full user record from the User entity to get the complete membership data.
+      // Use campaign_memberships from current user session (already loaded by auth context)
       let userMemberships = Array.isArray(currentUser.campaign_memberships) ? currentUser.campaign_memberships : [];
-      if (userMemberships.length === 0) {
-        try {
-          const fullUserRecord = await base44.entities.User.filter({ email: currentUser.email });
-          if (Array.isArray(fullUserRecord) && fullUserRecord[0]?.email) {
-            const record = fullUserRecord[0];
-            userMemberships = Array.isArray(record.campaign_memberships) ? record.campaign_memberships : [];
-            console.log(`✓ Loaded user memberships from User entity for ${currentUser.email}:`, userMemberships.length, 'active memberships');
-          }
-        } catch (err) {
-          console.warn('Could not fetch full user record (may be in "Act as User" mode):', err.message);
-        }
-      }
 
       // Fetch all active campaigns
       let allCampaigns = [];
