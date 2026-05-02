@@ -59,6 +59,7 @@ import VolunteerProfileSetup from './pages/VolunteerProfileSetup';
 import VolunteerProfiles from './pages/VolunteerProfiles';
 import CampaignSettings from './pages/CampaignSettings';
 import VolunteerSignup from './pages/VolunteerSignup';
+import DataExport from './pages/DataExport';
 
 const AuthenticatedApp = () => {
   const { isLoadingAuth, isLoadingPublicSettings, authError, navigateToLogin } = useAuth();
@@ -142,6 +143,7 @@ const AuthenticatedApp = () => {
         <Route path="/volunteer-setup" element={<VolunteerProfileSetup />} />
         <Route path="/volunteer-profiles" element={<VolunteerProfiles />} />
         <Route path="/campaign-settings" element={<CampaignSettings />} />
+        <Route path="/export" element={<DataExport />} />
       </Route>
       <Route path="*" element={<PageNotFound />} />
     </Routes>
