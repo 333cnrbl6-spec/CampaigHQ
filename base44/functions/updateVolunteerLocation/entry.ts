@@ -10,20 +10,25 @@ Deno.serve(async (req) => {
     }
 
     const body = await req.json();
-    const { latitude, longitude, postcode, turf_id, turf_name, current_contact_id, doors_knocked_today, battery_level } = body;
+    const { campaign_id, latitude, longitude, postcode, turf_id, turf_name, current_contact_id, doors_knocked_today, battery_level } = body;
 
+    if (!campaign_id) {
+      return Response.json({ error: 'campaign_id is required' }, { status: 400 });
+    }
     if (!latitude || !longitude) {
       return Response.json({ error: 'Latitude and longitude required' }, { status: 400 });
     }
 
-    // Find existing location record for this volunteer
+    // Find existing location record for this volunteer in this campaign
     const existing = await base44.entities.VolunteerLocation.filter({
       volunteer_email: user.email,
+      campaign_id,
     });
 
     const locationData = {
       volunteer_email: user.email,
       volunteer_name: user.full_name,
+      campaign_id,
       latitude,
       longitude,
       postcode: postcode || null,

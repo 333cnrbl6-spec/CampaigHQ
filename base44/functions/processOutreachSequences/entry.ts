@@ -24,10 +24,15 @@ Deno.serve(async (req) => {
       return Response.json({ error: 'Unauthorized' }, { status: 401 });
     }
 
-    const { event_type, contact_id, trigger_value } = await req.json();
+    const { campaign_id, event_type, contact_id, trigger_value } = await req.json();
 
-    // Fetch all active sequences matching this event
+    if (!campaign_id) {
+      return Response.json({ error: 'campaign_id is required' }, { status: 400 });
+    }
+
+    // Fetch all active sequences matching this event for this campaign
     const sequences = await base44.asServiceRole.entities.OutreachSequence.filter({
+      campaign_id,
       trigger_event: event_type,
       status: 'active',
       enabled: true,
@@ -37,8 +42,8 @@ Deno.serve(async (req) => {
       return Response.json({ processed: 0 });
     }
 
-    // Fetch the contact — list all and find by id (SDK doesn't support id filter directly)
-    const allContacts = await base44.asServiceRole.entities.Contact.list();
+    // Fetch the contact for this campaign
+    const allContacts = await base44.asServiceRole.entities.Contact.filter({ campaign_id });
     const contact = allContacts.find(c => c.id === contact_id);
     if (!contact) {
       return Response.json({ error: 'Contact not found' }, { status: 404 });

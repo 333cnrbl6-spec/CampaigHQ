@@ -3,13 +3,25 @@ import { createClientFromRequest } from 'npm:@base44/sdk@0.8.25';
 Deno.serve(async (req) => {
   try {
     const base44 = createClientFromRequest(req);
+    const user = await base44.auth.me();
 
-    // Fetch all necessary data in parallel
-    const [volunteers, canvassingLogs, turfs, tasks] = await Promise.all([
-      base44.asServiceRole.entities.User.list(),
-      base44.asServiceRole.entities.CanvassingLog.filter({ session_date: new Date().toISOString().split('T')[0] }),
-      base44.asServiceRole.entities.Turf.list(),
-      base44.asServiceRole.entities.Task.filter({ category: 'canvassing' }),
+    if (!user) {
+      return Response.json({ error: 'Unauthorized' }, { status: 401 });
+    }
+
+    const body = await req.json();
+    const { campaign_id } = body;
+
+    if (!campaign_id) {
+      return Response.json({ error: 'campaign_id is required' }, { status: 400 });
+    }
+
+    // Fetch data for this campaign in parallel
+    const today = new Date().toISOString().split('T')[0];
+    const [canvassingLogs, turfs, tasks] = await Promise.all([
+      base44.asServiceRole.entities.CanvassingLog.filter({ campaign_id, session_date: today }),
+      base44.asServiceRole.entities.Turf.filter({ campaign_id }),
+      base44.asServiceRole.entities.Task.filter({ campaign_id, category: 'canvassing' }),
     ]);
 
     // Get daily goal from tasks or default to 100

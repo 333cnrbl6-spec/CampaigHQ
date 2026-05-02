@@ -6,12 +6,13 @@ Deno.serve(async (req) => {
     const user = await base44.auth.me();
     if (!user) return Response.json({ error: 'Unauthorized' }, { status: 401 });
 
-    const { filters, subject, body } = await req.json();
+    const { campaign_id, filters, subject, body } = await req.json();
 
+    if (!campaign_id) return Response.json({ error: 'campaign_id is required' }, { status: 400 });
     if (!subject || !body) return Response.json({ error: 'Subject and body required' }, { status: 400 });
 
-    // Fetch all contacts server-side (up to 5000)
-    let allContacts = await base44.asServiceRole.entities.Contact.list('-created_date', 5000);
+    // Fetch contacts for this campaign only
+    let allContacts = await base44.asServiceRole.entities.Contact.filter({ campaign_id }, '-created_date', 5000);
 
     // Apply filters server-side
     if (filters) {

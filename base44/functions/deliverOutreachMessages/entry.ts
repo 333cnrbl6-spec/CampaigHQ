@@ -5,14 +5,22 @@ Deno.serve(async (req) => {
     const base44 = createClientFromRequest(req);
     const user = await base44.auth.me();
 
-    if (user?.role !== 'admin') {
-      return Response.json({ error: 'Admin only' }, { status: 403 });
+    if (!user) {
+      return Response.json({ error: 'Unauthorized' }, { status: 401 });
     }
 
-    // Get all scheduled messages that are due
+    const body = await req.json();
+    const { campaign_id } = body;
+
+    if (!campaign_id) {
+      return Response.json({ error: 'campaign_id is required' }, { status: 400 });
+    }
+
+    // Get all scheduled messages that are due for this campaign
     const now = new Date().toISOString();
     const logs = await base44.asServiceRole.entities.OutreachLog.filter({
       status: 'scheduled',
+      campaign_id,
     }, '-created_date', 1000);
 
     const dueMessages = logs.filter(log => {

@@ -8,7 +8,11 @@ Deno.serve(async (req) => {
       return Response.json({ error: 'Unauthorized' }, { status: 401 });
     }
 
-    const { contact, support_level, interactions, issues, feedback } = await req.json();
+    const { campaign_id, contact, support_level, interactions, issues, feedback } = await req.json();
+
+    if (!campaign_id) {
+      return Response.json({ error: 'campaign_id is required' }, { status: 400 });
+    }
 
     const supportDescriptions = {
       strong_supporter: 'a strong supporter who already backs the campaign',

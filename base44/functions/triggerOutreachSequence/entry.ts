@@ -32,15 +32,17 @@ Deno.serve(async (req) => {
     }
 
     const contact = data;
-    if (!contact || !contact.support_level) {
+    if (!contact || !contact.support_level || !contact.campaign_id) {
       return Response.json({ processed: 0 });
     }
 
-    // Get all active sequences
-    const sequences = await base44.asServiceRole.entities.OutreachSequence.list('name', 1000);
-    const activeSequences = sequences.filter(
-      s => s.status === 'active' && s.trigger_event === 'support_level_changed'
-    );
+    // Get all active sequences for this campaign
+    const sequences = await base44.asServiceRole.entities.OutreachSequence.filter({
+      campaign_id: contact.campaign_id,
+      status: 'active',
+      trigger_event: 'support_level_changed'
+    });
+    const activeSequences = sequences;
 
     let processed = 0;
 
