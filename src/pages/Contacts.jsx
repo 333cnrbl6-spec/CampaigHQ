@@ -69,8 +69,7 @@ export default function Contacts() {
   const [assignResult, setAssignResult] = useState(null);
   const [reprocessing, setReprocessing] = useState(false);
   const [reprocessResult, setReprocessResult] = useState(null);
-  const [optimizingRoute, setOptimizingRoute] = useState(false);
-  const [routeData, setRouteData] = useState(null);
+  const [showInfraPanel, setShowInfraPanel] = useState(false);
 
   const handleDeduplicate = async () => {
     if (!confirm('This will merge duplicate addresses, combining their tags into one record. Continue?')) return;
@@ -177,33 +176,7 @@ export default function Contacts() {
   const totalPages = Math.ceil(filtered.length / PAGE_SIZE);
   const paginated = filtered.slice((page - 1) * PAGE_SIZE, page * PAGE_SIZE);
 
-  // Auto-optimize route when filtered contacts change
-  React.useEffect(() => {
-    if (!filtered || filtered.length === 0 || filtered.length > 500) return;
-    
-    const optimizeRoute = async () => {
-      setOptimizingRoute(true);
-      try {
-        const response = await base44.functions.invoke('optimizeCanvassingRoute', {
-          contacts: filtered.map(c => ({
-            id: c.id,
-            name: c.name,
-            address: c.address,
-            postcode: c.postcode
-          }))
-        });
-        setRouteData(response.data);
-      } catch (error) {
-        console.log('Route optimization skipped:', error.message);
-      } finally {
-        setOptimizingRoute(false);
-      }
-    };
-    
-    // Debounce to avoid excessive calls
-    const timer = setTimeout(optimizeRoute, 2000);
-    return () => clearTimeout(timer);
-  }, [filtered]);
+
 
   const handleSubmit = (data) => {
     if (editing) {
@@ -268,56 +241,43 @@ export default function Contacts() {
           </Button>
         </div>
 
-        {/* Infrastructure Setup Panel */}
-        <div className="bg-gradient-to-r from-blue-50 to-cyan-50 border border-blue-200 rounded-xl p-4 mb-6">
-          <div className="mb-3">
-            <h3 className="font-semibold text-blue-900 flex items-center gap-2">
-              <Zap className="w-4 h-4 text-blue-600" />
-              Infrastructure Setup — Enable Field Tools
-            </h3>
-            <p className="text-xs text-blue-700 mt-1">Complete these steps in order to unlock Route Optimizer, Live Tracking, and Field Navigation.</p>
-          </div>
-          <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
-            <Button
-              onClick={handleAssignTurfs}
-              variant="outline"
-              size="sm"
-              className="gap-2 justify-start bg-white hover:bg-blue-50 border-blue-200 text-blue-900"
-              disabled={assigning || isLoading}
-            >
-              {assigning ? <Loader2 className="w-4 h-4 animate-spin" /> : <Tag className="w-4 h-4" />}
-              <span className="text-left">
-                <div className="font-medium text-xs">Step 1: Assign Turfs</div>
-                <div className="text-xs text-muted-foreground">Extract electoral zones</div>
-              </span>
-            </Button>
-            <Button
-              onClick={handleReprocessImports}
-              variant="outline"
-              size="sm"
-              className="gap-2 justify-start bg-white hover:bg-blue-50 border-blue-200 text-blue-900"
-              disabled={reprocessing || isLoading}
-            >
-              {reprocessing ? <Loader2 className="w-4 h-4 animate-spin" /> : <GitMerge className="w-4 h-4" />}
-              <span className="text-left">
-                <div className="font-medium text-xs">Step 2: Recover Zones</div>
-                <div className="text-xs text-muted-foreground">Re-analyze import files</div>
-              </span>
-            </Button>
-            <Button
-              onClick={handleBatchGeocode}
-              variant="outline"
-              size="sm"
-              className="gap-2 justify-start bg-white hover:bg-blue-50 border-blue-200 text-blue-900"
-              disabled={geocoding || isLoading}
-            >
-              {geocoding ? <Loader2 className="w-4 h-4 animate-spin" /> : <MapPin className="w-4 h-4" />}
-              <span className="text-left">
-                <div className="font-medium text-xs">Step 3: Geocode All</div>
-                <div className="text-xs text-muted-foreground">Add map coordinates</div>
-              </span>
-            </Button>
-          </div>
+        {/* Infrastructure Setup Panel — collapsible */}
+        <div className="mb-6">
+          <button
+            onClick={() => setShowInfraPanel(p => !p)}
+            className="flex items-center gap-2 text-xs font-medium text-blue-700 hover:text-blue-900 transition-colors"
+          >
+            <Zap className="w-3.5 h-3.5" />
+            Data Setup Tools {showInfraPanel ? '▲' : '▼'}
+          </button>
+          {showInfraPanel && (
+            <div className="mt-3 bg-gradient-to-r from-blue-50 to-cyan-50 border border-blue-200 rounded-xl p-4">
+              <p className="text-xs text-blue-700 mb-3">Run these to set up geocoding and turf zone data for field tools.</p>
+              <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
+                <Button onClick={handleAssignTurfs} variant="outline" size="sm" className="gap-2 justify-start bg-white hover:bg-blue-50 border-blue-200 text-blue-900" disabled={assigning || isLoading}>
+                  {assigning ? <Loader2 className="w-4 h-4 animate-spin" /> : <Tag className="w-4 h-4" />}
+                  <span className="text-left">
+                    <div className="font-medium text-xs">Assign Turfs</div>
+                    <div className="text-xs text-muted-foreground">Extract electoral zones</div>
+                  </span>
+                </Button>
+                <Button onClick={handleReprocessImports} variant="outline" size="sm" className="gap-2 justify-start bg-white hover:bg-blue-50 border-blue-200 text-blue-900" disabled={reprocessing || isLoading}>
+                  {reprocessing ? <Loader2 className="w-4 h-4 animate-spin" /> : <GitMerge className="w-4 h-4" />}
+                  <span className="text-left">
+                    <div className="font-medium text-xs">Recover Zones</div>
+                    <div className="text-xs text-muted-foreground">Re-analyze import files</div>
+                  </span>
+                </Button>
+                <Button onClick={handleBatchGeocode} variant="outline" size="sm" className="gap-2 justify-start bg-white hover:bg-blue-50 border-blue-200 text-blue-900" disabled={geocoding || isLoading}>
+                  {geocoding ? <Loader2 className="w-4 h-4 animate-spin" /> : <MapPin className="w-4 h-4" />}
+                  <span className="text-left">
+                    <div className="font-medium text-xs">Geocode All</div>
+                    <div className="text-xs text-muted-foreground">Add map coordinates</div>
+                  </span>
+                </Button>
+              </div>
+            </div>
+          )}
         </div>
 
         {/* Secondary Actions */}
@@ -340,18 +300,7 @@ export default function Contacts() {
             {deduping ? <Loader2 className="w-4 h-4 animate-spin" /> : <Merge className="w-4 h-4" />}
             Deduplicate
           </Button>
-          {optimizingRoute && (
-            <div className="flex items-center gap-2 text-xs text-primary">
-              <Loader2 className="w-3 h-3 animate-spin" />
-              Optimizing route...
-            </div>
-          )}
-          {routeData && !optimizingRoute && (
-            <div className="flex items-center gap-2 text-xs bg-green-50 border border-green-200 rounded px-2 py-1 text-green-700">
-              <CheckCircle2 className="w-3 h-3" />
-              Route optimized ({routeData.total_distance_km?.toFixed(1) || '?'} km)
-            </div>
-          )}
+
         </div>
       </div>
 

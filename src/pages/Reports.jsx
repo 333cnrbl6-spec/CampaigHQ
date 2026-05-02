@@ -1,4 +1,4 @@
-import React, { useState, useMemo } from 'react';
+import React, { useState } from 'react';
 import { useQuery } from '@tanstack/react-query';
 import { base44 } from '@/api/base44Client';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
@@ -164,7 +164,7 @@ export default function Reports() {
                     cx="50%"
                     cy="50%"
                     labelLine={false}
-                    label={({ name, value }) => `${name}: ${value}`}
+                    label={({ name, value, percent }) => value > 0 ? `${name} ${Math.round(percent * 100)}%` : ''}
                     outerRadius={80}
                     fill="#8884d8"
                     dataKey="value"
@@ -248,6 +248,7 @@ export default function Reports() {
           <CardHeader>
             <CardTitle className="flex items-center gap-2">
               <FileText className="w-5 h-5" /> Contact List Export
+              {contacts.length > 100 && <span className="text-xs font-normal text-muted-foreground ml-2">(showing first 100 of {contacts.length.toLocaleString()})</span>}
             </CardTitle>
           </CardHeader>
           <CardContent>
@@ -262,7 +263,7 @@ export default function Reports() {
                   </tr>
                 </thead>
                 <tbody>
-                  {contacts.map((c) => (
+                  {contacts.slice(0, 100).map((c) => (
                     <tr key={c.id} className="border-b hover:bg-secondary/30">
                       <td className="py-2 px-3">{c.name}</td>
                       <td className="py-2 px-3 text-xs text-muted-foreground">{c.address}</td>
