@@ -1,6 +1,7 @@
 import React, { useState } from 'react';
 import { base44 } from '@/api/base44Client';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
+import { useCampaign } from '@/lib/CampaignContext';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
@@ -13,30 +14,34 @@ import {
 } from 'lucide-react';
 
 export default function VolunteerProfiles() {
+  const { campaign } = useCampaign();
   const [search, setSearch] = useState('');
   const [editingProfile, setEditingProfile] = useState(null);
   const [expandedId, setExpandedId] = useState(null);
   const queryClient = useQueryClient();
 
   const { data: profiles = [], isLoading } = useQuery({
-    queryKey: ['volunteer_profiles'],
-    queryFn: () => base44.entities.VolunteerProfile.list('-created_date', 100),
+    queryKey: ['volunteer_profiles', campaign?.id],
+    queryFn: () => base44.entities.VolunteerProfile.filter({ campaign_id: campaign?.id }, '-created_date', 100),
+    enabled: !!campaign?.id,
   });
 
   const { data: turfs = [] } = useQuery({
-    queryKey: ['turfs'],
-    queryFn: () => base44.entities.Turf.list(),
+    queryKey: ['turfs', campaign?.id],
+    queryFn: () => base44.entities.Turf.filter({ campaign_id: campaign?.id }),
+    enabled: !!campaign?.id,
   });
 
   const { data: leafletRuns = [] } = useQuery({
-    queryKey: ['leaflet_runs'],
-    queryFn: () => base44.entities.LeafletRun.list(),
+    queryKey: ['leaflet_runs', campaign?.id],
+    queryFn: () => base44.entities.LeafletRun.filter({ campaign_id: campaign?.id }),
+    enabled: !!campaign?.id,
   });
 
   const updateMutation = useMutation({
     mutationFn: ({ id, data }) => base44.entities.VolunteerProfile.update(id, data),
     onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ['volunteer_profiles'] });
+      queryClient.invalidateQueries({ queryKey: ['volunteer_profiles', campaign?.id] });
       setEditingProfile(null);
     },
   });

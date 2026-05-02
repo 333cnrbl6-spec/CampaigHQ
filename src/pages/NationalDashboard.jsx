@@ -10,13 +10,13 @@ export default function NationalDashboard() {
   const { user } = useAuth();
 
   const { data: allCampaigns = [], isLoading } = useQuery({
-    queryKey: ['all-campaigns'],
+    queryKey: ['all-campaigns', user?.role],
     queryFn: () => base44.entities.Campaign.list('name', 5000),
     enabled: user?.role === 'admin',
   });
 
   const { data: allContacts = [] } = useQuery({
-    queryKey: ['all-contacts'],
+    queryKey: ['all-contacts', user?.role],
     queryFn: () => base44.entities.Contact.list('name', 50000),
     enabled: user?.role === 'admin',
   });
