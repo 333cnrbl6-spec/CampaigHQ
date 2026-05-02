@@ -40,7 +40,7 @@ export default function Issues() {
 
   const { data: issues = [], error: issueError, isLoading, refetch } = useSecureData(
     'getActivityFeed',
-    campaignId ? { campaign_id: campaignId } : null,
+    campaignId ? {} : null,
     { staleTime: 180000, refetchInterval: 180000, enabled: !!campaignId }
   );
 

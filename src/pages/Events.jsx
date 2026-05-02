@@ -30,7 +30,7 @@ export default function Events() {
 
   const { data: events = [], error: eventError, isLoading, refetch } = useSecureData(
     'getActivityFeed',
-    campaignId ? { campaign_id: campaignId } : null,
+    campaignId ? {} : null,
     { staleTime: 180000, refetchInterval: 180000, enabled: !!campaignId }
   );
 

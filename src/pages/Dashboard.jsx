@@ -28,26 +28,26 @@ export default function Dashboard() {
   // Fetch RLS-protected data with secure data hooks — defensive loading with defaults
   const { data: contacts = [], error: contactError, refetch: refetchContacts } = useSecureData(
     'getContactDetails',
-    campaignId ? { campaign_id: campaignId } : null,
+    campaignId ? {} : null,
     { staleTime: 120000, refetchInterval: 120000, enabled: !!campaignId }
   );
 
   const { data: events = [], error: eventError, refetch: refetchEvents } = useSecureData(
     'getActivityFeed',
-    campaignId ? { campaign_id: campaignId } : null,
+    campaignId ? {} : null,
     { staleTime: 180000, refetchInterval: 180000, enabled: !!campaignId }
   );
 
   const { data: tasks = [], error: taskError, refetch: refetchTasks } = useSecureData(
     'getSessionLogs',
-    campaignId ? { campaign_id: campaignId } : null,
+    campaignId ? {} : null,
     { staleTime: 120000, refetchInterval: 120000, enabled: !!campaignId }
   );
 
   // Get interactions via ActivityFeed function
   const { data: allActivity = [] } = useSecureData(
     'getActivityFeed',
-    campaignId ? { campaign_id: campaignId } : null,
+    campaignId ? {} : null,
     { staleTime: 60000, refetchInterval: 60000, enabled: !!campaignId }
   );
   const interactions = Array.isArray(allActivity) ? allActivity : [];
@@ -55,7 +55,7 @@ export default function Dashboard() {
   // Get logs via SessionLogs function
   const { data: logs = [] } = useSecureData(
     'getSessionLogs',
-    campaignId ? { campaign_id: campaignId } : null,
+    campaignId ? {} : null,
     { staleTime: 120000, refetchInterval: 120000, enabled: !!campaignId }
   );
 
