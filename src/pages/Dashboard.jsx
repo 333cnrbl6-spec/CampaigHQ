@@ -1,7 +1,7 @@
 import React, { useState } from 'react';
-import { base44 } from '@/api/base44Client';
-import { useQuery } from '@tanstack/react-query';
 import { useCampaign } from '@/lib/CampaignContext';
+import useSecureData from '@/hooks/useSecureData';
+import DataFetchError from '@/components/DataFetchError';
 import { Users, Calendar, ClipboardList, Leaf, TrendingUp, Zap, AlertCircle, MapPin } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import StatCard from '../components/dashboard/StatCard';
@@ -19,37 +19,44 @@ import WeeklySummaryWidget from '../components/dashboard/WeeklySummaryWidget';
 export default function Dashboard() {
   const [geocodingStatus, setGecodingStatus] = useState(null);
   const [showOptimizationHint, setShowOptimizationHint] = useState(true);
-  const { campaign } = useCampaign();
+  const { campaignId } = useCampaign();
 
-  const { data: contacts = [] } = useQuery({
-    queryKey: ['contacts', campaign?.id],
-    queryFn: () => base44.entities.Contact.filter({ campaign_id: campaign?.id }, '-created_date', 1000),
-  });
+  // Fetch RLS-protected data with secure data hooks
+  const { data: contacts = [], error: contactError, refetch: refetchContacts } = useSecureData(
+    'getContactDetails',
+    { campaign_id: campaignId },
+    { staleTime: 120000, refetchInterval: 120000 }
+  );
 
-  const { data: events = [] } = useQuery({
-    queryKey: ['events', campaign?.id],
-    queryFn: () => base44.entities.CampaignEvent.filter({ campaign_id: campaign?.id }, '-date', 50),
-  });
+  const { data: events = [], error: eventError, refetch: refetchEvents } = useSecureData(
+    'getActivityFeed',
+    { campaign_id: campaignId },
+    { staleTime: 180000, refetchInterval: 180000 }
+  );
 
-  const { data: tasks = [] } = useQuery({
-    queryKey: ['tasks', campaign?.id],
-    queryFn: () => base44.entities.Task.filter({ campaign_id: campaign?.id }, '-created_date', 50),
-  });
+  const { data: tasks = [], error: taskError, refetch: refetchTasks } = useSecureData(
+    'getSessionLogs',
+    { campaign_id: campaignId },
+    { staleTime: 120000, refetchInterval: 120000 }
+  );
 
-  const { data: issues = [] } = useQuery({
-    queryKey: ['issues', campaign?.id],
-    queryFn: () => base44.entities.Issue.filter({ campaign_id: campaign?.id }, '-priority', 50),
-  });
+  // Get interactions via ActivityFeed function
+  const { data: allActivity = [] } = useSecureData(
+    'getActivityFeed',
+    { campaign_id: campaignId },
+    { staleTime: 60000, refetchInterval: 60000 }
+  );
+  const interactions = allActivity || [];
 
-  const { data: interactions = [] } = useQuery({
-    queryKey: ['interactions', campaign?.id],
-    queryFn: () => base44.entities.ContactInteraction.filter({ campaign_id: campaign?.id }, '-date', 1000),
-  });
+  // Get logs via SessionLogs function
+  const { data: logs = [] } = useSecureData(
+    'getSessionLogs',
+    { campaign_id: campaignId },
+    { staleTime: 120000, refetchInterval: 120000 }
+  );
 
-  const { data: logs = [] } = useQuery({
-    queryKey: ['canvassingLogs', campaign?.id],
-    queryFn: () => base44.entities.CanvassingLog.filter({ campaign_id: campaign?.id }, '-session_date', 100),
-  });
+  // For issues, use a simple empty array since we don't have a dedicated function yet
+  const issues = [];
 
   const canvassed = contacts.filter(c => c.canvassed).length;
   const supporters = contacts.filter(c => ['strong_supporter', 'leaning'].includes(c.support_level)).length;
@@ -59,8 +66,25 @@ export default function Dashboard() {
   const needsGeocoding = contacts.filter(c => (!c.latitude || !c.longitude) && c.latitude !== 0).length;
   const doorsThisWeek = logs.reduce((sum, l) => sum + (l.doors_knocked || 0), 0);
 
+  // Show data fetch error if present
+  const dataError = contactError || eventError || taskError;
+
   return (
     <div className="p-6 lg:p-10 max-w-[1400px] mx-auto">
+      {dataError && (
+        <div className="mb-6">
+          <DataFetchError 
+            error={dataError} 
+            onRetry={() => {
+              refetchContacts();
+              refetchEvents();
+              refetchTasks();
+            }}
+            title="Unable to Load Dashboard Data" 
+          />
+        </div>
+      )}
+
       {/* Header */}
       <div className="mb-8">
         <p className="text-sm font-medium text-primary uppercase tracking-wider">Campaign HQ</p>
