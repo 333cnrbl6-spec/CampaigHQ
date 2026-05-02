@@ -2,13 +2,14 @@ import React, { useState, useRef } from 'react';
 import { base44 } from '@/api/base44Client';
 import { useQueryClient, useQuery } from '@tanstack/react-query';
 import { useNavigate } from 'react-router-dom';
-import { Loader2, AlertTriangle, Repeat2, FileText, ArrowRight, CheckCircle2 } from 'lucide-react';
+import { Loader2, AlertTriangle, Repeat2, FileText, ArrowRight, CheckCircle2, Users } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import SmartDropZone from '@/components/import/SmartDropZone';
 import ImportProgress from '@/components/import/ImportProgress';
 import DatabaseAssessment from '@/components/import/DatabaseAssessment';
 import RecentImports from '@/components/import/RecentImports';
 import ValidationResults from '@/components/import/ValidationResults';
+import CsvVoterImportWizard from '@/components/import/CsvVoterImportWizard';
 
 const isLegacyMapFile = (filename) => /\.docx?$/i.test(filename);
 
@@ -31,6 +32,7 @@ export default function DataImport() {
   const queryClient = useQueryClient();
   const navigate = useNavigate();
   const [legacyFileDetected, setLegacyFileDetected] = useState(null);
+  const [showCsvWizard, setShowCsvWizard] = useState(false);
   const hasAutoLoaded = useRef(false);
 
   const { data: lastImportLog } = useQuery({
@@ -368,7 +370,26 @@ Return JSON with:
     <div className="p-6 lg:p-10 max-w-6xl mx-auto">
       <div className="mb-8">
         <h1 className="font-heading text-3xl font-bold mb-2">Smart Data Import</h1>
-        <p className="text-muted-foreground">Upload any file and AI will automatically detect, map and import your data.</p>
+        <p className="text-muted-foreground">Use the CSV Voter List wizard for fast column mapping and duplicate detection, or the AI importer for any file type.</p>
+      </div>
+
+      {/* CSV Voter List fast-path */}
+      <div className="mb-8">
+        <div className="flex items-center gap-3 bg-blue-50 border border-blue-200 rounded-xl p-4">
+          <Users className="w-8 h-8 text-blue-600 flex-shrink-0" />
+          <div className="flex-1">
+            <p className="font-semibold text-blue-900 text-sm">CSV Voter List Import</p>
+            <p className="text-xs text-blue-700 mt-0.5">Fast wizard: maps columns, flags duplicates and missing postcodes before importing.</p>
+          </div>
+          <Button size="sm" className="gap-2 bg-blue-600 hover:bg-blue-700 text-white flex-shrink-0" onClick={() => setShowCsvWizard(v => !v)}>
+            {showCsvWizard ? 'Hide' : 'Open Wizard'}
+          </Button>
+        </div>
+        {showCsvWizard && (
+          <div className="mt-4">
+            <CsvVoterImportWizard onDone={() => { setShowCsvWizard(false); queryClient.invalidateQueries({ queryKey: ['import_logs'] }); }} />
+          </div>
+        )}
       </div>
 
       <div className="grid grid-cols-1 lg:grid-cols-4 gap-8">
