@@ -82,6 +82,8 @@ import AdminBilling from './pages/AdminBilling';
 import SubscriptionManagement from './pages/SubscriptionManagement';
 import CustomerSuccessDashboard from './pages/CustomerSuccessDashboard';
 import LaunchChecklist from './pages/LaunchChecklist';
+import PreLaunchTesting from './pages/PreLaunchTesting';
+import MobileResponsivenessTester from './pages/MobileResponsivenessTester';
 
 const AuthenticatedApp = () => {
   const { isLoadingAuth, isLoadingPublicSettings, authError, navigateToLogin } = useAuth();
@@ -171,6 +173,8 @@ const AuthenticatedApp = () => {
         <Route path="/subscription-management" element={<SubscriptionManagement />} />
         <Route path="/customer-success" element={<CustomerSuccessDashboard />} />
         <Route path="/launch-checklist" element={<LaunchChecklist />} />
+        <Route path="/pre-launch-testing" element={<PreLaunchTesting />} />
+        <Route path="/mobile-tester" element={<MobileResponsivenessTester />} />
         <Route path="/export" element={<DataExport />} />
         <Route path="/help" element={<HelpCenter />} />
         <Route path="/load-test" element={<LoadTestDashboard />} />
