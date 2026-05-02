@@ -9,8 +9,9 @@ export default function InfrastructureStatus({
   onOptimizeClick,
   geocodingInProgress 
 }) {
-  const geocodePercentage = totalContacts > 0 
-    ? Math.round(((totalContacts - contactsNeedingGeocode) / totalContacts) * 100) 
+  const geocodedCount = totalContacts - contactsNeedingGeocode;
+  const geocodePercentage = totalContacts > 0
+    ? Math.round((geocodedCount / totalContacts) * 100)
     : 0;
 
   return (
@@ -36,9 +37,9 @@ export default function InfrastructureStatus({
             <p className={`text-xs mt-1 ${
               contactsNeedingGeocode === 0 ? 'text-green-700' : 'text-amber-700'
             }`}>
-              {contactsNeedingGeocode === 0 
-                ? `All ${totalContacts} contacts have location coordinates` 
-                : `${contactsNeedingGeocode} contact${contactsNeedingGeocode !== 1 ? 's' : ''} need geocoding`}
+              {contactsNeedingGeocode === 0
+                ? `All ${totalContacts.toLocaleString()} contacts have location coordinates — walking routes are ready`
+                : `${contactsNeedingGeocode.toLocaleString()} of ${totalContacts.toLocaleString()} contacts need geocoding (postcodes.io + Nominatim fallback)`}
             </p>
           </div>
         </div>

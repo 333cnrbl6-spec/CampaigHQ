@@ -245,13 +245,15 @@ export default function Contacts() {
             <p className="text-muted-foreground mt-1">
               {contacts.length.toLocaleString()} contacts total{filtered.length !== contacts.length ? ` · ${filtered.length.toLocaleString()} shown` : ''}
               {contacts.length > 0 && (() => {
-                const geocoded = contacts.filter(c => c.latitude != null).length;
+                // Exclude latitude=0 sentinel from geocoded count
+                const geocoded = contacts.filter(c => c.latitude != null && c.latitude !== 0).length;
+                const failed = contacts.filter(c => c.latitude === 0).length;
                 const withAddr = contacts.filter(c => c.address?.trim() || c.postcode?.trim()).length;
                 const pct = withAddr > 0 ? Math.round((geocoded / withAddr) * 100) : 0;
                 return (
                   <span className={`ml-2 inline-flex items-center gap-1 text-xs font-medium px-2 py-0.5 rounded-full ${pct === 100 ? 'bg-green-100 text-green-700' : pct > 50 ? 'bg-amber-100 text-amber-700' : 'bg-red-100 text-red-700'}`}>
                     <MapPin className="w-3 h-3" />
-                    {geocoded.toLocaleString()}/{withAddr.toLocaleString()} geocoded ({pct}%)
+                    {geocoded.toLocaleString()}/{withAddr.toLocaleString()} geocoded ({pct}%){failed > 0 ? ` · ${failed} no postcode` : ''}
                   </span>
                 );
               })()}
@@ -372,7 +374,7 @@ export default function Contacts() {
        {geocoding && (
          <div className="mb-4 bg-primary/5 border border-primary/20 rounded-lg px-4 py-3 flex items-center gap-3">
            <Loader2 className="w-4 h-4 animate-spin text-primary flex-shrink-0" />
-           <p className="text-sm text-primary font-medium">Geocoding contacts using postcodes.io — you can navigate away freely.</p>
+           <p className="text-sm text-primary font-medium">Geocoding contacts (postcodes.io + Nominatim fallback) — you can navigate away freely.</p>
          </div>
        )}
 

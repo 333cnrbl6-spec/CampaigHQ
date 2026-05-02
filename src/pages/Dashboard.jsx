@@ -53,7 +53,8 @@ export default function Dashboard() {
   const supporters = contacts.filter(c => ['strong_supporter', 'leaning'].includes(c.support_level)).length;
   const upcomingEvents = events.filter(e => e.status === 'upcoming');
   const activeTasks = tasks.filter(t => t.status !== 'done').length;
-  const needsGeocoding = contacts.filter(c => !c.latitude || !c.longitude).length;
+  // Exclude latitude=0 sentinel (permanently failed) from "needs geocoding" count
+  const needsGeocoding = contacts.filter(c => (!c.latitude || !c.longitude) && c.latitude !== 0).length;
   const doorsThisWeek = logs.reduce((sum, l) => sum + (l.doors_knocked || 0), 0);
 
   return (

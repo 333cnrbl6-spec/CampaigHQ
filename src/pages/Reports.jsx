@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useState, useMemo } from 'react';
 import { useQuery } from '@tanstack/react-query';
 import { base44 } from '@/api/base44Client';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
@@ -27,7 +27,7 @@ export default function Reports() {
 
   // Canvassing Stats
   const canvassedCount = contacts.filter(c => c.canvassed).length;
-  const canvassPercent = Math.round((canvassedCount / contacts.length) * 100);
+  const canvassPercent = contacts.length > 0 ? Math.round((canvassedCount / contacts.length) * 100) : 0;
 
   // Support Breakdown
   const supportBreakdown = [

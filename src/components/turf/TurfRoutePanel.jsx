@@ -92,7 +92,7 @@ export default function TurfRoutePanel({ turf, onRouteReady, onClose }) {
 
     // Use stored latitude/longitude — no live geocoding needed
     const candidatePoints = contacts
-      .filter(c => c.latitude != null && c.longitude != null)
+      .filter(c => c.latitude != null && c.latitude !== 0 && c.longitude != null && c.longitude !== 0)
       .filter(c => rings.some(ring => pointInPolygon([c.longitude, c.latitude], ring)))
       .map(c => ({ contact: c, coords: [c.longitude, c.latitude] }));
 
@@ -154,8 +154,8 @@ export default function TurfRoutePanel({ turf, onRouteReady, onClose }) {
     window.open(url, '_blank');
   };
 
-  // How many contacts have stored coords vs total with addresses
-  const geocodedCount = contacts.filter(c => c.latitude != null).length;
+  // How many contacts have real coords (exclude latitude=0 sentinel) vs total with addresses
+  const geocodedCount = contacts.filter(c => c.latitude != null && c.latitude !== 0).length;
   const addressedCount = contacts.filter(c => c.address?.trim()).length;
   const needsGeocoding = geocodedCount < addressedCount;
 

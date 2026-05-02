@@ -122,24 +122,18 @@ export default function FieldMode() {
   // Sort contacts by proximity to field rep, then apply search
   const sortedByProximity = useMemo(() => {
     if (!location) return contacts;
-    
+    // Sort by real geocoded coordinates — contacts without coords go to the end
     return [...contacts].sort((a, b) => {
-      // Use UK postcode centroids as approximation (you'd want real geocoding for production)
-      const getCoords = (postcode) => {
-        // This is a simplified approach - in production you'd use a geocoding API
-        const hash = postcode.split('').reduce((h, c) => ((h << 5) - h) + c.charCodeAt(0), 0);
-        const lat = 53.5 + (Math.abs(hash % 1000) / 1000) * 0.3;
-        const lon = -2.5 + (Math.abs(hash % 500) / 500) * 0.2;
-        return [lat, lon];
-      };
-
-      const [lat1, lon1] = getCoords(a.postcode || '');
-      const [lat2, lon2] = getCoords(b.postcode || '');
-      const dist1 = calculateDistance(location.latitude, location.longitude, lat1, lon1);
-      const dist2 = calculateDistance(location.latitude, location.longitude, lat2, lon2);
+      const aHasCoords = a.latitude && a.latitude !== 0 && a.longitude;
+      const bHasCoords = b.latitude && b.latitude !== 0 && b.longitude;
+      if (!aHasCoords && !bHasCoords) return 0;
+      if (!aHasCoords) return 1;
+      if (!bHasCoords) return -1;
+      const dist1 = haversineMeters(location.latitude, location.longitude, a.latitude, a.longitude);
+      const dist2 = haversineMeters(location.latitude, location.longitude, b.latitude, b.longitude);
       return dist1 - dist2;
     });
-  }, [contacts, location, calculateDistance]);
+  }, [contacts, location]);
 
   // Search contacts by name, postcode, address
   const filteredContacts = useMemo(() => {
