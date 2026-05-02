@@ -242,7 +242,20 @@ export default function Contacts() {
         <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 mb-6">
           <div>
             <h1 className="font-heading text-3xl font-bold">Voter Contacts</h1>
-            <p className="text-muted-foreground mt-1">{contacts.length.toLocaleString()} contacts total{filtered.length !== contacts.length ? ` · ${filtered.length.toLocaleString()} shown` : ''}</p>
+            <p className="text-muted-foreground mt-1">
+              {contacts.length.toLocaleString()} contacts total{filtered.length !== contacts.length ? ` · ${filtered.length.toLocaleString()} shown` : ''}
+              {contacts.length > 0 && (() => {
+                const geocoded = contacts.filter(c => c.latitude != null).length;
+                const withAddr = contacts.filter(c => c.address?.trim() || c.postcode?.trim()).length;
+                const pct = withAddr > 0 ? Math.round((geocoded / withAddr) * 100) : 0;
+                return (
+                  <span className={`ml-2 inline-flex items-center gap-1 text-xs font-medium px-2 py-0.5 rounded-full ${pct === 100 ? 'bg-green-100 text-green-700' : pct > 50 ? 'bg-amber-100 text-amber-700' : 'bg-red-100 text-red-700'}`}>
+                    <MapPin className="w-3 h-3" />
+                    {geocoded.toLocaleString()}/{withAddr.toLocaleString()} geocoded ({pct}%)
+                  </span>
+                );
+              })()}
+            </p>
           </div>
           <Button 
             onClick={() => { setEditing(null); setShowForm(true); }} 
