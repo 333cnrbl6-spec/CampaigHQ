@@ -3,10 +3,10 @@ import { useQuery } from '@tanstack/react-query';
 import { base44 } from '@/api/base44Client';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
-import { Route, Navigation, X, MapPin, ChevronDown, ChevronUp, FileText } from 'lucide-react';
+import { Route, Navigation, X, MapPin, ChevronDown, ChevronUp, FileText, Zap } from 'lucide-react';
 import WalkSheetPrint from '@/components/canvassing/WalkSheetPrint';
 
-// Point-in-polygon test (ray casting)
+// Point-in-polygon test (ray casting) — coords are [lng, lat]
 function pointInPolygon(point, polygon) {
   const [px, py] = point;
   let inside = false;
@@ -19,26 +19,19 @@ function pointInPolygon(point, polygon) {
   return inside;
 }
 
-// Extract all polygon rings from a GeoJSON feature/geometry
 function extractPolygonRings(geojson) {
   const rings = [];
   function processGeometry(geom) {
     if (!geom) return;
-    if (geom.type === 'Polygon') {
-      rings.push(geom.coordinates[0]);
-    } else if (geom.type === 'MultiPolygon') {
-      geom.coordinates.forEach(poly => rings.push(poly[0]));
-    } else if (geom.type === 'Feature') {
-      processGeometry(geom.geometry);
-    } else if (geom.type === 'FeatureCollection') {
-      geom.features.forEach(f => processGeometry(f.geometry));
-    }
+    if (geom.type === 'Polygon') rings.push(geom.coordinates[0]);
+    else if (geom.type === 'MultiPolygon') geom.coordinates.forEach(poly => rings.push(poly[0]));
+    else if (geom.type === 'Feature') processGeometry(geom.geometry);
+    else if (geom.type === 'FeatureCollection') geom.features.forEach(f => processGeometry(f.geometry));
   }
   processGeometry(geojson);
   return rings;
 }
 
-// Distance in metres between two [lng, lat] points
 function haversine([lng1, lat1], [lng2, lat2]) {
   const R = 6371000;
   const dLat = (lat2 - lat1) * Math.PI / 180;
@@ -47,7 +40,6 @@ function haversine([lng1, lat1], [lng2, lat2]) {
   return 2 * R * Math.atan2(Math.sqrt(a), Math.sqrt(1 - a));
 }
 
-// Nearest-neighbour TSP heuristic
 function nearestNeighbourRoute(points) {
   if (points.length === 0) return [];
   const visited = new Array(points.length).fill(false);
@@ -66,84 +58,43 @@ function nearestNeighbourRoute(points) {
   return route.map(i => points[i]);
 }
 
-// Try to geocode an address string using Nominatim
-async function geocodeAddress(address, postcode) {
-  const query = postcode ? `${address}, ${postcode}` : address;
-  const url = `https://nominatim.openstreetmap.org/search?q=${encodeURIComponent(query)}&format=json&limit=1`;
-  
-  try {
-    const controller = new AbortController();
-    const timeout = setTimeout(() => controller.abort(), 5000);
-    
-    const res = await fetch(url, { 
-      headers: { 'Accept-Language': 'en' },
-      signal: controller.signal
-    });
-    clearTimeout(timeout);
-    
-    if (!res.ok) return null;
-    
-    const contentType = res.headers.get('content-type');
-    if (!contentType?.includes('application/json')) return null;
-    
-    const data = await res.json();
-    if (Array.isArray(data) && data.length > 0) {
-      return [parseFloat(data[0].lon), parseFloat(data[0].lat)];
-    }
-  } catch (error) {
-    console.warn(`Geocoding failed for "${query}":`, error.message);
-  }
-  
-  return null;
-}
-
 export default function TurfRoutePanel({ turf, onRouteReady, onClose }) {
   const [route, setRoute] = useState([]);
   const [loading, setLoading] = useState(false);
+  const [geocoding, setGeocoding] = useState(false);
   const [expanded, setExpanded] = useState(true);
   const [totalDist, setTotalDist] = useState(0);
   const [showWalkSheet, setShowWalkSheet] = useState(false);
-  const [progress, setProgress] = useState({ stage: '', current: 0, total: 0, found: 0 });
+  const [geocodeStatus, setGeocodeStatus] = useState(null); // { done, total }
 
-  const { data: contacts = [], isSuccess: contactsLoaded } = useQuery({
-    queryKey: ['contacts'],
+  const { data: contacts = [], isSuccess: contactsLoaded, refetch: refetchContacts } = useQuery({
+    queryKey: ['contacts-for-route'],
     queryFn: () => base44.entities.Contact.list('name', 5000),
   });
 
-  // Auto-build route once contacts are loaded and turf has a boundary
+  // Auto-build route once contacts are loaded
   useEffect(() => {
     if (contactsLoaded && turf?.geojson && contacts.length > 0) {
       buildRoute();
     }
   }, [contactsLoaded, turf?.id]);
 
-  async function buildRoute() {
-    setLoading(true);
-    setRoute([]);
-    setProgress({ stage: 'Preparing…', current: 0, total: 0, found: 0 });
+  function buildRoute() {
+    if (!turf?.geojson) return;
 
     let geo;
-    try { geo = JSON.parse(turf.geojson); } catch { setLoading(false); return; }
+    try { geo = JSON.parse(turf.geojson); } catch { return; }
     const rings = extractPolygonRings(geo);
-    if (rings.length === 0) { setLoading(false); return; }
+    if (rings.length === 0) return;
 
-    // Only process contacts that have an address
-    const addressedContacts = contacts.filter(c => c.address && c.address.trim());
-    const total = addressedContacts.length;
-    setProgress({ stage: `Found ${total} contacts with addresses — geocoding…`, current: 0, total, found: 0 });
+    setLoading(true);
+    setRoute([]);
 
-    const candidatePoints = [];
-
-    for (let i = 0; i < addressedContacts.length; i++) {
-      const contact = addressedContacts[i];
-      setProgress({ stage: 'Geocoding addresses…', current: i + 1, total, found: candidatePoints.length });
-      const coords = await geocodeAddress(contact.address, contact.postcode);
-      if (!coords) continue;
-      const inside = rings.some(ring => pointInPolygon(coords, ring));
-      if (inside) candidatePoints.push({ contact, coords });
-    }
-
-    setProgress({ stage: 'Optimising route…', current: total, total, found: candidatePoints.length });
+    // Use stored latitude/longitude — no live geocoding needed
+    const candidatePoints = contacts
+      .filter(c => c.latitude != null && c.longitude != null)
+      .filter(c => rings.some(ring => pointInPolygon([c.longitude, c.latitude], ring)))
+      .map(c => ({ contact: c, coords: [c.longitude, c.latitude] }));
 
     const ordered = nearestNeighbourRoute(candidatePoints);
     setRoute(ordered);
@@ -159,6 +110,23 @@ export default function TurfRoutePanel({ turf, onRouteReady, onClose }) {
     setLoading(false);
   }
 
+  async function runBatchGeocode() {
+    setGeocoding(true);
+    setGeocodeStatus(null);
+    try {
+      const res = await base44.functions.invoke('batchGeocodeContacts', {});
+      setGeocodeStatus({
+        done: res.data?.results?.succeeded ?? 0,
+        total: res.data?.results?.total ?? 0,
+      });
+      // Reload contacts with fresh coords and rebuild route
+      await refetchContacts();
+      buildRoute();
+    } finally {
+      setGeocoding(false);
+    }
+  }
+
   const openGoogleMaps = () => {
     if (route.length === 0) return;
     const waypoints = route.map(p => `${p.coords[1]},${p.coords[0]}`);
@@ -168,6 +136,11 @@ export default function TurfRoutePanel({ turf, onRouteReady, onClose }) {
     const url = `https://www.google.com/maps/dir/?api=1&origin=${origin}&destination=${destination}${middle ? `&waypoints=${middle}` : ''}&travelmode=walking`;
     window.open(url, '_blank');
   };
+
+  // How many contacts have stored coords vs total with addresses
+  const geocodedCount = contacts.filter(c => c.latitude != null).length;
+  const addressedCount = contacts.filter(c => c.address?.trim()).length;
+  const needsGeocoding = geocodedCount < addressedCount;
 
   return (
     <div className="absolute bottom-4 right-4 z-[1000] w-80 bg-card border rounded-xl shadow-xl overflow-hidden">
@@ -189,38 +162,50 @@ export default function TurfRoutePanel({ turf, onRouteReady, onClose }) {
 
       {expanded && (
         <div className="p-4 space-y-3">
-          {loading ? (
-            <div className="py-4 space-y-3">
-              <div className="flex items-center gap-2 text-sm font-medium text-foreground">
-                <div className="w-4 h-4 border-2 border-primary border-t-transparent rounded-full animate-spin shrink-0" />
-                {progress.stage}
-              </div>
-              {progress.total > 0 && (
-                <>
-                  <div className="w-full bg-muted rounded-full h-2 overflow-hidden">
-                    <div
-                      className="bg-primary h-2 rounded-full transition-all duration-200"
-                      style={{ width: `${Math.round((progress.current / progress.total) * 100)}%` }}
-                    />
-                  </div>
-                  <div className="flex justify-between text-xs text-muted-foreground">
-                    <span>{progress.current} of {progress.total} addresses geocoded</span>
-                    <span className="text-primary font-medium">{progress.found} in this zone</span>
-                  </div>
-                </>
-              )}
+
+          {/* Geocoding needed banner */}
+          {needsGeocoding && !geocoding && route.length === 0 && (
+            <div className="bg-amber-50 border border-amber-200 rounded-lg p-3 space-y-2">
+              <p className="text-xs text-amber-800 font-medium">
+                {geocodedCount === 0
+                  ? `${addressedCount} contacts need geocoding before zone filtering can work.`
+                  : `${geocodedCount} of ${addressedCount} contacts geocoded. Run again to update the rest.`}
+              </p>
+              <Button size="sm" className="w-full gap-2 bg-amber-600 hover:bg-amber-700 text-white" onClick={runBatchGeocode}>
+                <Zap className="w-3 h-3" /> Geocode All Contacts
+              </Button>
             </div>
-          ) : route.length === 0 ? (
+          )}
+
+          {geocoding && (
+            <div className="flex items-center gap-2 text-sm text-muted-foreground py-2">
+              <div className="w-4 h-4 border-2 border-primary border-t-transparent rounded-full animate-spin shrink-0" />
+              Geocoding all contacts… this may take a minute.
+            </div>
+          )}
+
+          {geocodeStatus && (
+            <p className="text-xs text-green-700 font-medium">
+              ✓ Geocoded {geocodeStatus.done} of {geocodeStatus.total} contacts.
+            </p>
+          )}
+
+          {loading ? (
+            <div className="flex items-center gap-2 text-sm text-muted-foreground py-2">
+              <div className="w-4 h-4 border-2 border-primary border-t-transparent rounded-full animate-spin shrink-0" />
+              Building route…
+            </div>
+          ) : route.length === 0 && !needsGeocoding ? (
             <div className="text-center py-4 text-sm text-muted-foreground">
               <MapPin className="w-6 h-6 mx-auto mb-1 opacity-40" />
               {!turf?.geojson
                 ? 'No boundary drawn for this zone yet.'
-                : 'No contacts with addresses found inside this zone.'}
+                : 'No geocoded contacts found inside this zone.'}
               <Button size="sm" variant="outline" className="mt-3 w-full" onClick={buildRoute}>
-                {!turf?.geojson ? 'Draw a boundary first' : 'Retry'}
+                Retry
               </Button>
             </div>
-          ) : (
+          ) : route.length > 0 ? (
             <>
               <div className="flex items-center justify-between text-xs text-muted-foreground">
                 <span><strong className="text-foreground">{route.length}</strong> stops</span>
@@ -258,7 +243,7 @@ export default function TurfRoutePanel({ turf, onRouteReady, onClose }) {
                 </Button>
               </div>
             </>
-          )}
+          ) : null}
         </div>
       )}
 

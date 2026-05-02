@@ -19,6 +19,14 @@
     "email": {
       "type": "string"
     },
+    "latitude": {
+      "type": "number",
+      "description": "Geocoded latitude"
+    },
+    "longitude": {
+      "type": "number",
+      "description": "Geocoded longitude"
+    },
     "registered_voter": {
       "type": "boolean",
       "default": false,
