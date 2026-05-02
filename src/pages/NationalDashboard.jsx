@@ -4,7 +4,7 @@ import { useAuth } from '@/lib/AuthContext';
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
-import { Globe, MapPin, Users, TrendingUp, AlertCircle, BarChart3, Map, Calendar, Book, Target, Send } from 'lucide-react';
+import { Globe, MapPin, Users, TrendingUp, AlertCircle, BarChart3, Map, Calendar, Book, Target, Send, Zap } from 'lucide-react';
 import { useState } from 'react';
 import ConstituencyGrid from '@/components/national/ConstituencyGrid';
 import VolunteerCapacityMeter from '@/components/national/VolunteerCapacityMeter';
@@ -13,6 +13,7 @@ import VolunteerShiftScheduling from '@/components/national/VolunteerShiftSchedu
 import LocalPartyCoordination from '@/components/national/LocalPartyCoordination';
 import VoterTargeting from '@/components/national/VoterTargeting';
 import OutreachAutomation from '@/components/national/OutreachAutomation';
+import ElectoralIntelligence from '@/components/national/ElectoralIntelligence';
 
 export default function NationalDashboard() {
   const { user } = useAuth();
@@ -91,6 +92,7 @@ export default function NationalDashboard() {
               { id: 'resources', label: '📚 Resources', icon: Book },
               { id: 'targeting', label: '🎯 Voter Targeting', icon: Target },
               { id: 'outreach', label: '📧 Outreach', icon: Send },
+              { id: 'electoral', label: '⚡ Electoral Intel', icon: Zap },
             ].map(tab => (
               <button
                 key={tab.id}
@@ -202,6 +204,7 @@ export default function NationalDashboard() {
         {activeTab === 'resources' && <LocalPartyCoordination />}
         {activeTab === 'targeting' && <VoterTargeting />}
         {activeTab === 'outreach' && <OutreachAutomation />}
+        {activeTab === 'electoral' && <ElectoralIntelligence campaigns={campaignStats} />}
 
         {/* Export all data */}
         <Card>

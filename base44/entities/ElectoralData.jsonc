@@ -1,0 +1,136 @@
+{
+  "name": "ElectoralData",
+  "type": "object",
+  "properties": {
+    "election_year": {
+      "type": "number",
+      "description": "Election year (e.g. 2024, 2029)"
+    },
+    "election_type": {
+      "type": "string",
+      "enum": [
+        "general",
+        "local",
+        "by-election"
+      ],
+      "description": "Type of election"
+    },
+    "constituency_name": {
+      "type": "string",
+      "description": "UK Constituency name"
+    },
+    "constituency_code": {
+      "type": "string",
+      "description": "Electoral Commission constituency code"
+    },
+    "ward_name": {
+      "type": "string",
+      "description": "Ward name (for local elections)"
+    },
+    "region": {
+      "type": "string",
+      "description": "Region (e.g. North West, London, Yorkshire)"
+    },
+    "votes_green": {
+      "type": "number",
+      "default": 0,
+      "description": "Votes received by Green Party"
+    },
+    "votes_labour": {
+      "type": "number",
+      "default": 0,
+      "description": "Votes received by Labour"
+    },
+    "votes_conservative": {
+      "type": "number",
+      "default": 0,
+      "description": "Votes received by Conservative"
+    },
+    "votes_libdem": {
+      "type": "number",
+      "default": 0,
+      "description": "Votes received by Liberal Democrats"
+    },
+    "votes_other": {
+      "type": "number",
+      "default": 0,
+      "description": "Other party votes"
+    },
+    "total_votes": {
+      "type": "number",
+      "default": 0,
+      "description": "Total votes cast"
+    },
+    "vote_share_green": {
+      "type": "number",
+      "default": 0,
+      "description": "Green Party vote share percentage"
+    },
+    "vote_share_labour": {
+      "type": "number",
+      "default": 0
+    },
+    "vote_share_conservative": {
+      "type": "number",
+      "default": 0
+    },
+    "vote_share_libdem": {
+      "type": "number",
+      "default": 0
+    },
+    "winner": {
+      "type": "string",
+      "description": "Name of elected MP/candidate"
+    },
+    "winning_party": {
+      "type": "string",
+      "description": "Party of elected MP/candidate"
+    },
+    "green_previous_vote_share": {
+      "type": "number",
+      "default": 0,
+      "description": "Green vote share in previous election"
+    },
+    "swing_from_previous": {
+      "type": "number",
+      "default": 0,
+      "description": "Percentage point swing from previous election"
+    },
+    "votes_to_win": {
+      "type": "number",
+      "default": 0,
+      "description": "Votes needed for Green Party to win"
+    },
+    "percentage_to_win": {
+      "type": "number",
+      "default": 0,
+      "description": "Vote share percentage needed to win"
+    },
+    "gap_to_winner": {
+      "type": "number",
+      "default": 0,
+      "description": "Votes behind the winner"
+    },
+    "target_priority": {
+      "type": "string",
+      "enum": [
+        "tier1",
+        "tier2",
+        "tier3",
+        "longshot",
+        "none"
+      ],
+      "default": "none",
+      "description": "Strategic target priority (Tier 1 = most winnable)"
+    },
+    "notes": {
+      "type": "string",
+      "description": "Strategic notes (e.g. 'Lab hold, strong Green second place')"
+    }
+  },
+  "required": [
+    "election_year",
+    "election_type",
+    "constituency_name"
+  ]
+}
