@@ -68,6 +68,8 @@ import NationalReporting from './pages/NationalReporting';
 import MobileFieldWork from './pages/MobileFieldWork';
 import ComplianceAudit from './pages/ComplianceAudit';
 import BrandingSettings from './pages/BrandingSettings';
+import TrainingCenter from './pages/TrainingCenter';
+import DemoDataImporter from './pages/DemoDataImporter';
 
 const AuthenticatedApp = () => {
   const { isLoadingAuth, isLoadingPublicSettings, authError, navigateToLogin } = useAuth();
@@ -160,6 +162,8 @@ const AuthenticatedApp = () => {
         <Route path="/mobile-field" element={<MobileFieldWork />} />
         <Route path="/compliance" element={<ComplianceAudit />} />
         <Route path="/branding" element={<BrandingSettings />} />
+        <Route path="/training" element={<TrainingCenter />} />
+        <Route path="/demo-import" element={<DemoDataImporter />} />
       </Route>
       <Route path="*" element={<PageNotFound />} />
     </Routes>
