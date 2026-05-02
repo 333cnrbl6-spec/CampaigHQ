@@ -4,7 +4,7 @@ import { useAuth } from '@/lib/AuthContext';
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
-import { Globe, MapPin, Users, TrendingUp, AlertCircle, BarChart3, Map, Calendar, Book, Target, Send, Zap, Shield, Flame, Radio } from 'lucide-react';
+import { Globe, MapPin, Users, TrendingUp, AlertCircle, BarChart3, Map, Calendar, Book, Target, Send, Zap, Shield, Flame, Radio, Vote } from 'lucide-react';
 import { useState } from 'react';
 import ConstituencyGrid from '@/components/national/ConstituencyGrid';
 import VolunteerCapacityMeter from '@/components/national/VolunteerCapacityMeter';
@@ -17,6 +17,7 @@ import ElectoralIntelligence from '@/components/national/ElectoralIntelligence';
 import GdprComplianceDashboard from '@/components/national/GdprComplianceDashboard';
 import PostElectionConverter from '@/components/national/PostElectionConverter';
 import GOTVLiveMap from '@/components/national/GOTVLiveMap';
+import GOTVModule from '@/components/national/GOTVModule';
 
 export default function NationalDashboard() {
   const { user } = useAuth();
@@ -99,6 +100,7 @@ export default function NationalDashboard() {
               { id: 'compliance', label: '🛡️ GDPR', icon: Shield },
               { id: 'conversion', label: '🔥 Post-Election', icon: Flame },
               { id: 'live-gotv', label: '📡 Live GOTV', icon: Radio },
+              { id: 'gotv-module', label: '🗳️ Election Day', icon: Vote },
             ].map(tab => (
               <button
                 key={tab.id}
@@ -214,6 +216,7 @@ export default function NationalDashboard() {
         {activeTab === 'compliance' && <GdprComplianceDashboard />}
         {activeTab === 'conversion' && <PostElectionConverter />}
         {activeTab === 'live-gotv' && <GOTVLiveMap />}
+        {activeTab === 'gotv-module' && <GOTVModule />}
 
         {/* Export all data */}
         <Card>
