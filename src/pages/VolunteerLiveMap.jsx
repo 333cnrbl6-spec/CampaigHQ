@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useRef } from 'react';
 import { base44 } from '@/api/base44Client';
 import { useQuery } from '@tanstack/react-query';
 import { MapContainer, TileLayer, Marker, Popup, GeoJSON, useMap } from 'react-leaflet';
@@ -8,13 +8,45 @@ import { Badge } from '@/components/ui/badge';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Loader2, MapPin, Users, CheckCircle2, Clock } from 'lucide-react';
 
-// Custom markers
-const volunteerIcon = L.icon({
-  iconUrl: 'data:image/svg+xml;base64,PHN2ZyB3aWR0aD0iMzIiIGhlaWdodD0iMzIiIHZpZXdCb3g9IjAgMCAzMiAzMiIgZmlsbD0ibm9uZSIgeG1sbnM9Imh0dHA6Ly93d3cudzMub3JnLzIwMDAvc3ZnIj48Y2lyY2xlIGN4PSIxNiIgY3k9IjEwIiByPSI4IiBmaWxsPSIjMTZhMzRhIi8+PHBhdGggZD0iTTE2IDE4QzEyIDIwIDggMjQgOCAyOEM4IDMwIDEyIDMyIDE2IDMyQzIwIDMyIDI0IDMwIDI0IDI4QzI0IDI0IDIwIDIwIDE2IDE4WiIgZmlsbD0iIzE2YTM0YSIvPjwvc3ZnPg==',
-  iconSize: [32, 32],
-  iconAnchor: [16, 32],
-  popupAnchor: [0, -32],
-});
+// Per-volunteer distinct colours
+const VOLUNTEER_COLORS = [
+  '#2563eb', '#dc2626', '#7c3aed', '#d97706', '#0891b2',
+  '#be185d', '#059669', '#ea580c', '#4f46e5', '#0f766e',
+];
+
+function getVolunteerColor(email, colorMap) {
+  if (!colorMap[email]) {
+    const idx = Object.keys(colorMap).length % VOLUNTEER_COLORS.length;
+    colorMap[email] = VOLUNTEER_COLORS[idx];
+  }
+  return colorMap[email];
+}
+
+function getSafetyStatus(lastUpdated) {
+  if (!lastUpdated) return 'unknown';
+  const mins = (Date.now() - new Date(lastUpdated).getTime()) / 60000;
+  if (mins < 10) return 'ok';
+  if (mins < 20) return 'warning';
+  return 'alert';
+}
+
+function makeVolunteerIcon(color, safetyStatus) {
+  const ringColor = safetyStatus === 'alert' ? '#dc2626' : safetyStatus === 'warning' ? '#d97706' : color;
+  const svg = `<svg width="36" height="42" viewBox="0 0 36 42" fill="none" xmlns="http://www.w3.org/2000/svg">
+    <circle cx="18" cy="14" r="12" fill="${color}" stroke="${ringColor}" stroke-width="${safetyStatus !== 'ok' ? 3 : 1.5}"/>
+    <path d="M18 26C13 28 8 33 8 37C8 39.5 12 41 18 41C24 41 28 39.5 28 37C28 33 23 28 18 26Z" fill="${color}"/>
+    <circle cx="18" cy="14" r="5" fill="white" opacity="0.85"/>
+    ${safetyStatus === 'alert' ? '<circle cx="28" cy="6" r="6" fill="#dc2626" stroke="white" stroke-width="1.5"/>' : ''}
+    ${safetyStatus === 'warning' ? '<circle cx="28" cy="6" r="6" fill="#d97706" stroke="white" stroke-width="1.5"/>' : ''}
+  </svg>`;
+  return L.divIcon({
+    html: svg,
+    iconSize: [36, 42],
+    iconAnchor: [18, 42],
+    popupAnchor: [0, -42],
+    className: '',
+  });
+}
 
 const activeTurfColor = '#2563eb';
 const completedTurfColor = '#16a34a';
@@ -59,6 +91,8 @@ function MapBounds({ locations, turfs }) {
 export default function VolunteerLiveMap() {
   const [selectedTurf, setSelectedTurf] = useState('all');
   const [liveLocations, setLiveLocations] = useState({});
+  // Stable colour assignment per volunteer email
+  const colorMapRef = React.useRef({});
 
   const { data: volunteers = [], isLoading: volunteerLoading } = useQuery({
     queryKey: ['volunteerLocations'],
@@ -208,32 +242,34 @@ export default function VolunteerLiveMap() {
                   {filteredLocations.length === 0 ? (
                     <p className="text-sm text-muted-foreground">No active volunteers</p>
                   ) : (
-                    filteredLocations.map(loc => (
-                      <div key={loc.id} className="bg-muted/50 rounded-lg p-2 text-sm">
-                        <p className="font-medium">{loc.volunteer_name}</p>
-                        <div className="flex items-center gap-2 mt-1 text-xs text-muted-foreground">
-                          {loc.status === 'active' ? (
-                            <>
-                              <CheckCircle2 className="w-3 h-3 text-green-600" />
-                              <span>Active</span>
-                            </>
-                          ) : (
-                            <>
-                              <Clock className="w-3 h-3 text-amber-600" />
-                              <span>Idle</span>
-                            </>
+                    filteredLocations.map(loc => {
+                      const color = getVolunteerColor(loc.volunteer_email, colorMapRef.current);
+                      const safety = getSafetyStatus(loc.last_updated);
+                      return (
+                        <div key={loc.id} className={`rounded-lg p-2 text-sm border ${safety === 'alert' ? 'bg-red-50 border-red-200' : safety === 'warning' ? 'bg-amber-50 border-amber-200' : 'bg-muted/50 border-transparent'}`}>
+                          <div className="flex items-center gap-2">
+                            <div style={{ width: 10, height: 10, borderRadius: '50%', background: color, flexShrink: 0 }} />
+                            <p className="font-medium truncate">{loc.volunteer_name}</p>
+                          </div>
+                          <div className="flex items-center gap-1.5 mt-1 text-xs">
+                            {safety === 'alert' ? (
+                              <span className="text-red-600 font-semibold">⚠️ No update 20+ mins</span>
+                            ) : safety === 'warning' ? (
+                              <span className="text-amber-600">🟡 No update 10+ mins</span>
+                            ) : (
+                              <span className="text-green-600 flex items-center gap-1"><CheckCircle2 className="w-3 h-3" /> Active</span>
+                            )}
+                          </div>
+                          <p className="text-xs mt-1">
+                            <span className="font-medium">{loc.doors_knocked_today || 0}</span> doors
+                            {loc.battery_level != null && <span className="text-muted-foreground ml-2">🔋{Math.round(loc.battery_level)}%{loc.battery_level < 20 ? '⚠️' : ''}</span>}
+                          </p>
+                          {loc.turf_name && (
+                            <Badge className="mt-1 text-xs" variant="secondary">{loc.turf_name}</Badge>
                           )}
                         </div>
-                        <p className="text-xs mt-1">
-                          <span className="text-primary font-medium">{loc.doors_knocked_today || 0}</span> doors today
-                        </p>
-                        {loc.turf_name && (
-                          <Badge className="mt-1 text-xs" variant="secondary">
-                            {loc.turf_name}
-                          </Badge>
-                        )}
-                      </div>
-                    ))
+                      );
+                    })
                   )}
                 </div>
               </div>
@@ -279,28 +315,40 @@ export default function VolunteerLiveMap() {
                     )
                   ))}
 
-                  {/* Volunteer markers */}
-                  {filteredLocations.map(location => (
-                    <Marker
-                      key={location.id}
-                      position={[location.latitude, location.longitude]}
-                      icon={volunteerIcon}
-                    >
-                      <Popup>
-                        <div className="text-sm">
-                          <p className="font-bold">{location.volunteer_name}</p>
-                          <p className="text-xs text-muted-foreground">{location.turf_name || 'No turf assigned'}</p>
-                          <div className="mt-2 text-xs space-y-1">
-                            <p>Status: <Badge className="ml-1 text-xs">{location.status}</Badge></p>
-                            <p>Doors: {location.doors_knocked_today || 0}</p>
-                            {location.battery_level !== undefined && (
-                              <p>Battery: {location.battery_level}%</p>
-                            )}
+                  {/* Volunteer markers — unique colour + safety ring */}
+                  {filteredLocations.map(location => {
+                    const color = getVolunteerColor(location.volunteer_email, colorMapRef.current);
+                    const safety = getSafetyStatus(location.last_updated);
+                    const icon = makeVolunteerIcon(color, safety);
+                    const safetyLabel = safety === 'alert' ? '🔴 No update 20+ mins' : safety === 'warning' ? '🟡 No update 10+ mins' : '🟢 Active';
+                    return (
+                      <Marker
+                        key={location.id}
+                        position={[location.latitude, location.longitude]}
+                        icon={icon}
+                      >
+                        <Popup>
+                          <div className="text-sm min-w-[160px]">
+                            <div className="flex items-center gap-2 mb-1">
+                              <div style={{ width: 12, height: 12, borderRadius: '50%', background: color, flexShrink: 0 }} />
+                              <p className="font-bold">{location.volunteer_name}</p>
+                            </div>
+                            <p className="text-xs text-gray-500">{location.turf_name || 'No turf assigned'}</p>
+                            <div className="mt-2 text-xs space-y-1">
+                              <p>{safetyLabel}</p>
+                              <p>Doors: <strong>{location.doors_knocked_today || 0}</strong></p>
+                              {location.battery_level != null && (
+                                <p>Battery: {Math.round(location.battery_level)}%{location.battery_level < 20 ? ' ⚠️' : ''}</p>
+                              )}
+                              {location.last_updated && (
+                                <p className="text-gray-400">Updated: {new Date(location.last_updated).toLocaleTimeString('en-GB', { hour: '2-digit', minute: '2-digit' })}</p>
+                              )}
+                            </div>
                           </div>
-                        </div>
-                      </Popup>
-                    </Marker>
-                  ))}
+                        </Popup>
+                      </Marker>
+                    );
+                  })}
 
                   <MapBounds locations={filteredLocations} turfs={filteredTurfs} />
                 </MapContainer>

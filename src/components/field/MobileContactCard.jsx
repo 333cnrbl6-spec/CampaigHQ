@@ -1,6 +1,17 @@
 import React from 'react';
 import { Badge } from '@/components/ui/badge';
-import { Check, Clock, Phone, MapPin, AlertCircle } from 'lucide-react';
+import { Check, Clock, Phone, MapPin, AlertCircle, Navigation } from 'lucide-react';
+
+// Opens native maps app with walking directions to the address
+export function openWalkingDirections(contact) {
+  const addr = encodeURIComponent(`${contact.address}${contact.postcode ? ' ' + contact.postcode : ''}`);
+  const isIOS = /iPad|iPhone|iPod/.test(navigator.userAgent);
+  if (isIOS) {
+    window.location.href = `maps://?daddr=${addr}&dirflg=w`;
+  } else {
+    window.open(`https://www.google.com/maps/dir/?api=1&destination=${addr}&travelmode=walking`, '_blank');
+  }
+}
 
 const SUPPORT_LEVELS = {
   strong_supporter: { label: '✓ Strong', color: 'bg-green-100 text-green-800' },
@@ -10,7 +21,7 @@ const SUPPORT_LEVELS = {
   unknown: { label: '○ Unknown', color: 'bg-gray-100 text-gray-800' }
 };
 
-export default function MobileContactCard({ contact, index, total, stopNumber = null }) {
+export default function MobileContactCard({ contact, index, total, stopNumber = null, nextContact = null, distanceMeters = null, arrived = false }) {
   return (
     <div className="space-y-3">
       {/* Progress & Stop Number */}
@@ -25,6 +36,14 @@ export default function MobileContactCard({ contact, index, total, stopNumber = 
         )}
       </div>
 
+      {/* Arrival banner */}
+      {arrived && (
+        <div className="flex items-center gap-2 bg-green-600 text-white rounded-lg px-3 py-2 text-sm font-semibold animate-pulse">
+          <MapPin className="w-4 h-4 flex-shrink-0" />
+          You have arrived at this address
+        </div>
+      )}
+
       {/* Name - Large for mobile */}
       <div>
         <h2 className="text-2xl font-bold font-heading">{contact.name}</h2>
@@ -34,13 +53,20 @@ export default function MobileContactCard({ contact, index, total, stopNumber = 
       <div className="space-y-2 bg-secondary/40 rounded-lg p-3">
         <div className="flex items-start gap-2">
           <MapPin className="w-4 h-4 text-muted-foreground mt-0.5 flex-shrink-0" />
-          <div className="min-w-0">
+          <div className="min-w-0 flex-1">
             <p className="text-sm text-muted-foreground">Address</p>
             <p className="font-medium text-base leading-tight">{contact.address}</p>
             {contact.postcode && (
               <p className="text-sm font-mono text-muted-foreground mt-1">{contact.postcode}</p>
             )}
           </div>
+          <button
+            onClick={() => openWalkingDirections(contact)}
+            className="flex-shrink-0 flex items-center gap-1.5 px-3 py-1.5 bg-blue-600 text-white text-xs font-semibold rounded-lg hover:bg-blue-700 active:scale-95 transition-transform"
+          >
+            <Navigation className="w-3.5 h-3.5" />
+            Directions
+          </button>
         </div>
 
         {contact.phone && (
@@ -92,6 +118,31 @@ export default function MobileContactCard({ contact, index, total, stopNumber = 
             <AlertCircle className="w-3 h-3" /> Notes
           </p>
           <p className="text-sm text-amber-900">{contact.notes}</p>
+        </div>
+      )}
+
+      {/* Next stop preview */}
+      {nextContact && (
+        <div className="border border-dashed border-border rounded-lg p-3 bg-muted/30">
+          <p className="text-xs font-medium text-muted-foreground mb-1">Next stop</p>
+          <div className="flex items-center justify-between gap-2">
+            <div className="min-w-0">
+              <p className="text-sm font-semibold truncate">{nextContact.name}</p>
+              <p className="text-xs text-muted-foreground truncate">{nextContact.address}{nextContact.postcode ? `, ${nextContact.postcode}` : ''}</p>
+              {distanceMeters !== null && (
+                <p className="text-xs text-primary font-medium mt-0.5">
+                  ~{distanceMeters < 1000 ? `${Math.round(distanceMeters)}m` : `${(distanceMeters/1000).toFixed(1)}km`} away
+                </p>
+              )}
+            </div>
+            <button
+              onClick={() => openWalkingDirections(nextContact)}
+              className="flex-shrink-0 flex items-center gap-1 px-2.5 py-1.5 border border-blue-300 text-blue-600 text-xs font-semibold rounded-lg hover:bg-blue-50 active:scale-95 transition-transform"
+            >
+              <Navigation className="w-3 h-3" />
+              Go
+            </button>
+          </div>
         </div>
       )}
     </div>

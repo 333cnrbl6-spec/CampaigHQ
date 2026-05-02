@@ -1,16 +1,25 @@
-import React, { useState, useMemo, useEffect, useRef } from 'react';
+import React, { useState, useMemo, useEffect, useCallback } from 'react';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Badge } from '@/components/ui/badge';
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/components/ui/dialog';
-import { ChevronLeft, ChevronRight, Check, X, AlertCircle, WifiOff, Wifi, RefreshCw, CloudUpload, Search, Footprints } from 'lucide-react';
+import { ChevronLeft, ChevronRight, Check, X, AlertCircle, WifiOff, Wifi, RefreshCw, CloudUpload, Search, Footprints, ShieldAlert, Navigation } from 'lucide-react';
 import { useOfflineFieldMode } from '../hooks/useOfflineFieldMode';
 import { useGeolocation } from '@/hooks/useGeolocation';
 import { base44 } from '@/api/base44Client';
 import { useQuery } from '@tanstack/react-query';
-import MobileContactCard from '@/components/field/MobileContactCard';
+import MobileContactCard, { openWalkingDirections } from '@/components/field/MobileContactCard';
 import MobileInteractionForm from '@/components/field/MobileInteractionForm';
+
+// Haversine distance in meters
+function haversineMeters(lat1, lon1, lat2, lon2) {
+  const R = 6371000;
+  const dLat = (lat2 - lat1) * Math.PI / 180;
+  const dLon = (lon2 - lon1) * Math.PI / 180;
+  const a = Math.sin(dLat/2)**2 + Math.cos(lat1*Math.PI/180)*Math.cos(lat2*Math.PI/180)*Math.sin(dLon/2)**2;
+  return R * 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1-a));
+}
 
 const SUPPORT_LEVELS = {
   strong_supporter: { label: 'Strong Supporter', color: 'bg-green-100 text-green-800' },
@@ -26,6 +35,8 @@ export default function FieldMode() {
   const [searchQuery, setSearchQuery] = useState('');
   const [searchMode, setSearchMode] = useState(false);
   const [isSubmittingInteraction, setIsSubmittingInteraction] = useState(false);
+  const [welfareCheckedIn, setWelfareCheckedIn] = useState(false);
+  const [showWelfareAlert, setShowWelfareAlert] = useState(false);
 
   const urlParams = new URLSearchParams(window.location.search);
   const routeIdsParam = urlParams.get('route_ids');
@@ -59,11 +70,10 @@ export default function FieldMode() {
   // Request location on mount and periodically update volunteer location
   useEffect(() => {
     requestLocation();
-    
-    // Update location every 30 seconds while in field mode
-    const interval = setInterval(() => {
+    const interval = setInterval(async () => {
       requestLocation();
       if (location) {
+        const battery = navigator.getBattery ? (await navigator.getBattery().catch(() => null))?.level * 100 : null;
         base44.functions.invoke('updateVolunteerLocation', {
           latitude: location.latitude,
           longitude: location.longitude,
@@ -72,13 +82,21 @@ export default function FieldMode() {
           turf_name: contacts[currentIndex]?.turf_name,
           current_contact_id: contacts[currentIndex]?.id,
           doors_knocked_today: currentIndex,
-          battery_level: navigator.getBattery ? navigator.getBattery().then(b => b.level * 100) : null,
-        }).catch(err => console.error('Location update failed:', err));
+          battery_level: battery,
+          status: 'active',
+        }).catch(() => {});
       }
     }, 30000);
-
     return () => clearInterval(interval);
   }, []);
+
+  // Welfare check-in: if no check-in in 20 mins, show alert
+  useEffect(() => {
+    const welfareTimer = setTimeout(() => {
+      if (!welfareCheckedIn) setShowWelfareAlert(true);
+    }, 20 * 60 * 1000);
+    return () => clearTimeout(welfareTimer);
+  }, [welfareCheckedIn]);
 
   // Fetch interaction history for current contact
   const { data: interactions = [] } = useQuery({
@@ -120,6 +138,23 @@ export default function FieldMode() {
     );
   }, [sortedByProximity, searchQuery]);
 
+  const displayContacts = searchMode ? filteredContacts : contacts;
+  const currentContact = displayContacts[currentIndex] || displayContacts[0];
+  const nextContact = displayContacts[currentIndex + 1] || null;
+  const progress = displayContacts.length > 0 ? Math.round((currentIndex / displayContacts.length) * 100) : 0;
+
+  // Arrival detection: check if within 25m of current contact's geocoords
+  const arrived = useMemo(() => {
+    if (!location || !currentContact?.latitude || !currentContact?.longitude) return false;
+    return haversineMeters(location.latitude, location.longitude, currentContact.latitude, currentContact.longitude) < 25;
+  }, [location, currentContact]);
+
+  // Distance to next contact
+  const nextDistanceMeters = useMemo(() => {
+    if (!location || !nextContact?.latitude || !nextContact?.longitude) return null;
+    return haversineMeters(location.latitude, location.longitude, nextContact.latitude, nextContact.longitude);
+  }, [location, nextContact]);
+
   if (isLoadingContacts) {
     return (
       <div className="flex items-center justify-center h-screen">
@@ -141,10 +176,6 @@ export default function FieldMode() {
       </div>
     );
   }
-
-  const displayContacts = searchMode ? filteredContacts : contacts;
-  const currentContact = displayContacts[currentIndex] || displayContacts[0];
-  const progress = displayContacts.length > 0 ? Math.round((currentIndex / displayContacts.length) * 100) : 0;
 
   const handleLogInteraction = async (formData) => {
     setIsSubmittingInteraction(true);
@@ -305,20 +336,33 @@ export default function FieldMode() {
                 index={currentIndex}
                 total={displayContacts.length}
                 stopNumber={routeIds ? routeIds.indexOf(currentContact.id) + 1 : null}
+                nextContact={nextContact}
+                distanceMeters={nextDistanceMeters}
+                arrived={arrived}
               />
-              </Card>
-              </div>
-              )}
+            </Card>
+          </div>
+        )}
 
         {/* Action Buttons — Mobile optimized */}
         {currentContact && !searchMode && (
           <div className="space-y-2 flex-shrink-0">
-            <Button 
-              className="w-full h-12 text-base gap-2" 
-              onClick={() => setShowInteractionDialog(true)}
-            >
-              <Check className="w-5 h-5" /> Log Interaction
-            </Button>
+            <div className="flex gap-2">
+              <Button 
+                className="flex-1 h-12 text-base gap-2" 
+                onClick={() => setShowInteractionDialog(true)}
+              >
+                <Check className="w-5 h-5" /> Log Interaction
+              </Button>
+              <Button
+                variant="outline"
+                className="h-12 px-3 gap-1.5 text-blue-600 border-blue-300"
+                onClick={() => openWalkingDirections(currentContact)}
+                title="Get walking directions"
+              >
+                <Navigation className="w-5 h-5" />
+              </Button>
+            </div>
             <div className="flex gap-2">
               <Button 
                 variant="outline" 
@@ -344,6 +388,18 @@ export default function FieldMode() {
                 <X className="w-4 h-4" /> Skip
               </Button>
             </div>
+            {/* Welfare check-in */}
+            <button
+              onClick={() => { setWelfareCheckedIn(true); setShowWelfareAlert(false); }}
+              className={`w-full h-9 rounded-lg text-xs font-medium flex items-center justify-center gap-2 transition-colors ${
+                welfareCheckedIn
+                  ? 'bg-green-50 text-green-700 border border-green-200'
+                  : 'bg-amber-50 text-amber-700 border border-amber-200 hover:bg-amber-100'
+              }`}
+            >
+              <ShieldAlert className="w-4 h-4" />
+              {welfareCheckedIn ? '✓ Safe check-in sent' : 'Tap to confirm you\'re safe'}
+            </button>
           </div>
         )}
 
@@ -359,6 +415,30 @@ export default function FieldMode() {
               isOnline={isOnline}
               isLoading={isSubmittingInteraction}
             />
+          </DialogContent>
+        </Dialog>
+
+        {/* Welfare check-in alert */}
+        <Dialog open={showWelfareAlert} onOpenChange={setShowWelfareAlert}>
+          <DialogContent className="w-full max-w-sm mx-auto text-center">
+            <DialogHeader>
+              <DialogTitle className="flex items-center justify-center gap-2 text-amber-700">
+                <ShieldAlert className="w-5 h-5" /> Welfare Check
+              </DialogTitle>
+            </DialogHeader>
+            <div className="py-3 space-y-4">
+              <p className="text-sm text-muted-foreground">
+                You've been canvassing for 20 minutes without a check-in.<br />
+                Please confirm you're safe.
+              </p>
+              <Button
+                className="w-full bg-green-600 hover:bg-green-700"
+                onClick={() => { setWelfareCheckedIn(true); setShowWelfareAlert(false); }}
+              >
+                ✓ I'm safe — check in
+              </Button>
+              <p className="text-xs text-muted-foreground">If you need help, call your team lead immediately.</p>
+            </div>
           </DialogContent>
         </Dialog>
 
