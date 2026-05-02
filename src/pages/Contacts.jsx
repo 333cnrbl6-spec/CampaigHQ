@@ -1,6 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import { base44 } from '@/api/base44Client';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
+import { useCampaign } from '@/lib/CampaignContext';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
@@ -32,10 +33,11 @@ export default function Contacts() {
   const PAGE_SIZE = 100;
   const queryClient = useQueryClient();
   const navigate = useNavigate();
+  const { campaign } = useCampaign();
 
   const { data: contacts = [], isLoading, refetch } = useQuery({
-    queryKey: ['contacts'],
-    queryFn: () => base44.entities.Contact.list('name', 10000),
+    queryKey: ['contacts', campaign?.id],
+    queryFn: () => base44.entities.Contact.filter({ campaign_id: campaign?.id }, 'name', 10000),
   });
 
   // Auto-refresh if turf dropdown is empty but we expect data
@@ -47,18 +49,18 @@ export default function Contacts() {
   }, [contacts, refetch]);
 
   const createMutation = useMutation({
-    mutationFn: (data) => base44.entities.Contact.create(data),
-    onSuccess: () => { queryClient.invalidateQueries({ queryKey: ['contacts'] }); setShowForm(false); },
+    mutationFn: (data) => base44.entities.Contact.create({ ...data, campaign_id: campaign?.id }),
+    onSuccess: () => { queryClient.invalidateQueries({ queryKey: ['contacts', campaign?.id] }); setShowForm(false); },
   });
 
   const updateMutation = useMutation({
     mutationFn: ({ id, data }) => base44.entities.Contact.update(id, data),
-    onSuccess: () => { queryClient.invalidateQueries({ queryKey: ['contacts'] }); setEditing(null); setShowForm(false); },
+    onSuccess: () => { queryClient.invalidateQueries({ queryKey: ['contacts', campaign?.id] }); setEditing(null); setShowForm(false); },
   });
 
   const deleteMutation = useMutation({
     mutationFn: (id) => base44.entities.Contact.delete(id),
-    onSuccess: () => queryClient.invalidateQueries({ queryKey: ['contacts'] }),
+    onSuccess: () => queryClient.invalidateQueries({ queryKey: ['contacts', campaign?.id] }),
   });
 
   const [deduping, setDeduping] = useState(false);
@@ -76,8 +78,8 @@ export default function Contacts() {
     setDeduping(true);
     setDedupeResult(null);
     try {
-      const response = await base44.functions.invoke('deduplicateContacts', {});
-      queryClient.invalidateQueries({ queryKey: ['contacts'] });
+      const response = await base44.functions.invoke('deduplicateContacts', { campaign_id: campaign?.id });
+      queryClient.invalidateQueries({ queryKey: ['contacts', campaign?.id] });
       setPage(1);
       setDedupeResult(response.data);
     } finally {
@@ -90,8 +92,8 @@ export default function Contacts() {
     setGeocoding(true);
     setGeocodeResult(null);
     try {
-      const response = await base44.functions.invoke('batchGeocodeContacts', {});
-      queryClient.invalidateQueries({ queryKey: ['contacts'] });
+      const response = await base44.functions.invoke('batchGeocodeContacts', { campaign_id: campaign?.id });
+      queryClient.invalidateQueries({ queryKey: ['contacts', campaign?.id] });
       setGeocodeResult(response.data);
     } finally {
       setGeocoding(false);
@@ -103,8 +105,8 @@ export default function Contacts() {
     setAssigning(true);
     setAssignResult(null);
     try {
-      const response = await base44.functions.invoke('assignTurfTagsByElectoralArea', {});
-      queryClient.invalidateQueries({ queryKey: ['contacts'] });
+      const response = await base44.functions.invoke('assignTurfTagsByElectoralArea', { campaign_id: campaign?.id });
+      queryClient.invalidateQueries({ queryKey: ['contacts', campaign?.id] });
       setAssignResult(response.data);
     } finally {
       setAssigning(false);
@@ -116,8 +118,8 @@ export default function Contacts() {
     setReprocessing(true);
     setReprocessResult(null);
     try {
-      const response = await base44.functions.invoke('reprocessImportsForTurfTags', {});
-      queryClient.invalidateQueries({ queryKey: ['contacts'] });
+      const response = await base44.functions.invoke('reprocessImportsForTurfTags', { campaign_id: campaign?.id });
+      queryClient.invalidateQueries({ queryKey: ['contacts', campaign?.id] });
       setReprocessResult(response.data);
     } finally {
       setReprocessing(false);
@@ -143,7 +145,7 @@ export default function Contacts() {
       );
     },
     onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ['contacts'] });
+      queryClient.invalidateQueries({ queryKey: ['contacts', campaign?.id] });
       setSelectedIds(new Set());
       setShowTagDialog(false);
     },

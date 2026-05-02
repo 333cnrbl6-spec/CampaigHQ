@@ -85,9 +85,20 @@ export function requiresPermission(userRole, entityType, action) {
   }
 }
 
+export const ROLES = ['volunteer', 'organiser', 'campaign_admin'];
+
 export const ROLE_LABELS = {
   volunteer: 'Volunteer',
   organiser: 'Campaign Organiser',
   campaign_admin: 'Campaign Admin',
   national_admin: 'National Admin',
 };
+
+export const ROLE_DESCRIPTIONS = {
+  volunteer: 'View assigned turfs and log interactions',
+  organiser: 'Full control of campaign data and team management',
+  campaign_admin: 'Full control including settings and analytics',
+  national_admin: 'Platform-wide admin access',
+};
+
+export { PERMISSIONS };

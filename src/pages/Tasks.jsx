@@ -1,6 +1,7 @@
 import React, { useState } from 'react';
 import { base44 } from '@/api/base44Client';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
+import { useCampaign } from '@/lib/CampaignContext';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
@@ -34,25 +35,26 @@ export default function Tasks() {
   const [form, setForm] = useState(emptyTask);
   const [statusFilter, setStatusFilter] = useState('all');
   const queryClient = useQueryClient();
+  const { campaign } = useCampaign();
 
   const { data: tasks = [], isLoading } = useQuery({
-    queryKey: ['tasks'],
-    queryFn: () => base44.entities.Task.list('-created_date', 200),
+    queryKey: ['tasks', campaign?.id],
+    queryFn: () => base44.entities.Task.filter({ campaign_id: campaign?.id }, '-created_date', 200),
   });
 
   const createMutation = useMutation({
-    mutationFn: (data) => base44.entities.Task.create(data),
-    onSuccess: () => { queryClient.invalidateQueries({ queryKey: ['tasks'] }); setDialogOpen(false); setForm(emptyTask); },
+    mutationFn: (data) => base44.entities.Task.create({ ...data, campaign_id: campaign?.id }),
+    onSuccess: () => { queryClient.invalidateQueries({ queryKey: ['tasks', campaign?.id] }); setDialogOpen(false); setForm(emptyTask); },
   });
 
   const updateMutation = useMutation({
     mutationFn: ({ id, data }) => base44.entities.Task.update(id, data),
-    onSuccess: () => { queryClient.invalidateQueries({ queryKey: ['tasks'] }); setDialogOpen(false); setEditing(null); setForm(emptyTask); },
+    onSuccess: () => { queryClient.invalidateQueries({ queryKey: ['tasks', campaign?.id] }); setDialogOpen(false); setEditing(null); setForm(emptyTask); },
   });
 
   const deleteMutation = useMutation({
     mutationFn: (id) => base44.entities.Task.delete(id),
-    onSuccess: () => queryClient.invalidateQueries({ queryKey: ['tasks'] }),
+    onSuccess: () => queryClient.invalidateQueries({ queryKey: ['tasks', campaign?.id] }),
   });
 
   const handleSubmit = (e) => {

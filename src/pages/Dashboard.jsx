@@ -1,6 +1,7 @@
 import React, { useState } from 'react';
 import { base44 } from '@/api/base44Client';
 import { useQuery } from '@tanstack/react-query';
+import { useCampaign } from '@/lib/CampaignContext';
 import { Users, Calendar, ClipboardList, Leaf, TrendingUp, Zap, AlertCircle, MapPin } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import StatCard from '../components/dashboard/StatCard';
@@ -18,35 +19,36 @@ import WeeklySummaryWidget from '../components/dashboard/WeeklySummaryWidget';
 export default function Dashboard() {
   const [geocodingStatus, setGecodingStatus] = useState(null);
   const [showOptimizationHint, setShowOptimizationHint] = useState(true);
+  const { campaign } = useCampaign();
 
   const { data: contacts = [] } = useQuery({
-    queryKey: ['contacts'],
-    queryFn: () => base44.entities.Contact.list('-created_date', 1000),
+    queryKey: ['contacts', campaign?.id],
+    queryFn: () => base44.entities.Contact.filter({ campaign_id: campaign?.id }, '-created_date', 1000),
   });
 
   const { data: events = [] } = useQuery({
-    queryKey: ['events'],
-    queryFn: () => base44.entities.CampaignEvent.list('-date', 50),
+    queryKey: ['events', campaign?.id],
+    queryFn: () => base44.entities.CampaignEvent.filter({ campaign_id: campaign?.id }, '-date', 50),
   });
 
   const { data: tasks = [] } = useQuery({
-    queryKey: ['tasks'],
-    queryFn: () => base44.entities.Task.list('-created_date', 50),
+    queryKey: ['tasks', campaign?.id],
+    queryFn: () => base44.entities.Task.filter({ campaign_id: campaign?.id }, '-created_date', 50),
   });
 
   const { data: issues = [] } = useQuery({
-    queryKey: ['issues'],
-    queryFn: () => base44.entities.Issue.list('-priority', 50),
+    queryKey: ['issues', campaign?.id],
+    queryFn: () => base44.entities.Issue.filter({ campaign_id: campaign?.id }, '-priority', 50),
   });
 
   const { data: interactions = [] } = useQuery({
-    queryKey: ['interactions'],
-    queryFn: () => base44.entities.ContactInteraction.list('-date', 1000),
+    queryKey: ['interactions', campaign?.id],
+    queryFn: () => base44.entities.ContactInteraction.filter({ campaign_id: campaign?.id }, '-date', 1000),
   });
 
   const { data: logs = [] } = useQuery({
-    queryKey: ['canvassingLogs'],
-    queryFn: () => base44.entities.CanvassingLog.list('-session_date', 100),
+    queryKey: ['canvassingLogs', campaign?.id],
+    queryFn: () => base44.entities.CanvassingLog.filter({ campaign_id: campaign?.id }, '-session_date', 100),
   });
 
   const canvassed = contacts.filter(c => c.canvassed).length;
