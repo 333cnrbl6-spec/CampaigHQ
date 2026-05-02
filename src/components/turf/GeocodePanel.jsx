@@ -38,15 +38,13 @@ export default function GeocodePanel({ onClose }) {
         const r = res.data?.results;
         moreRemaining = r?.more_remaining ?? false;
         const succeeded = r?.succeeded ?? 0;
-        currentDone += succeeded;
+        const failed = r?.failed ?? 0;
+        currentDone += succeeded + failed; // advance past both geocoded and no-postcode contacts
         setDone(currentDone);
         consecutiveErrors = 0;
 
-        // If nothing succeeded this round, all remaining have invalid postcodes — stop
-        if (succeeded === 0) break;
-
         if (moreRemaining) {
-          await new Promise(resolve => setTimeout(resolve, 1000));
+          await new Promise(resolve => setTimeout(resolve, 800));
         }
       } catch (err) {
         consecutiveErrors += 1;
@@ -108,7 +106,7 @@ export default function GeocodePanel({ onClose }) {
               />
             </div>
             <div className="flex justify-between text-xs text-muted-foreground">
-              <span>{done.toLocaleString()} of {total.toLocaleString()} geocoded</span>
+              <span>{done.toLocaleString()} of {total.toLocaleString()} processed</span>
               <span>{pct}%</span>
             </div>
           </div>
