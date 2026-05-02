@@ -33,11 +33,11 @@ export default function Dashboard() {
     queryFn: async () => {
       if (!campaignId) return [];
       try {
-        const all = await base44.entities.Contact.list('-created_date', 10000);
+        const all = await base44.entities.Contact.list('-created_date', 50000);
         return Array.isArray(all) ? all.filter(c => c.campaign_id === campaignId) : [];
       } catch (err) {
         console.error('Failed to fetch contacts:', err);
-        throw err;
+        return [];
       }
     },
     enabled: !!campaignId,
