@@ -125,7 +125,7 @@ export default function TurfRoutePanel({ turf, onRouteReady, onClose }) {
       // Call in chunks of 150 until nothing left to geocode
       let moreRemaining = true;
       while (moreRemaining) {
-        const res = await base44.functions.invoke('batchGeocodeContacts', { limit: 150 });
+        const res = await base44.functions.invoke('batchGeocodeContacts', {});
         const r = res.data?.results;
         moreRemaining = r?.more_remaining ?? false;
         doneCount += r?.succeeded ?? 0;
