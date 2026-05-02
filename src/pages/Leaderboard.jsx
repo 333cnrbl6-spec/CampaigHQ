@@ -1,5 +1,6 @@
 import { useQuery } from '@tanstack/react-query';
 import { base44 } from '@/api/base44Client';
+import { useCampaign } from '@/lib/CampaignContext';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
 import { Trophy, Medal, Star, TrendingUp, Users, MessageSquare, DoorOpen } from 'lucide-react';
@@ -21,14 +22,16 @@ function StatPill({ icon, value, label }) {
 }
 
 export default function Leaderboard() {
+  const { campaign } = useCampaign();
+
   const { data: interactions = [] } = useQuery({
-    queryKey: ['interactions'],
-    queryFn: () => base44.entities.ContactInteraction.list('-date', 1000),
+    queryKey: ['interactions', campaign?.id],
+    queryFn: () => base44.entities.ContactInteraction.filter({ campaign_id: campaign?.id }, '-date', 1000),
   });
 
   const { data: contacts = [] } = useQuery({
-    queryKey: ['contacts'],
-    queryFn: () => base44.entities.Contact.list('-updated_date', 1000),
+    queryKey: ['contacts', campaign?.id],
+    queryFn: () => base44.entities.Contact.filter({ campaign_id: campaign?.id }, '-updated_date', 1000),
   });
 
   // Build leaderboard from logged_by on interactions

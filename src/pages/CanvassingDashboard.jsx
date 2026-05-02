@@ -1,6 +1,7 @@
 import React, { useMemo } from 'react';
 import { base44 } from '@/api/base44Client';
 import { useQuery } from '@tanstack/react-query';
+import { useCampaign } from '@/lib/CampaignContext';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import CanvassingStatsCards from '@/components/dashboard/CanvassingStatsCards';
@@ -9,25 +10,27 @@ import { BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, Legend, Responsive
 import { RefreshCw, Calendar } from 'lucide-react';
 
 export default function CanvassingDashboard() {
+  const { campaign } = useCampaign();
+
   // Fetch all relevant data
   const { data: canvassingLogs = [], isLoading: logsLoading, refetch: refetchLogs } = useQuery({
-    queryKey: ['canvassingLogs'],
-    queryFn: () => base44.entities.CanvassingLog.list('-session_date', 500),
+    queryKey: ['canvassingLogs', campaign?.id],
+    queryFn: () => base44.entities.CanvassingLog.filter({ campaign_id: campaign?.id }, '-session_date', 500),
   });
 
   const { data: contacts = [], isLoading: contactsLoading } = useQuery({
-    queryKey: ['contacts'],
-    queryFn: () => base44.entities.Contact.list('name', 5000),
+    queryKey: ['contacts', campaign?.id],
+    queryFn: () => base44.entities.Contact.filter({ campaign_id: campaign?.id }, 'name', 5000),
   });
 
   const { data: interactions = [], isLoading: interactionsLoading } = useQuery({
-    queryKey: ['contactInteractions'],
-    queryFn: () => base44.entities.ContactInteraction.list('-date', 1000),
+    queryKey: ['contactInteractions', campaign?.id],
+    queryFn: () => base44.entities.ContactInteraction.filter({ campaign_id: campaign?.id }, '-date', 1000),
   });
 
   const { data: tasks = [] } = useQuery({
-    queryKey: ['tasks'],
-    queryFn: () => base44.entities.Task.filter({ category: 'canvassing' }),
+    queryKey: ['tasks', campaign?.id],
+    queryFn: () => base44.entities.Task.filter({ category: 'canvassing', campaign_id: campaign?.id }),
   });
 
   // Aggregate stats

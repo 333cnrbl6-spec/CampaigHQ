@@ -1,6 +1,7 @@
 import React, { useMemo, useState } from 'react';
 import { useQuery } from '@tanstack/react-query';
 import { base44 } from '@/api/base44Client';
+import { useCampaign } from '@/lib/CampaignContext';
 import { BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer, PieChart, Pie, Cell, Legend } from 'recharts';
 import { Users, Target, TrendingUp, MapPin, Award, CheckCircle2, Clock, Activity } from 'lucide-react';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
@@ -62,15 +63,16 @@ function ProgressBar({ value, max, color = '#16a34a', label, sublabel }) {
 
 export default function CanvassingAnalytics() {
   const [turfFilter, setTurfFilter] = useState('all');
+  const { campaign } = useCampaign();
 
   const { data: contacts = [], isLoading: loadingContacts } = useQuery({
-    queryKey: ['contacts'],
-    queryFn: () => base44.entities.Contact.list('name', 5000),
+    queryKey: ['contacts', campaign?.id],
+    queryFn: () => base44.entities.Contact.filter({ campaign_id: campaign?.id }, 'name', 5000),
   });
 
   const { data: logs = [] } = useQuery({
-    queryKey: ['canvassing-logs'],
-    queryFn: () => base44.entities.CanvassingLog.list('-session_date', 500),
+    queryKey: ['canvassing-logs', campaign?.id],
+    queryFn: () => base44.entities.CanvassingLog.filter({ campaign_id: campaign?.id }, '-session_date', 500),
   });
 
   // Derive turf zones from contact tags

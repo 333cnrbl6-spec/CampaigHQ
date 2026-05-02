@@ -1,6 +1,7 @@
 import React, { useState } from 'react';
 import { useQuery } from '@tanstack/react-query';
 import { base44 } from '@/api/base44Client';
+import { useCampaign } from '@/lib/CampaignContext';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
@@ -10,19 +11,21 @@ import html2canvas from 'html2canvas';
 import jsPDF from 'jspdf';
 
 export default function Reports() {
+  const { campaign } = useCampaign();
+
   const { data: contacts = [] } = useQuery({
-    queryKey: ['contacts'],
-    queryFn: () => base44.entities.Contact.list(),
+    queryKey: ['contacts', campaign?.id],
+    queryFn: () => base44.entities.Contact.filter({ campaign_id: campaign?.id }),
   });
 
   const { data: interactions = [] } = useQuery({
-    queryKey: ['interactions'],
-    queryFn: () => base44.entities.ContactInteraction.list(),
+    queryKey: ['interactions', campaign?.id],
+    queryFn: () => base44.entities.ContactInteraction.filter({ campaign_id: campaign?.id }),
   });
 
   const { data: events = [] } = useQuery({
-    queryKey: ['events'],
-    queryFn: () => base44.entities.CampaignEvent.list(),
+    queryKey: ['events', campaign?.id],
+    queryFn: () => base44.entities.CampaignEvent.filter({ campaign_id: campaign?.id }),
   });
 
   // Canvassing Stats
