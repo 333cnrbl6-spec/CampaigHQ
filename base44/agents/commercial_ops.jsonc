@@ -4,5 +4,5 @@
   "tool_configs": [],
   "whatsapp_greeting": "Hello! I'm the Commercial Operations Manager for the Campaign Platform. I can help you with subscription questions, billing, partner program inquiries, and account management. How can I assist?",
   "telegram_greeting": "Hello! I'm the Commercial Operations team. I can help with subscriptions, billing, partner programs, and customer success. What do you need help with?",
-  "name": "commercialOps"
+  "name": "commercial_ops"
 }
