@@ -4,11 +4,15 @@ import { useAuth } from '@/lib/AuthContext';
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
-import { Globe, MapPin, Users, TrendingUp, AlertCircle, BarChart3, Map } from 'lucide-react';
+import { Globe, MapPin, Users, TrendingUp, AlertCircle, BarChart3, Map, Calendar, Book, Target, Send } from 'lucide-react';
 import { useState } from 'react';
 import ConstituencyGrid from '@/components/national/ConstituencyGrid';
 import VolunteerCapacityMeter from '@/components/national/VolunteerCapacityMeter';
 import WardBreakdown from '@/components/national/WardBreakdown';
+import VolunteerShiftScheduling from '@/components/national/VolunteerShiftScheduling';
+import LocalPartyCoordination from '@/components/national/LocalPartyCoordination';
+import VoterTargeting from '@/components/national/VoterTargeting';
+import OutreachAutomation from '@/components/national/OutreachAutomation';
 
 export default function NationalDashboard() {
   const { user } = useAuth();
@@ -77,12 +81,16 @@ export default function NationalDashboard() {
           </p>
 
           {/* Tab Navigation */}
-          <div className="flex gap-2 border-b pt-4">
+          <div className="flex gap-2 border-b pt-4 overflow-x-auto pb-2">
             {[
               { id: 'overview', label: '📊 Overview', icon: BarChart3 },
               { id: 'constituencies', label: '🗳️ Constituencies', icon: MapPin },
               { id: 'volunteers', label: '👥 Volunteer Capacity', icon: Users },
               { id: 'wards', label: '🗺️ Ward Breakdown', icon: Map },
+              { id: 'shifts', label: '📅 Shift Scheduling', icon: Calendar },
+              { id: 'resources', label: '📚 Resources', icon: Book },
+              { id: 'targeting', label: '🎯 Voter Targeting', icon: Target },
+              { id: 'outreach', label: '📧 Outreach', icon: Send },
             ].map(tab => (
               <button
                 key={tab.id}
@@ -190,6 +198,10 @@ export default function NationalDashboard() {
         {activeTab === 'constituencies' && <ConstituencyGrid campaigns={campaignStats} />}
         {activeTab === 'volunteers' && <VolunteerCapacityMeter campaigns={campaignStats} />}
         {activeTab === 'wards' && <WardBreakdown campaigns={campaignStats} />}
+        {activeTab === 'shifts' && <VolunteerShiftScheduling campaigns={campaignStats} />}
+        {activeTab === 'resources' && <LocalPartyCoordination />}
+        {activeTab === 'targeting' && <VoterTargeting />}
+        {activeTab === 'outreach' && <OutreachAutomation />}
 
         {/* Export all data */}
         <Card>
