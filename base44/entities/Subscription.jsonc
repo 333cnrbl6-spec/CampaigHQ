@@ -1,0 +1,99 @@
+{
+  "name": "Subscription",
+  "type": "object",
+  "properties": {
+    "campaign_id": {
+      "type": "string",
+      "description": "Link to Campaign record"
+    },
+    "stripe_customer_id": {
+      "type": "string",
+      "description": "Stripe customer ID for billing"
+    },
+    "stripe_subscription_id": {
+      "type": "string",
+      "description": "Stripe subscription ID (null if on trial)"
+    },
+    "plan": {
+      "type": "string",
+      "enum": [
+        "starter",
+        "professional",
+        "enterprise"
+      ],
+      "description": "Current pricing tier"
+    },
+    "status": {
+      "type": "string",
+      "enum": [
+        "trial",
+        "active",
+        "past_due",
+        "canceled",
+        "expired"
+      ],
+      "default": "trial",
+      "description": "Subscription status"
+    },
+    "trial_start_date": {
+      "type": "string",
+      "format": "date",
+      "description": "Date trial started"
+    },
+    "trial_end_date": {
+      "type": "string",
+      "format": "date",
+      "description": "Date trial ends"
+    },
+    "billing_cycle_start": {
+      "type": "string",
+      "format": "date",
+      "description": "Current billing period start"
+    },
+    "billing_cycle_end": {
+      "type": "string",
+      "format": "date",
+      "description": "Current billing period end"
+    },
+    "next_billing_date": {
+      "type": "string",
+      "format": "date",
+      "description": "Next payment due date"
+    },
+    "monthly_price": {
+      "type": "number",
+      "description": "Monthly price in GBP"
+    },
+    "contact_limit": {
+      "type": "number",
+      "description": "Maximum contacts allowed on this plan"
+    },
+    "volunteer_limit": {
+      "type": "number",
+      "description": "Maximum volunteers allowed on this plan"
+    },
+    "payment_method": {
+      "type": "string",
+      "description": "Last 4 digits of card or payment method"
+    },
+    "auto_renew": {
+      "type": "boolean",
+      "default": true,
+      "description": "Whether subscription auto-renews"
+    },
+    "canceled_at": {
+      "type": "string",
+      "format": "date",
+      "description": "Date subscription was canceled"
+    },
+    "cancel_reason": {
+      "type": "string",
+      "description": "Reason for cancellation"
+    }
+  },
+  "required": [
+    "campaign_id",
+    "plan",
+    "status"
+  ]
+}

@@ -1,8 +1,46 @@
 {
   "description": "Commercial operations agent for managing subscriptions, billing, partner relationships, and customer success",
   "instructions": "You are the Commercial Operations Manager for the Green Party Campaign Platform. You help manage customer subscriptions, track partner performance, handle billing inquiries, and support customer success metrics. You have access to campaign data, subscription records, and partner programs.",
-  "tool_configs": [],
+  "tool_configs": [
+    {
+      "entity_name": "Campaign",
+      "allowed_operations": [
+        "read",
+        "update"
+      ]
+    },
+    {
+      "entity_name": "VolunteerProfile",
+      "allowed_operations": [
+        "read"
+      ]
+    },
+    {
+      "entity_name": "Contact",
+      "allowed_operations": [
+        "read"
+      ]
+    },
+    {
+      "function_name": "exportCampaignData",
+      "description": "Export campaign usage data for billing reconciliation and customer reports"
+    },
+    {
+      "function_name": "generateDataAccessReport",
+      "description": "Create audit and compliance reports for customer audits"
+    }
+  ],
+  "app_user_connector_configs": [],
+  "selected_skill_names": [],
+  "selected_workspace_skill_ids": [],
+  "model": "automatic",
   "whatsapp_greeting": "Hello! I'm the Commercial Operations Manager for the Campaign Platform. I can help you with subscription questions, billing, partner program inquiries, and account management. How can I assist?",
   "telegram_greeting": "Hello! I'm the Commercial Operations team. I can help with subscriptions, billing, partner programs, and customer success. What do you need help with?",
+  "line_greeting": null,
+  "memory_config": {
+    "enabled": true,
+    "scope": "both",
+    "instructions": null
+  },
   "name": "commercial_ops"
 }

@@ -77,6 +77,8 @@ import Testimonials from './pages/Testimonials';
 import PartnerProgram from './pages/PartnerProgram';
 import Services from './pages/Services';
 import Compliance from './pages/Compliance';
+import BillingPortal from './pages/BillingPortal';
+import AdminBilling from './pages/AdminBilling';
 
 const AuthenticatedApp = () => {
   const { isLoadingAuth, isLoadingPublicSettings, authError, navigateToLogin } = useAuth();
@@ -161,6 +163,8 @@ const AuthenticatedApp = () => {
         <Route path="/volunteer-setup" element={<VolunteerProfileSetup />} />
         <Route path="/volunteer-profiles" element={<VolunteerProfiles />} />
         <Route path="/campaign-settings" element={<CampaignSettings />} />
+        <Route path="/billing" element={<BillingPortal />} />
+        <Route path="/admin-billing" element={<AdminBilling />} />
         <Route path="/export" element={<DataExport />} />
         <Route path="/help" element={<HelpCenter />} />
         <Route path="/load-test" element={<LoadTestDashboard />} />

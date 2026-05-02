@@ -1,0 +1,63 @@
+{
+  "name": "UsageMetrics",
+  "type": "object",
+  "properties": {
+    "campaign_id": {
+      "type": "string",
+      "description": "Link to Campaign"
+    },
+    "billing_period_start": {
+      "type": "string",
+      "format": "date",
+      "description": "Start of current billing period"
+    },
+    "billing_period_end": {
+      "type": "string",
+      "format": "date",
+      "description": "End of current billing period"
+    },
+    "contacts_created": {
+      "type": "number",
+      "default": 0,
+      "description": "Total contacts in database"
+    },
+    "active_volunteers": {
+      "type": "number",
+      "default": 0,
+      "description": "Active volunteer accounts"
+    },
+    "canvassing_sessions": {
+      "type": "number",
+      "default": 0,
+      "description": "Canvassing sessions this period"
+    },
+    "api_calls": {
+      "type": "number",
+      "default": 0,
+      "description": "API calls this period"
+    },
+    "storage_used_mb": {
+      "type": "number",
+      "default": 0,
+      "description": "Storage used in MB"
+    },
+    "overage_contacts": {
+      "type": "number",
+      "default": 0,
+      "description": "Contacts over plan limit"
+    },
+    "overage_volunteers": {
+      "type": "number",
+      "default": 0,
+      "description": "Volunteers over plan limit"
+    },
+    "overage_charges": {
+      "type": "number",
+      "default": 0,
+      "description": "Additional charges for overages this period"
+    }
+  },
+  "required": [
+    "campaign_id"
+  ]
+}
