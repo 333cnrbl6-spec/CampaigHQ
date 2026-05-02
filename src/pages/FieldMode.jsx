@@ -1,10 +1,9 @@
 import React, { useState, useMemo, useEffect, useCallback } from 'react';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
-import { Input } from '@/components/ui/input';
 import { Badge } from '@/components/ui/badge';
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/components/ui/dialog';
-import { ChevronLeft, ChevronRight, Check, X, AlertCircle, WifiOff, Wifi, RefreshCw, CloudUpload, Search, Footprints, ShieldAlert, Navigation } from 'lucide-react';
+import { Check, X, AlertCircle, WifiOff, Wifi, RefreshCw, CloudUpload, Footprints, ShieldAlert } from 'lucide-react';
 import { useOfflineFieldMode } from '../hooks/useOfflineFieldMode';
 import { useGeolocation } from '@/hooks/useGeolocation';
 import { base44 } from '@/api/base44Client';
@@ -12,6 +11,9 @@ import { useQuery } from '@tanstack/react-query';
 import { useCampaign } from '@/lib/CampaignContext';
 import MobileContactCard, { openWalkingDirections } from '@/components/field/MobileContactCard';
 import MobileInteractionForm from '@/components/field/MobileInteractionForm';
+import FieldModeSearch from '@/components/field/FieldModeSearch';
+import FieldModeActions from '@/components/field/FieldModeActions';
+import WelfareCheckDialog from '@/components/field/WelfareCheckDialog';
 
 // Haversine distance in meters
 function haversineMeters(lat1, lon1, lat2, lon2) {
@@ -351,51 +353,14 @@ export default function FieldMode() {
         )}
 
         {/* Search Bar */}
-        {!searchMode && (
-          <div className="relative">
-            <Input
-              placeholder="Search by name, postcode, address..."
-              value={searchQuery}
-              onChange={(e) => {
-                setSearchQuery(e.target.value);
-                setSearchMode(e.target.value.trim().length > 0);
-                setCurrentIndex(0);
-              }}
-              className="pl-10"
-            />
-            <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 w-4 h-4 text-muted-foreground" />
-          </div>
-        )}
-
-        {/* Search Results */}
-        {searchMode && filteredContacts.length > 0 && (
-          <div className="max-h-96 overflow-y-auto space-y-2 border border-border rounded-lg p-2">
-            {filteredContacts.map((contact, idx) => (
-              <button
-                key={contact.id}
-                onClick={() => handleSelectContact(idx)}
-                className={`w-full text-left p-3 rounded-lg border transition-colors ${
-                  idx === currentIndex
-                    ? 'bg-primary/10 border-primary'
-                    : 'bg-muted/30 border-border hover:bg-muted/50'
-                }`}
-              >
-                <p className="font-medium text-sm">{contact.name}</p>
-                <p className="text-xs text-muted-foreground mt-1">{contact.address}</p>
-                {contact.postcode && <p className="text-xs text-muted-foreground">{contact.postcode}</p>}
-              </button>
-            ))}
-          </div>
-        )}
-
-        {searchMode && filteredContacts.length === 0 && (
-          <div className="text-center py-4">
-            <p className="text-sm text-muted-foreground">No contacts found</p>
-            <Button variant="ghost" size="sm" onClick={() => { setSearchQuery(''); setSearchMode(false); }} className="mt-2">
-              Clear search
-            </Button>
-          </div>
-        )}
+        <FieldModeSearch 
+          searchQuery={searchQuery}
+          setSearchQuery={setSearchQuery}
+          setSearchMode={setSearchMode}
+          filteredContacts={filteredContacts}
+          currentIndex={currentIndex}
+          onSelectContact={handleSelectContact}
+        />
 
         {/* Progress Bar */}
         {!searchMode && (
@@ -433,61 +398,18 @@ export default function FieldMode() {
 
         {/* Action Buttons — Mobile optimized */}
         {currentContact && !searchMode && (
-          <div className="space-y-2 flex-shrink-0">
-            <div className="flex gap-2">
-              <Button 
-                className="flex-1 h-12 sm:h-11 text-sm sm:text-base gap-2" 
-                onClick={() => setShowInteractionDialog(true)}
-              >
-                <Check className="w-4 sm:w-5 h-4 sm:h-5" /> <span className="hidden sm:inline">Log</span> Interaction
-              </Button>
-              <Button
-                variant="outline"
-                className="h-12 sm:h-11 px-3 gap-1.5 text-blue-600 border-blue-300 flex-shrink-0"
-                onClick={() => openWalkingDirections(currentContact)}
-                title="Get walking directions"
-              >
-                <Navigation className="w-5 h-5" />
-              </Button>
-            </div>
-            <div className="flex gap-2">
-              <Button 
-                variant="outline" 
-                className="flex-1 h-10" 
-                onClick={() => setCurrentIndex(i => Math.max(0, i - 1))} 
-                disabled={currentIndex === 0}
-              >
-                <ChevronLeft className="w-4 h-4" />
-              </Button>
-              <Button 
-                variant="outline" 
-                className="flex-1 h-10" 
-                onClick={() => setCurrentIndex(i => Math.min(displayContacts.length - 1, i + 1))} 
-                disabled={currentIndex === displayContacts.length - 1}
-              >
-                <ChevronRight className="w-4 h-4" />
-              </Button>
-              <Button 
-                variant="ghost" 
-                className="flex-1 h-10 text-destructive" 
-                onClick={() => setCurrentIndex(i => Math.min(displayContacts.length - 1, i + 1))}
-              >
-                <X className="w-4 h-4" /> Skip
-              </Button>
-            </div>
-            {/* Welfare check-in */}
-            <button
-              onClick={() => { setWelfareCheckedIn(true); setShowWelfareAlert(false); }}
-              className={`w-full h-9 rounded-lg text-xs font-medium flex items-center justify-center gap-2 transition-colors ${
-                welfareCheckedIn
-                  ? 'bg-green-50 text-green-700 border border-green-200'
-                  : 'bg-amber-50 text-amber-700 border border-amber-200 hover:bg-amber-100'
-              }`}
-            >
-              <ShieldAlert className="w-4 h-4" />
-              {welfareCheckedIn ? '✓ Safe check-in sent' : 'Tap to confirm you\'re safe'}
-            </button>
-          </div>
+          <FieldModeActions 
+            onLogInteraction={() => setShowInteractionDialog(true)}
+            onPrevious={() => setCurrentIndex(i => Math.max(0, i - 1))}
+            onNext={() => setCurrentIndex(i => Math.min(displayContacts.length - 1, i + 1))}
+            onSkip={() => setCurrentIndex(i => Math.min(displayContacts.length - 1, i + 1))}
+            onWelfareCheckIn={() => { setWelfareCheckedIn(true); setShowWelfareAlert(false); }}
+            onDirections={() => openWalkingDirections(currentContact)}
+            canGoPrevious={currentIndex > 0}
+            canGoNext={currentIndex < displayContacts.length - 1}
+            welfareCheckedIn={welfareCheckedIn}
+            isSubmitting={isSubmittingInteraction}
+          />
         )}
 
         {/* Interaction Dialog - Mobile optimized */}
@@ -506,28 +428,11 @@ export default function FieldMode() {
         </Dialog>
 
         {/* Welfare check-in alert */}
-        <Dialog open={showWelfareAlert} onOpenChange={setShowWelfareAlert}>
-          <DialogContent className="w-full max-w-sm mx-auto text-center">
-            <DialogHeader>
-              <DialogTitle className="flex items-center justify-center gap-2 text-amber-700">
-                <ShieldAlert className="w-5 h-5" /> Welfare Check
-              </DialogTitle>
-            </DialogHeader>
-            <div className="py-3 space-y-4">
-              <p className="text-sm text-muted-foreground">
-                You've been canvassing for 20 minutes without a check-in.<br />
-                Please confirm you're safe.
-              </p>
-              <Button
-                className="w-full bg-green-600 hover:bg-green-700"
-                onClick={() => { setWelfareCheckedIn(true); setShowWelfareAlert(false); }}
-              >
-                ✓ I'm safe — check in
-              </Button>
-              <p className="text-xs text-muted-foreground">If you need help, call your team lead immediately.</p>
-            </div>
-          </DialogContent>
-        </Dialog>
+        <WelfareCheckDialog 
+          open={showWelfareAlert}
+          onOpenChange={setShowWelfareAlert}
+          onCheckIn={() => { setWelfareCheckedIn(true); setShowWelfareAlert(false); }}
+        />
 
       </div>
     </div>

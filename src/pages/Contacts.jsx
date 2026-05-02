@@ -7,22 +7,15 @@ import DataFetchError from '@/components/DataFetchError';
 import ErrorBoundary from '@/components/ErrorBoundary';
 import { base44 } from '@/api/base44Client';
 import { Button } from '@/components/ui/button';
-import { Input } from '@/components/ui/input';
-import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
-import { Badge } from '@/components/ui/badge';
-import { Plus, Search, Pencil, Trash2, Phone, Mail, MapPin, CheckCircle2, Tag, GitMerge, Loader2, Navigation, Zap, Merge } from 'lucide-react';
+import { Plus, Tag, GitMerge, Loader2, Navigation, Zap, Merge, MapPin } from 'lucide-react';
 import { AnimatePresence, motion } from 'framer-motion';
 import { useNavigate } from 'react-router-dom';
 import ContactForm from '../components/contacts/ContactForm';
 import BulkTagDialog from '../components/contacts/BulkTagDialog';
+import ContactFilters from '../components/contacts/ContactFilters';
+import ContactListItem from '../components/contacts/ContactListItem';
 
-const supportBadge = {
-  strong_supporter: 'bg-primary/15 text-primary border-primary/25',
-  leaning: 'bg-green-100 text-green-700 border-green-200',
-  undecided: 'bg-amber-100 text-amber-700 border-amber-200',
-  opposed: 'bg-red-100 text-red-700 border-red-200',
-  unknown: 'bg-muted text-muted-foreground border-border',
-};
+
 
 export default function Contacts() {
   const [showForm, setShowForm] = useState(false);
@@ -455,52 +448,19 @@ export default function Contacts() {
       </AnimatePresence>
 
       {/* Filters & Bulk Actions */}
-       <div className="space-y-4 mb-6">
-         <div className="flex flex-col sm:flex-row gap-2 sm:gap-3 overflow-x-auto">
-            <div className="relative flex-1 min-w-[200px]">
-              <Search className="w-4 h-4 absolute left-3 top-1/2 -translate-y-1/2 text-muted-foreground" />
-              <Input
-                placeholder="Search..."
-                value={search}
-                onChange={(e) => { setSearch(e.target.value); setPage(1); }}
-                className="pl-10 text-sm"
-              />
-            </div>
-            <Select value={filter} onValueChange={(v) => { setFilter(v); setPage(1); }}>
-               <SelectTrigger className="w-full sm:w-[140px] flex-shrink-0">
-                 <SelectValue placeholder="Filter" />
-               </SelectTrigger>
-              <SelectContent>
-                <SelectItem value="all">All Contacts</SelectItem>
-                <SelectItem value="voters">Registered Voters</SelectItem>
-                <SelectItem value="non-voters">Non-Voters</SelectItem>
-                <SelectItem value="strong_supporter">Strong Supporter</SelectItem>
-                <SelectItem value="leaning">Leaning</SelectItem>
-                <SelectItem value="undecided">Undecided</SelectItem>
-                <SelectItem value="opposed">Opposed</SelectItem>
-                <SelectItem value="unknown">Unknown</SelectItem>
-              </SelectContent>
-            </Select>
-            <Select value={turfFilter} onValueChange={(v) => { setTurfFilter(v); setPage(1); }}>
-              <SelectTrigger className="w-full sm:w-[140px] flex-shrink-0">
-                <SelectValue placeholder="Turf" />
-              </SelectTrigger>
-              <SelectContent>
-                <SelectItem value="all">All Turfs</SelectItem>
-                {allTurfs.map(t => <SelectItem key={t} value={t}>{t}</SelectItem>)}
-              </SelectContent>
-            </Select>
-            <Select value={sortBy} onValueChange={(v) => { setSortBy(v); setPage(1); }}>
-              <SelectTrigger className="w-full sm:w-[120px] flex-shrink-0">
-                <SelectValue placeholder="Sort" />
-              </SelectTrigger>
-              <SelectContent>
-                <SelectItem value="name">Sort: Name</SelectItem>
-                <SelectItem value="turf">Sort: Turf Zone</SelectItem>
-                <SelectItem value="address">Sort: Address</SelectItem>
-              </SelectContent>
-            </Select>
-           </div>
+      <div className="space-y-4 mb-6">
+        <ContactFilters 
+          search={search}
+          setSearch={setSearch}
+          filter={filter}
+          setFilter={setFilter}
+          turfFilter={turfFilter}
+          setTurfFilter={setTurfFilter}
+          sortBy={sortBy}
+          setSortBy={setSortBy}
+          allTurfs={allTurfs}
+          onFilterChange={() => setPage(1)}
+        />
 
          {/* Bulk Actions Bar */}
          {selectedIds.size > 0 && (
@@ -539,56 +499,15 @@ export default function Contacts() {
       ) : (
         <div className="grid gap-2 sm:gap-3">
            {paginated.map((contact) => (
-             <div key={contact.id} className={`bg-card rounded-lg sm:rounded-xl border p-3 sm:p-4 hover:shadow-sm transition-all flex flex-col sm:flex-row items-start sm:items-center gap-3 cursor-pointer ${selectedIds.has(contact.id) ? 'border-primary bg-primary/5' : 'border-border/50'}`}>
-               <input
-                 type="checkbox"
-                 checked={selectedIds.has(contact.id)}
-                 onChange={() => handleSelectContact(contact.id)}
-                 className="w-4 h-4 rounded cursor-pointer flex-shrink-0"
-               />
-               <div className="w-9 h-9 sm:w-10 sm:h-10 rounded-full bg-primary/10 flex items-center justify-center flex-shrink-0">
-                 <span className="text-xs sm:text-sm font-bold text-primary">
-                   {contact.name?.charAt(0)?.toUpperCase()}
-                 </span>
-               </div>
-               <div className="flex-1 min-w-0">
-                <div className="flex items-center gap-1 sm:gap-2 flex-wrap">
-                  <p className="font-medium text-sm leading-tight">{contact.name}</p>
-                  {contact.registered_voter && (
-                    <Badge variant="secondary" className="text-xs bg-green-100 text-green-700 border-green-200 flex items-center gap-1">
-                      <CheckCircle2 className="w-3 h-3" /> Registered Voter
-                    </Badge>
-                  )}
-                  <Badge variant="secondary" className={`text-xs border ${supportBadge[contact.support_level] || supportBadge.unknown}`}>
-                    {contact.support_level?.replace(/_/g, ' ')}
-                  </Badge>
-                  {contact.volunteer && (
-                    <Badge variant="secondary" className="text-xs bg-accent/20 text-accent-foreground border-accent/30">
-                      Volunteer
-                    </Badge>
-                  )}
-                  {contact.tags?.map(tag => (
-                    <Badge key={tag} variant="secondary" className="text-xs bg-blue-100 text-blue-700 border-blue-200">
-                      {tag}
-                    </Badge>
-                  ))}
-                </div>
-                <div className="flex items-center gap-2 sm:gap-4 mt-1 text-xs text-muted-foreground flex-wrap">
-                    {contact.address && <span className="flex items-center gap-1"><MapPin className="w-3 h-3" /><span className="hidden sm:inline">{contact.address}</span></span>}
-                    {contact.phone && <span className="flex items-center gap-1"><Phone className="w-3 h-3" /></span>}
-                    {contact.email && <span className="flex items-center gap-1"><Mail className="w-3 h-3" /></span>}
-                  </div>
-                </div>
-                <div className="flex items-center gap-1 flex-shrink-0 self-start sm:self-center">
-                  <Button variant="ghost" size="icon" className="h-8 w-8" onClick={() => { setEditing(contact); setShowForm(true); }}>
-                    <Pencil className="w-4 h-4" />
-                  </Button>
-                  <Button variant="ghost" size="icon" className="h-8 w-8 text-destructive" onClick={() => { if (confirm(`Delete ${contact.name}?`)) deleteMutation.mutate(contact.id); }}>
-                    <Trash2 className="w-4 h-4" />
-                  </Button>
-                </div>
-            </div>
-          ))}
+             <ContactListItem
+               key={contact.id}
+               contact={contact}
+               selected={selectedIds.has(contact.id)}
+               onSelect={handleSelectContact}
+               onEdit={(c) => { setEditing(c); setShowForm(true); }}
+               onDelete={(c) => { if (confirm(`Delete ${c.name}?`)) deleteMutation.mutate(c.id); }}
+             />
+           ))}
         </div>
       )}
 
