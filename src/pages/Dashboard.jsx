@@ -45,35 +45,94 @@ export default function Dashboard() {
     refetchInterval: 120000,
   });
 
-  const { data: events = [], error: eventError, refetch: refetchEvents } = useSecureData(
-    'getActivityFeed',
-    campaignId ? {} : null,
-    { staleTime: 180000, refetchInterval: 180000, enabled: !!campaignId }
-  );
+  // Fetch events directly from entity
+  const { data: events = [], error: eventError, refetch: refetchEvents } = useQuery({
+    queryKey: ['events', campaignId],
+    queryFn: async () => {
+      if (!campaignId) return [];
+      try {
+        const all = await base44.entities.CampaignEvent.list('-created_date', 1000);
+        return Array.isArray(all) ? all.filter(e => e.campaign_id === campaignId) : [];
+      } catch (err) {
+        console.error('Failed to fetch events:', err);
+        return [];
+      }
+    },
+    enabled: !!campaignId,
+    staleTime: 180000,
+    refetchInterval: 180000,
+  });
 
-  const { data: tasks = [], error: taskError, refetch: refetchTasks } = useSecureData(
-    'getSessionLogs',
-    campaignId ? {} : null,
-    { staleTime: 120000, refetchInterval: 120000, enabled: !!campaignId }
-  );
+  // Fetch tasks directly from entity
+  const { data: tasks = [], error: taskError, refetch: refetchTasks } = useQuery({
+    queryKey: ['tasks', campaignId],
+    queryFn: async () => {
+      if (!campaignId) return [];
+      try {
+        const all = await base44.entities.Task.list('-created_date', 1000);
+        return Array.isArray(all) ? all.filter(t => t.campaign_id === campaignId) : [];
+      } catch (err) {
+        console.error('Failed to fetch tasks:', err);
+        return [];
+      }
+    },
+    enabled: !!campaignId,
+    staleTime: 120000,
+    refetchInterval: 120000,
+  });
 
-  // Get interactions via ActivityFeed function
-  const { data: allActivity = [] } = useSecureData(
-    'getActivityFeed',
-    campaignId ? {} : null,
-    { staleTime: 60000, refetchInterval: 60000, enabled: !!campaignId }
-  );
-  const interactions = Array.isArray(allActivity) ? allActivity : [];
+  // Fetch interactions directly from entity
+  const { data: interactions = [] } = useQuery({
+    queryKey: ['interactions', campaignId],
+    queryFn: async () => {
+      if (!campaignId) return [];
+      try {
+        const all = await base44.entities.ContactInteraction.list('-created_date', 5000);
+        return Array.isArray(all) ? all : [];
+      } catch (err) {
+        console.error('Failed to fetch interactions:', err);
+        return [];
+      }
+    },
+    enabled: !!campaignId,
+    staleTime: 60000,
+    refetchInterval: 60000,
+  });
 
-  // Get logs via SessionLogs function
-  const { data: logs = [] } = useSecureData(
-    'getSessionLogs',
-    campaignId ? {} : null,
-    { staleTime: 120000, refetchInterval: 120000, enabled: !!campaignId }
-  );
+  // Fetch logs directly from entity
+  const { data: logs = [] } = useQuery({
+    queryKey: ['logs', campaignId],
+    queryFn: async () => {
+      if (!campaignId) return [];
+      try {
+        const all = await base44.entities.CanvassingLog.list('-created_date', 5000);
+        return Array.isArray(all) ? all.filter(l => l.campaign_id === campaignId) : [];
+      } catch (err) {
+        console.error('Failed to fetch logs:', err);
+        return [];
+      }
+    },
+    enabled: !!campaignId,
+    staleTime: 120000,
+    refetchInterval: 120000,
+  });
 
-  // For issues, use a simple empty array since we don't have a dedicated function yet
-  const issues = [];
+  // Fetch issues directly from entity
+  const { data: issues = [] } = useQuery({
+    queryKey: ['issues', campaignId],
+    queryFn: async () => {
+      if (!campaignId) return [];
+      try {
+        const all = await base44.entities.Issue.list('-mentions_count', 100);
+        return Array.isArray(all) ? all.filter(i => i.campaign_id === campaignId) : [];
+      } catch (err) {
+        console.error('Failed to fetch issues:', err);
+        return [];
+      }
+    },
+    enabled: !!campaignId,
+    staleTime: 120000,
+  });
 
   // Use memoized stats calculations
   const stats = useCampaignStats(contacts, logs, tasks);
