@@ -128,9 +128,9 @@ export default function TurfRoutePanel({ turf, onRouteReady, onClose }) {
     if (rings.length === 0) { setLoading(false); return; }
 
     // Only process contacts that have an address
-    const addressedContacts = contacts.filter(c => c.address);
+    const addressedContacts = contacts.filter(c => c.address && c.address.trim());
     const total = addressedContacts.length;
-    setProgress({ stage: 'Checking contacts…', current: 0, total, found: 0 });
+    setProgress({ stage: `Found ${total} contacts with addresses — geocoding…`, current: 0, total, found: 0 });
 
     const candidatePoints = [];
 
@@ -204,8 +204,8 @@ export default function TurfRoutePanel({ turf, onRouteReady, onClose }) {
                     />
                   </div>
                   <div className="flex justify-between text-xs text-muted-foreground">
-                    <span>{progress.current} of {progress.total} addresses checked</span>
-                    <span className="text-primary font-medium">{progress.found} found in zone</span>
+                    <span>{progress.current} of {progress.total} addresses geocoded</span>
+                    <span className="text-primary font-medium">{progress.found} in this zone</span>
                   </div>
                 </>
               )}
