@@ -34,6 +34,7 @@ import LandingPage from './pages/LandingPage';
 import LeafletTracker from './pages/LeafletTracker';
 import DataImport from './pages/DataImport';
 import OrganizerDashboard from './pages/OrganizerDashboard';
+import AdminPanel from './pages/AdminPanel';
 import RouteOptimizer from './pages/RouteOptimizer';
 import OutreachAutomation from './pages/OutreachAutomation';
 import VolunteerCalendar from './pages/VolunteerCalendar';
@@ -120,6 +121,7 @@ const AuthenticatedApp = () => {
         <Route path="/leaflets" element={<LeafletTracker />} />
         <Route path="/import" element={<DataImport />} />
         <Route path="/organizer" element={<OrganizerDashboard />} />
+        <Route path="/admin" element={<AdminPanel />} />
         <Route path="/route" element={<RouteOptimizer />} />
         <Route path="/automation" element={<OutreachAutomation />} />
         <Route path="/calendar" element={<VolunteerCalendar />} />

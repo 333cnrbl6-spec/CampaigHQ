@@ -73,11 +73,15 @@ export default function CampaignSetup() {
       <div className="w-full max-w-lg space-y-6">
         {/* Header */}
         <div className="text-center space-y-2">
-          <div className="w-16 h-16 bg-primary rounded-2xl flex items-center justify-center mx-auto">
-            <MapPin className="w-8 h-8 text-primary-foreground" />
-          </div>
-          <h1 className="text-2xl font-heading font-bold text-foreground">Campaign Manager</h1>
-          <p className="text-muted-foreground">Organisers: create a campaign. Volunteers: join with your invite code.</p>
+         <div className="w-16 h-16 bg-primary rounded-2xl flex items-center justify-center mx-auto">
+           <MapPin className="w-8 h-8 text-primary-foreground" />
+         </div>
+         <h1 className="text-2xl font-heading font-bold text-foreground">Welcome to Campaign Hub</h1>
+         <p className="text-muted-foreground">
+           <strong>Organisers:</strong> Create a new campaign or manage existing ones.
+           <br />
+           <strong>Volunteers:</strong> Join a campaign with your invite code.
+         </p>
         </div>
 
         <Card>
