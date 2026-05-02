@@ -30,20 +30,29 @@ export default function GeocodePanel({ onClose }) {
 
     let moreRemaining = true;
     let currentDone = geocodedCount;
+    let consecutiveErrors = 0;
 
     while (moreRemaining) {
-      const res = await base44.functions.invoke('batchGeocodeContacts', {});
-      const r = res.data?.results;
-      moreRemaining = r?.more_remaining ?? false;
-      const succeeded = r?.succeeded ?? 0;
-      currentDone += succeeded;
-      setDone(currentDone);
+      try {
+        const res = await base44.functions.invoke('batchGeocodeContacts', {});
+        const r = res.data?.results;
+        moreRemaining = r?.more_remaining ?? false;
+        const succeeded = r?.succeeded ?? 0;
+        currentDone += succeeded;
+        setDone(currentDone);
+        consecutiveErrors = 0;
 
-      // If nothing succeeded this round, all remaining have invalid postcodes — stop
-      if (succeeded === 0) break;
+        // If nothing succeeded this round, all remaining have invalid postcodes — stop
+        if (succeeded === 0) break;
 
-      if (moreRemaining) {
-        await new Promise(resolve => setTimeout(resolve, 400));
+        if (moreRemaining) {
+          await new Promise(resolve => setTimeout(resolve, 1000));
+        }
+      } catch (err) {
+        consecutiveErrors += 1;
+        if (consecutiveErrors >= 3) break; // give up after 3 consecutive failures
+        // Wait longer before retrying on error (rate limit backoff)
+        await new Promise(resolve => setTimeout(resolve, 3000));
       }
     }
 

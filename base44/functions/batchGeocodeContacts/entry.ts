@@ -77,26 +77,24 @@ Deno.serve(async (req) => {
     // Step 2: bulk lookup (max 100 per call — already within limit)
     const postcodeMap = uniquePostcodes.length > 0 ? await bulkGeocodePostcodes(uniquePostcodes) : {};
 
-    // Step 3: update contacts in small sequential batches to avoid rate limiting
-    const WRITE_BATCH = 5;
-    for (let i = 0; i < toProcess.length; i += WRITE_BATCH) {
-      const chunk = toProcess.slice(i, i + WRITE_BATCH);
-      await Promise.all(chunk.map(async (contact, j) => {
-        const pc = contactPostcodes[i + j];
-        const coords = pc ? postcodeMap[pc] : null;
-        if (coords) {
-          await base44.asServiceRole.entities.Contact.update(contact.id, {
-            latitude: coords.latitude,
-            longitude: coords.longitude,
-          });
-          results.succeeded += 1;
-        } else {
-          await base44.asServiceRole.entities.Contact.update(contact.id, { latitude: 0, longitude: 0 });
-          results.failed += 1;
-        }
-      }));
-      if (i + WRITE_BATCH < toProcess.length) {
-        await new Promise(resolve => setTimeout(resolve, 300));
+    // Step 3: update contacts one at a time to stay within API rate limits
+    for (let i = 0; i < toProcess.length; i++) {
+      const contact = toProcess[i];
+      const pc = contactPostcodes[i];
+      const coords = pc ? postcodeMap[pc] : null;
+      if (coords) {
+        await base44.asServiceRole.entities.Contact.update(contact.id, {
+          latitude: coords.latitude,
+          longitude: coords.longitude,
+        });
+        results.succeeded += 1;
+      } else {
+        await base44.asServiceRole.entities.Contact.update(contact.id, { latitude: 0, longitude: 0 });
+        results.failed += 1;
+      }
+      // Small pause every 3 writes to stay within rate limits
+      if ((i + 1) % 3 === 0) {
+        await new Promise(resolve => setTimeout(resolve, 200));
       }
     }
 
