@@ -199,13 +199,16 @@ export const CampaignProvider = ({ children }) => {
     ];
     await base44.auth.updateMe({ campaign_memberships: updatedMemberships });
     setUser({ ...user, campaign_memberships: updatedMemberships });
-    setCampaign({ ...targetCampaign, userRole: 'volunteer' });
-    setCampaigns([...campaigns, { ...targetCampaign, userRole: 'volunteer' }]);
+    const newCampaignForCampaigns = { ...targetCampaign, userRole: 'volunteer' };
+    setCampaign(newCampaignForCampaigns);
+    setCampaigns([...campaigns, newCampaignForCampaigns]);
     return targetCampaign;
   };
 
   const createAndJoinCampaign = async (campaignData) => {
     const newCampaign = await createCampaign(campaignData);
+    // After creation, ensure campaign is loaded into context  
+    setCampaign({ ...newCampaign, userRole: 'campaign_admin' });
     return newCampaign;
   };
 

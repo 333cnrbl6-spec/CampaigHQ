@@ -441,10 +441,10 @@ Return JSON with:
           </Button>
         </div>
         {showCsvWizard && (
-          <div className="mt-4">
-            <CsvVoterImportWizard onDone={() => { setShowCsvWizard(false); queryClient.invalidateQueries({ queryKey: ['import_logs'] }); }} />
-          </div>
-        )}
+            <div className="mt-4">
+              <CsvVoterImportWizard onDone={() => { setShowCsvWizard(false); queryClient.invalidateQueries({ queryKey: ['import_logs', campaign?.id] }); }} />
+            </div>
+          )}
       </div>
 
       <div className="grid grid-cols-1 lg:grid-cols-4 gap-8">

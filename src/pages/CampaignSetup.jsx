@@ -54,16 +54,10 @@ export default function CampaignSetup() {
     setLoading(true);
     setError('');
     try {
-      const matches = await base44.entities.Campaign.filter({ invite_code: inviteCode.trim() });
-      if (matches.length === 0) {
-        setError('No campaign found with that invite code. Check with your organiser.');
-        setLoading(false);
-        return;
-      }
-      await joinCampaign(matches[0]);
+      await joinCampaign(inviteCode.trim());
       navigate('/dashboard');
     } catch (e) {
-      setError(e.message || 'Failed to join campaign.');
+      setError(e.message || 'Failed to join campaign. Check that the invite code is correct.');
     }
     setLoading(false);
   };

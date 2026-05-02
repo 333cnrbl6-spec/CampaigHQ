@@ -103,7 +103,7 @@ export default function VolunteerProfileSetup() {
       return base44.entities.VolunteerProfile.create(data);
     },
     onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ['volunteer_profile_me'] });
+      queryClient.invalidateQueries({ queryKey: ['volunteer_profile_me', user?.email] });
       setStep(STEPS.length - 1);
     },
   });
