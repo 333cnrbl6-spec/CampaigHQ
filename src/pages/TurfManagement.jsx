@@ -1,7 +1,9 @@
 import { useEffect, useRef, useState } from 'react';
-import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
+import { useMutation, useQueryClient } from '@tanstack/react-query';
 import { base44 } from '@/api/base44Client';
 import { useCampaign } from '@/lib/CampaignContext';
+import useSecureData from '@/hooks/useSecureData';
+import DataFetchError from '@/components/DataFetchError';
 import { MapContainer, TileLayer, useMap, Polyline, CircleMarker, Tooltip } from 'react-leaflet';
 import L from 'leaflet';
 import 'leaflet/dist/leaflet.css';
@@ -176,7 +178,7 @@ function TurfLayers({ turfs, selectedId, onSelect }) {
 }
 
 export default function TurfManagement() {
-  const { campaign } = useCampaign();
+  const { campaignId } = useCampaign();
   const queryClient = useQueryClient();
   const [drawing, setDrawing] = useState(false);
   const [selectedId, setSelectedId] = useState(null);
@@ -191,29 +193,32 @@ export default function TurfManagement() {
   const [showUnassignedPanel, setShowUnassignedPanel] = useState(false);
   const [showGeocodePanel, setShowGeocodePanel] = useState(false);
 
-  const { data: turfs = [] } = useQuery({
-    queryKey: ['turfs', campaign?.id],
-    queryFn: () => base44.entities.Turf.filter({ campaign_id: campaign?.id }, '-created_date', 100),
-  });
+  // Fetch RLS-protected turfs and contacts
+  const { data: turfs = [], error: turfError, refetch: refetchTurfs } = useSecureData(
+    'getAssignedTurfs',
+    { campaign_id: campaignId },
+    { staleTime: 120000, refetchInterval: 120000 }
+  );
 
-  const { data: contacts = [] } = useQuery({
-    queryKey: ['contacts', campaign?.id],
-    queryFn: () => base44.entities.Contact.filter({ campaign_id: campaign?.id }, 'name', 5000),
-  });
+  const { data: contacts = [], error: contactError, refetch: refetchContacts } = useSecureData(
+    'getContactsForTurf',
+    { campaign_id: campaignId },
+    { staleTime: 180000, refetchInterval: 180000 }
+  );
 
   const createTurf = useMutation({
-    mutationFn: (data) => base44.entities.Turf.create({ ...data, campaign_id: campaign?.id }),
-    onSuccess: () => queryClient.invalidateQueries({ queryKey: ['turfs', campaign?.id] }),
+    mutationFn: (data) => base44.entities.Turf.create({ ...data, campaign_id: campaignId }),
+    onSuccess: () => refetchTurfs(),
   });
 
   const updateTurf = useMutation({
     mutationFn: ({ id, data }) => base44.entities.Turf.update(id, data),
-    onSuccess: () => queryClient.invalidateQueries({ queryKey: ['turfs', campaign?.id] }),
+    onSuccess: () => refetchTurfs(),
   });
 
   const deleteTurf = useMutation({
     mutationFn: (id) => base44.entities.Turf.delete(id),
-    onSuccess: () => { queryClient.invalidateQueries({ queryKey: ['turfs', campaign?.id] }); setSelectedId(null); },
+    onSuccess: () => { refetchTurfs(); setSelectedId(null); },
   });
 
   const handleShapeCreated = (geojson) => {
@@ -254,7 +259,7 @@ export default function TurfManagement() {
       });
 
       if (res.data?.geojson) {
-        queryClient.invalidateQueries({ queryKey: ['turfs', campaign?.id] });
+        refetchTurfs();
       } else {
         alert('AI boundary generation failed: ' + (res.data?.error || 'Unknown error'));
       }
@@ -278,8 +283,21 @@ export default function TurfManagement() {
   };
 
   return (
-    <div className="flex h-screen overflow-hidden">
-      <TurfSidebar
+    <div className="flex h-screen overflow-hidden flex-col">
+      {(turfError || contactError) && (
+        <div className="p-4 bg-background border-b border-border">
+          <DataFetchError 
+            error={turfError || contactError} 
+            onRetry={() => {
+              refetchTurfs();
+              refetchContacts();
+            }}
+            title="Unable to Load Turf Data" 
+          />
+        </div>
+      )}
+      <div className="flex flex-1 overflow-hidden">
+        <TurfSidebar
         turfs={turfs}
         selectedId={selectedId}
         onSelect={setSelectedId}
@@ -467,6 +485,7 @@ export default function TurfManagement() {
             </div>
           </div>
         )}
+        </div>
         </div>
         </div>
         );
