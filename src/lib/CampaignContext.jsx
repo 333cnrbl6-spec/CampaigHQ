@@ -28,16 +28,17 @@ export const CampaignProvider = ({ children }) => {
 
       // CRITICAL: In "Act as User" mode, user record may not have campaign_memberships populated.
       // Fetch the full user record from the User entity to get the complete membership data.
-      let userMemberships = currentUser.campaign_memberships;
-      if (!Array.isArray(userMemberships) || userMemberships.length === 0) {
+      let userMemberships = Array.isArray(currentUser.campaign_memberships) ? currentUser.campaign_memberships : [];
+      if (userMemberships.length === 0) {
         try {
           const fullUserRecord = await base44.entities.User.filter({ email: currentUser.email });
-          if (Array.isArray(fullUserRecord) && fullUserRecord[0]) {
-            userMemberships = fullUserRecord[0].campaign_memberships;
-            console.log(`Loaded user memberships from User entity for ${currentUser.email}:`, userMemberships);
+          if (Array.isArray(fullUserRecord) && fullUserRecord[0]?.email) {
+            const record = fullUserRecord[0];
+            userMemberships = Array.isArray(record.campaign_memberships) ? record.campaign_memberships : [];
+            console.log(`✓ Loaded user memberships from User entity for ${currentUser.email}:`, userMemberships.length, 'active memberships');
           }
         } catch (err) {
-          console.error('Failed to fetch full user record:', err);
+          console.warn('Could not fetch full user record (may be in "Act as User" mode):', err.message);
         }
       }
 
@@ -101,43 +102,44 @@ export const CampaignProvider = ({ children }) => {
       if (selectedCampaign?.id) {
         setCampaign(selectedCampaign);
         setUserRole(selectedCampaign.userRole);
+        console.log(`✓ User ${currentUser.email} loaded into campaign: ${selectedCampaign.id}`);
 
         // Ensure user record is synced: set default_campaign_id and campaign_memberships if missing
         const hasDefaultSet = !!currentUser.default_campaign_id;
         const hasMembership = Array.isArray(userMemberships) && userMemberships.some(m => m?.campaign_id === selectedCampaign.id && m?.status === 'active');
         
         if (!hasDefaultSet || !hasMembership) {
-          const updates = {
-            default_campaign_id: selectedCampaign.id,
-          };
-
-          // Ensure campaign_memberships has an entry for this campaign
-          if (!hasMembership) {
-            updates.campaign_memberships = [
-              ...(Array.isArray(userMemberships) ? userMemberships.filter(m => m?.status === 'active') : []),
-              {
-                campaign_id: selectedCampaign.id,
-                role: selectedCampaign.userRole || 'volunteer',
-                added_date: new Date().toISOString(),
-                status: 'active',
-              },
-            ];
-          } else {
-            // Just update default if memberships are already correct
-            updates.campaign_memberships = userMemberships;
-          }
-
           try {
+            const updates = {
+              default_campaign_id: selectedCampaign.id,
+            };
+
+            // Ensure campaign_memberships has an entry for this campaign
+            if (!hasMembership) {
+              updates.campaign_memberships = [
+                ...(Array.isArray(userMemberships) ? userMemberships.filter(m => m?.status === 'active') : []),
+                {
+                  campaign_id: selectedCampaign.id,
+                  role: selectedCampaign.userRole || 'volunteer',
+                  added_date: new Date().toISOString(),
+                  status: 'active',
+                },
+              ];
+            } else {
+              // Just update default if memberships are already correct
+              updates.campaign_memberships = userMemberships;
+            }
+
             await base44.auth.updateMe(updates);
-            console.log(`User sync completed for ${currentUser.email}: campaign=${selectedCampaign.id}`);
+            console.log(`✓ User record synced for ${currentUser.email}`);
           } catch (err) {
-            console.error('Failed to sync user record:', err);
+            console.warn('Could not sync user record (may be in "Act as User" mode), but campaign still loads:', err.message);
             // Continue anyway — user is still able to access the campaign
           }
         }
       } else {
         // No campaigns accessible — show setup
-        console.warn(`No accessible campaigns for ${currentUser.email}. Found ${accessibleCampaigns.length} accessible.`);
+        console.warn(`⚠ User ${currentUser.email} has no accessible campaigns. Memberships found: ${userMemberships.length}, owned campaigns: ${ownedCampaigns.length}`);
         setNeedsSetup(true);
       }
 
