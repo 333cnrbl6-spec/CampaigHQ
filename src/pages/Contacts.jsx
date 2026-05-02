@@ -279,16 +279,16 @@ export default function Contacts() {
   };
 
   return (
-    <div className="p-6 lg:p-10 max-w-[1400px] mx-auto">
+    <div className="p-3 sm:p-6 lg:p-10 max-w-[1400px] mx-auto">
       {contactError && (
         <div className="mb-6">
           <DataFetchError error={contactError} onRetry={refetch} title="Unable to Load Contacts" />
         </div>
       )}
       <div className="mb-8">
-        <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 mb-6">
-          <div>
-            <h1 className="font-heading text-3xl font-bold">Voter Contacts</h1>
+        <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 sm:gap-4 mb-6">
+           <div className="min-w-0">
+             <h1 className="font-heading text-2xl sm:text-3xl font-bold">Voter Contacts</h1>
             <p className="text-muted-foreground mt-1">
               {contacts.length.toLocaleString()} contacts total{filtered.length !== contacts.length ? ` · ${filtered.length.toLocaleString()} shown` : ''}
               {contacts.length > 0 && (() => {
@@ -456,20 +456,20 @@ export default function Contacts() {
 
       {/* Filters & Bulk Actions */}
        <div className="space-y-4 mb-6">
-         <div className="flex flex-col sm:flex-row gap-3">
-           <div className="relative flex-1">
-             <Search className="w-4 h-4 absolute left-3 top-1/2 -translate-y-1/2 text-muted-foreground" />
-             <Input
-               placeholder="Search by name, address, postcode..."
-               value={search}
-               onChange={(e) => { setSearch(e.target.value); setPage(1); }}
-               className="pl-10"
-             />
-           </div>
-           <Select value={filter} onValueChange={(v) => { setFilter(v); setPage(1); }}>
-              <SelectTrigger className="w-[180px]">
-                <SelectValue placeholder="Filter..." />
-              </SelectTrigger>
+         <div className="flex flex-col sm:flex-row gap-2 sm:gap-3 overflow-x-auto">
+            <div className="relative flex-1 min-w-[200px]">
+              <Search className="w-4 h-4 absolute left-3 top-1/2 -translate-y-1/2 text-muted-foreground" />
+              <Input
+                placeholder="Search..."
+                value={search}
+                onChange={(e) => { setSearch(e.target.value); setPage(1); }}
+                className="pl-10 text-sm"
+              />
+            </div>
+            <Select value={filter} onValueChange={(v) => { setFilter(v); setPage(1); }}>
+               <SelectTrigger className="w-full sm:w-[140px] flex-shrink-0">
+                 <SelectValue placeholder="Filter" />
+               </SelectTrigger>
               <SelectContent>
                 <SelectItem value="all">All Contacts</SelectItem>
                 <SelectItem value="voters">Registered Voters</SelectItem>
@@ -482,8 +482,8 @@ export default function Contacts() {
               </SelectContent>
             </Select>
             <Select value={turfFilter} onValueChange={(v) => { setTurfFilter(v); setPage(1); }}>
-              <SelectTrigger className="w-[160px]">
-                <SelectValue placeholder="Turf zone..." />
+              <SelectTrigger className="w-full sm:w-[140px] flex-shrink-0">
+                <SelectValue placeholder="Turf" />
               </SelectTrigger>
               <SelectContent>
                 <SelectItem value="all">All Turfs</SelectItem>
@@ -491,8 +491,8 @@ export default function Contacts() {
               </SelectContent>
             </Select>
             <Select value={sortBy} onValueChange={(v) => { setSortBy(v); setPage(1); }}>
-              <SelectTrigger className="w-[140px]">
-                <SelectValue placeholder="Sort by..." />
+              <SelectTrigger className="w-full sm:w-[120px] flex-shrink-0">
+                <SelectValue placeholder="Sort" />
               </SelectTrigger>
               <SelectContent>
                 <SelectItem value="name">Sort: Name</SelectItem>
@@ -537,23 +537,23 @@ export default function Contacts() {
           <p className="text-muted-foreground">No contacts found.</p>
         </div>
       ) : (
-        <div className="grid gap-3">
+        <div className="grid gap-2 sm:gap-3">
            {paginated.map((contact) => (
-             <div key={contact.id} className={`bg-card rounded-xl border p-4 hover:shadow-sm transition-all flex items-center gap-4 cursor-pointer ${selectedIds.has(contact.id) ? 'border-primary bg-primary/5' : 'border-border/50'}`}>
+             <div key={contact.id} className={`bg-card rounded-lg sm:rounded-xl border p-3 sm:p-4 hover:shadow-sm transition-all flex flex-col sm:flex-row items-start sm:items-center gap-3 cursor-pointer ${selectedIds.has(contact.id) ? 'border-primary bg-primary/5' : 'border-border/50'}`}>
                <input
                  type="checkbox"
                  checked={selectedIds.has(contact.id)}
                  onChange={() => handleSelectContact(contact.id)}
                  className="w-4 h-4 rounded cursor-pointer flex-shrink-0"
                />
-               <div className="w-10 h-10 rounded-full bg-primary/10 flex items-center justify-center flex-shrink-0">
-                 <span className="text-sm font-bold text-primary">
+               <div className="w-9 h-9 sm:w-10 sm:h-10 rounded-full bg-primary/10 flex items-center justify-center flex-shrink-0">
+                 <span className="text-xs sm:text-sm font-bold text-primary">
                    {contact.name?.charAt(0)?.toUpperCase()}
                  </span>
                </div>
-              <div className="flex-1 min-w-0">
-                <div className="flex items-center gap-2 flex-wrap">
-                  <p className="font-medium text-sm">{contact.name}</p>
+               <div className="flex-1 min-w-0">
+                <div className="flex items-center gap-1 sm:gap-2 flex-wrap">
+                  <p className="font-medium text-sm leading-tight">{contact.name}</p>
                   {contact.registered_voter && (
                     <Badge variant="secondary" className="text-xs bg-green-100 text-green-700 border-green-200 flex items-center gap-1">
                       <CheckCircle2 className="w-3 h-3" /> Registered Voter
@@ -573,20 +573,20 @@ export default function Contacts() {
                     </Badge>
                   ))}
                 </div>
-                <div className="flex items-center gap-4 mt-1 text-xs text-muted-foreground flex-wrap">
-                  {contact.address && <span className="flex items-center gap-1"><MapPin className="w-3 h-3" />{contact.address}</span>}
-                  {contact.phone && <span className="flex items-center gap-1"><Phone className="w-3 h-3" />{contact.phone}</span>}
-                  {contact.email && <span className="flex items-center gap-1"><Mail className="w-3 h-3" />{contact.email}</span>}
+                <div className="flex items-center gap-2 sm:gap-4 mt-1 text-xs text-muted-foreground flex-wrap">
+                    {contact.address && <span className="flex items-center gap-1"><MapPin className="w-3 h-3" /><span className="hidden sm:inline">{contact.address}</span></span>}
+                    {contact.phone && <span className="flex items-center gap-1"><Phone className="w-3 h-3" /></span>}
+                    {contact.email && <span className="flex items-center gap-1"><Mail className="w-3 h-3" /></span>}
+                  </div>
                 </div>
-              </div>
-              <div className="flex items-center gap-1 flex-shrink-0">
-                <Button variant="ghost" size="icon" className="h-8 w-8" onClick={() => { setEditing(contact); setShowForm(true); }}>
-                  <Pencil className="w-3.5 h-3.5" />
-                </Button>
-                <Button variant="ghost" size="icon" className="h-8 w-8 text-destructive" onClick={() => { if (confirm(`Delete ${contact.name}?`)) deleteMutation.mutate(contact.id); }}>
-                  <Trash2 className="w-3.5 h-3.5" />
-                </Button>
-              </div>
+                <div className="flex items-center gap-1 flex-shrink-0 self-start sm:self-center">
+                  <Button variant="ghost" size="icon" className="h-8 w-8" onClick={() => { setEditing(contact); setShowForm(true); }}>
+                    <Pencil className="w-4 h-4" />
+                  </Button>
+                  <Button variant="ghost" size="icon" className="h-8 w-8 text-destructive" onClick={() => { if (confirm(`Delete ${contact.name}?`)) deleteMutation.mutate(contact.id); }}>
+                    <Trash2 className="w-4 h-4" />
+                  </Button>
+                </div>
             </div>
           ))}
         </div>

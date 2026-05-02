@@ -150,7 +150,7 @@ export default function Dashboard() {
   const dataError = contactError || eventError || taskError;
 
   return (
-    <div className="p-6 lg:p-10 max-w-[1400px] mx-auto">
+    <div className="p-3 sm:p-6 lg:p-10 max-w-[1400px] mx-auto">
       {dataError && (
         <div className="mb-6">
           <DataFetchError 
@@ -166,9 +166,9 @@ export default function Dashboard() {
       )}
 
       {/* Header */}
-      <div className="mb-8">
-        <p className="text-sm font-medium text-primary uppercase tracking-wider">Campaign HQ</p>
-        <h1 className="font-heading text-3xl lg:text-4xl font-bold mt-1">
+      <div className="mb-6 sm:mb-8">
+        <p className="text-xs sm:text-sm font-medium text-primary uppercase tracking-wider">Campaign HQ</p>
+        <h1 className="font-heading text-2xl sm:text-3xl lg:text-4xl font-bold mt-1">
           {campaign?.name || 'Campaign'}
         </h1>
         <p className="text-muted-foreground mt-1">
@@ -178,7 +178,7 @@ export default function Dashboard() {
       </div>
 
       {/* Stats Grid */}
-      <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4 mb-8">
+      <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-3 sm:gap-4 mb-6 sm:mb-8">
         <StatCard
           title="Doors Knocked"
           value={stats.canvassed}

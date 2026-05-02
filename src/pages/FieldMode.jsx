@@ -436,14 +436,14 @@ export default function FieldMode() {
           <div className="space-y-2 flex-shrink-0">
             <div className="flex gap-2">
               <Button 
-                className="flex-1 h-12 text-base gap-2" 
+                className="flex-1 h-12 sm:h-11 text-sm sm:text-base gap-2" 
                 onClick={() => setShowInteractionDialog(true)}
               >
-                <Check className="w-5 h-5" /> Log Interaction
+                <Check className="w-4 sm:w-5 h-4 sm:h-5" /> <span className="hidden sm:inline">Log</span> Interaction
               </Button>
               <Button
                 variant="outline"
-                className="h-12 px-3 gap-1.5 text-blue-600 border-blue-300"
+                className="h-12 sm:h-11 px-3 gap-1.5 text-blue-600 border-blue-300 flex-shrink-0"
                 onClick={() => openWalkingDirections(currentContact)}
                 title="Get walking directions"
               >
