@@ -1,5 +1,5 @@
 import React, { useState } from 'react';
-import { useMutation, useQueryClient } from '@tanstack/react-query';
+import { useMutation, useQueryClient, useQuery } from '@tanstack/react-query';
 import { useCampaign } from '@/lib/CampaignContext';
 import useSecureData from '@/hooks/useSecureData';
 import useAuditLog from '@/hooks/useAuditLog';
@@ -41,12 +41,23 @@ export default function Contacts() {
   const { log: auditLog } = useAuditLog();
   const campaignId = campaign?.id;
 
-  // Ensure campaignId exists before fetching
-  const { data: contacts = [], error: contactError, isLoading, refetch } = useSecureData(
-    'getContactDetails',
-    campaignId ? {} : null,
-    { staleTime: 120000, refetchInterval: 120000, enabled: !!campaignId }
-  );
+  // Fetch all contacts for campaign via entity list (RLS-scoped by campaign_id)
+  const { data: contacts = [], error: contactError, isLoading, refetch } = useQuery({
+    queryKey: ['contacts', campaignId],
+    queryFn: async () => {
+      if (!campaignId) return [];
+      try {
+        const all = await base44.entities.Contact.list('-created_date', 10000);
+        return Array.isArray(all) ? all.filter(c => c.campaign_id === campaignId) : [];
+      } catch (err) {
+        console.error('Failed to fetch contacts:', err);
+        throw err;
+      }
+    },
+    enabled: !!campaignId,
+    staleTime: 120000,
+    refetchInterval: 120000,
+  });
 
   const createMutation = useMutation({
     mutationFn: (data) => {
