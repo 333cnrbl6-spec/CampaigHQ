@@ -18,7 +18,7 @@ export const CampaignProvider = ({ children }) => {
   const initializeCampaigns = async () => {
     try {
       const currentUser = await base44.auth.me();
-      if (!currentUser) {
+      if (!currentUser?.email) {
         setNeedsSetup(true);
         setIsLoadingCampaign(false);
         return;
@@ -26,18 +26,40 @@ export const CampaignProvider = ({ children }) => {
 
       setUser(currentUser);
 
-      // Fetch all active campaigns
-      const allCampaigns = await base44.entities.Campaign.list('name', 1000);
-      const activeCampaigns = allCampaigns.filter(c => c.status === 'active');
+      // CRITICAL: In "Act as User" mode, user record may not have campaign_memberships populated.
+      // Fetch the full user record from the User entity to get the complete membership data.
+      let userMemberships = currentUser.campaign_memberships;
+      if (!Array.isArray(userMemberships) || userMemberships.length === 0) {
+        try {
+          const fullUserRecord = await base44.entities.User.filter({ email: currentUser.email });
+          if (Array.isArray(fullUserRecord) && fullUserRecord[0]) {
+            userMemberships = fullUserRecord[0].campaign_memberships;
+            console.log(`Loaded user memberships from User entity for ${currentUser.email}:`, userMemberships);
+          }
+        } catch (err) {
+          console.error('Failed to fetch full user record:', err);
+        }
+      }
 
-      // Build list of campaigns user can access
+      // Fetch all active campaigns
+      let allCampaigns = [];
+      try {
+        allCampaigns = await base44.entities.Campaign.list('name', 1000);
+      } catch (err) {
+        console.error('Failed to fetch campaigns:', err);
+        setIsLoadingCampaign(false);
+        setNeedsSetup(true);
+        return;
+      }
+
+      const activeCampaigns = allCampaigns.filter(c => c?.status === 'active');
       const accessibleCampaigns = [];
 
       // 1. Check campaign_memberships (modern structure)
-      if (currentUser.campaign_memberships && Array.isArray(currentUser.campaign_memberships)) {
-        for (const membership of currentUser.campaign_memberships) {
-          if (membership.status === 'active') {
-            const campaign = activeCampaigns.find(c => c.id === membership.campaign_id);
+      if (Array.isArray(userMemberships) && userMemberships.length > 0) {
+        for (const membership of userMemberships) {
+          if (membership?.status === 'active' && membership?.campaign_id) {
+            const campaign = activeCampaigns.find(c => c?.id === membership.campaign_id);
             if (campaign) {
               accessibleCampaigns.push({
                 ...campaign,
@@ -49,10 +71,10 @@ export const CampaignProvider = ({ children }) => {
       }
 
       // 2. Check if user is campaign owner (by owner_email)
-      const ownedCampaigns = activeCampaigns.filter(c => c.owner_email === currentUser.email);
+      const ownedCampaigns = activeCampaigns.filter(c => c?.owner_email === currentUser.email);
       for (const owned of ownedCampaigns) {
         // Don't duplicate if already in memberships
-        if (!accessibleCampaigns.find(c => c.id === owned.id)) {
+        if (!accessibleCampaigns.find(c => c?.id === owned.id)) {
           accessibleCampaigns.push({
             ...owned,
             userRole: 'campaign_admin',
@@ -67,7 +89,7 @@ export const CampaignProvider = ({ children }) => {
 
       // 1. Try default_campaign_id if set and valid
       if (currentUser.default_campaign_id) {
-        selectedCampaign = accessibleCampaigns.find(c => c.id === currentUser.default_campaign_id);
+        selectedCampaign = accessibleCampaigns.find(c => c?.id === currentUser.default_campaign_id);
       }
 
       // 2. Fall back to first accessible campaign
@@ -76,37 +98,46 @@ export const CampaignProvider = ({ children }) => {
       }
 
       // Load campaign or show setup
-      if (selectedCampaign) {
+      if (selectedCampaign?.id) {
         setCampaign(selectedCampaign);
         setUserRole(selectedCampaign.userRole);
 
         // Ensure user record is synced: set default_campaign_id and campaign_memberships if missing
-        const needsSync = !currentUser.default_campaign_id || !currentUser.campaign_memberships?.length;
-        if (needsSync) {
+        const hasDefaultSet = !!currentUser.default_campaign_id;
+        const hasMembership = Array.isArray(userMemberships) && userMemberships.some(m => m?.campaign_id === selectedCampaign.id && m?.status === 'active');
+        
+        if (!hasDefaultSet || !hasMembership) {
           const updates = {
             default_campaign_id: selectedCampaign.id,
           };
 
           // Ensure campaign_memberships has an entry for this campaign
-          if (!currentUser.campaign_memberships?.some(m => m.campaign_id === selectedCampaign.id && m.status === 'active')) {
+          if (!hasMembership) {
             updates.campaign_memberships = [
-              ...(currentUser.campaign_memberships?.filter(m => m.status === 'active') || []),
+              ...(Array.isArray(userMemberships) ? userMemberships.filter(m => m?.status === 'active') : []),
               {
                 campaign_id: selectedCampaign.id,
-                role: selectedCampaign.userRole,
+                role: selectedCampaign.userRole || 'volunteer',
                 added_date: new Date().toISOString(),
                 status: 'active',
               },
             ];
-          } else if (!currentUser.default_campaign_id) {
+          } else {
             // Just update default if memberships are already correct
-            updates.campaign_memberships = currentUser.campaign_memberships;
+            updates.campaign_memberships = userMemberships;
           }
 
-          await base44.auth.updateMe(updates);
+          try {
+            await base44.auth.updateMe(updates);
+            console.log(`User sync completed for ${currentUser.email}: campaign=${selectedCampaign.id}`);
+          } catch (err) {
+            console.error('Failed to sync user record:', err);
+            // Continue anyway — user is still able to access the campaign
+          }
         }
       } else {
         // No campaigns accessible — show setup
+        console.warn(`No accessible campaigns for ${currentUser.email}. Found ${accessibleCampaigns.length} accessible.`);
         setNeedsSetup(true);
       }
 
