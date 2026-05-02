@@ -10,16 +10,20 @@ const faqs = [
     category: 'Getting Started',
     items: [
       {
-        q: 'How do I create a new campaign?',
-        a: 'Go to Campaign Setup, select "New Campaign", and fill in your campaign details. You\'ll get an invite code to share with volunteers.',
+        q: 'How long does setup take?',
+        a: 'Campaign setup takes ~5 minutes. Import contacts (5 mins), assign volunteers (2 mins), start canvassing (live). Full onboarding available in Training Center.',
       },
       {
-        q: 'How do I invite volunteers?',
-        a: 'Share your campaign\'s invite code with volunteers. They can join via the Campaign Setup page by entering the code.',
+        q: 'Do you offer a free trial?',
+        a: 'Yes — 30-day free trial on all plans. No credit card required. Full access to all features. Cancel anytime.',
       },
       {
-        q: 'What\'s the difference between admin and user roles?',
-        a: 'Admins manage campaigns, users, and billing. Users participate in campaigns. Only one admin per campaign.',
+        q: 'Can I invite an unlimited number of volunteers?',
+        a: 'Yes. All plans include unlimited users. Each volunteer gets their own mobile app login and can work simultaneously.',
+      },
+      {
+        q: 'What if I need to add more features mid-campaign?',
+        a: 'Upgrade anytime with prorated billing. Or contact sales for custom setup — we support add-ons like SMS, integrations, and training.',
       },
     ],
   },
@@ -27,16 +31,20 @@ const faqs = [
     category: 'Canvassing & Field Work',
     items: [
       {
-        q: 'How do I log canvassing activity?',
-        a: 'Use Field Mode or the Canvassing Activity page. Log doors knocked, responses, and leaflets delivered.',
+        q: 'How does the mobile app work in the field?',
+        a: 'Volunteers open the app on their phone, see their assigned turf/street, and log door responses. The app shows support levels, previous notes, and proximity. Works fully offline — syncs when reconnected.',
       },
       {
-        q: 'Can I work offline?',
-        a: 'Field Mode supports offline mode. Your data syncs when connectivity returns.',
+        q: 'How do we track volunteer safety?',
+        a: 'Volunteers get a welfare check-in every 30 minutes. If they don\'t check in, team leads get an alert. GPS location (with consent) allows real-time tracking on the live map.',
       },
       {
-        q: 'How do I optimize my route?',
-        a: 'Go to Route Optimizer, select a turf area, and the system generates an efficient walking route.',
+        q: 'Can volunteers see real-time leaderboards?',
+        a: 'Yes. The app shows live leaderboards with doors knocked, support levels, and rankings. Updates in real-time to encourage friendly competition.',
+      },
+      {
+        q: 'What happens if volunteers work offline?',
+        a: 'All interactions save locally on the phone. When reconnected to WiFi/mobile, data syncs automatically. No data loss.',
       },
     ],
   },
@@ -44,16 +52,24 @@ const faqs = [
     category: 'Data & Contacts',
     items: [
       {
-        q: 'How do I import voter lists?',
-        a: 'Use Data Import to upload CSV/Excel files. The system validates and geocodes addresses automatically.',
+        q: 'What data formats can I import?',
+        a: 'CSV, Excel (.xlsx), and TMC (Targeted Micro Canvassing) format. Required columns: name, address, postcode. Optional: phone, email, support level, notes.',
       },
       {
-        q: 'What\'s geocoding and why is it needed?',
-        a: 'Geocoding converts addresses to map coordinates. It\'s needed for routing, mapping, and location-based features.',
+        q: 'How do I prevent duplicate contacts?',
+        a: 'Use Deduplicate tool (Contacts → Data Tools). It automatically finds addresses appearing multiple times and merges them, keeping one primary record.',
       },
       {
-        q: 'How do I handle GDPR requests?',
-        a: 'Go to GDPR Compliance, log a "Right to be Forgotten" request. The system handles deletion automatically.',
+        q: 'Is my voter data secure?',
+        a: 'Yes. All data encrypted at rest and in transit (HTTPS). Row-level security ensures users only see their campaign\'s data. Full audit trail of all access.',
+      },
+      {
+        q: 'Can I own my data after the campaign?',
+        a: 'Yes. Download your full contact list and interaction history anytime as CSV. We retain data for 12 months post-election, then delete unless you ask us to keep it.',
+      },
+      {
+        q: 'How do I handle GDPR right-to-be-forgotten requests?',
+        a: 'Go to GDPR Compliance, log request with contact email. System automatically anonymizes/deletes their data within 30 days. Audit log maintained for compliance.',
       },
     ],
   },
@@ -74,52 +90,62 @@ const faqs = [
 
 const tutorials = [
   {
-    title: 'Setting Up Your First Campaign',
+    title: 'Campaign Setup Walkthrough',
     duration: '5 min',
-    description: 'Walk through creating a campaign and inviting your team.',
+    description: 'Create a campaign, set up your team, and invite your first volunteers.',
   },
   {
-    title: 'Field Canvassing 101',
-    duration: '8 min',
-    description: 'Learn how to use Field Mode for door-to-door canvassing.',
-  },
-  {
-    title: 'Route Planning & Optimization',
+    title: 'Field Canvassing: Volunteer Edition',
     duration: '6 min',
-    description: 'Optimize volunteer routes for maximum coverage.',
+    description: 'How to use the mobile app: logging responses, offline mode, leaderboards.',
+  },
+  {
+    title: 'Organizing: Managing Your Campaign',
+    duration: '8 min',
+    description: 'Assigning turfs, tracking volunteers, viewing real-time reports.',
   },
   {
     title: 'Importing Voter Data',
     duration: '7 min',
-    description: 'Upload and process voter lists for your campaign.',
+    description: 'Import CSV/Excel, validate, geocode, and deduplicate contacts.',
+  },
+  {
+    title: 'GDPR & Data Compliance',
+    duration: '5 min',
+    description: 'Consent tracking, right-to-be-forgotten requests, audit logs.',
+  },
+  {
+    title: 'Reports & Analytics',
+    duration: '6 min',
+    description: 'Run reports, export data, analyze canvassing performance.',
   },
 ];
 
 const docs = [
   {
-    title: 'Campaign Manager User Guide',
-    size: 'PDF · 12 pages',
-    description: 'Complete guide for organizers managing campaigns.',
+    title: 'User Guide (Complete)',
+    size: 'MD · 12 sections',
+    description: 'Full documentation: campaign setup, field work, reporting, compliance, troubleshooting, FAQ.',
   },
   {
-    title: 'Volunteer Handbook',
-    size: 'PDF · 8 pages',
-    description: 'Quick reference for volunteers in the field.',
+    title: 'Quick Start Guide',
+    size: 'PDF · 4 pages',
+    description: 'Get running in 15 minutes: create campaign, import contacts, start canvassing.',
   },
   {
-    title: 'Data Import & Validation',
+    title: 'Volunteer Mobile App Guide',
+    size: 'PDF · 6 pages',
+    description: 'Field canvassing reference: using the app, logging responses, offline mode, safety features.',
+  },
+  {
+    title: 'Data Import & Deduplication',
     size: 'PDF · 5 pages',
-    description: 'Technical guide for importing and cleaning voter data.',
+    description: 'Import CSV/Excel, handle duplicates, geocode addresses, validate data.',
   },
   {
     title: 'GDPR & Data Compliance',
-    size: 'PDF · 6 pages',
-    description: 'Legal requirements and how the system enforces them.',
-  },
-  {
-    title: 'API Integration Guide',
-    size: 'PDF · 10 pages',
-    description: 'For developers integrating with external systems.',
+    size: 'PDF · 7 pages',
+    description: 'Consent management, right-to-be-forgotten, audit logs, data retention, DPA requirements.',
   },
 ];
 

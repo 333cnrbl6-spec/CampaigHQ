@@ -10,71 +10,80 @@ export default function Pricing() {
   const plans = [
     {
       name: 'Starter',
-      description: 'Perfect for local campaigns',
-      price: billingCycle === 'monthly' ? 500 : 5000,
+      description: 'Local campaigns and wards',
+      price: billingCycle === 'monthly' ? 99 : 990,
       period: billingCycle,
       contacts: '5,000',
+      volunteers: '10',
       color: 'bg-blue-50',
-      cta: 'Get Started',
+      cta: 'Start Free Trial',
       features: [
-        { name: 'Contact management', included: true },
-        { name: 'Basic canvassing', included: true },
-        { name: 'Team collaboration', included: true },
+        { name: 'Unlimited users per campaign', included: true },
+        { name: 'Contact management & geocoding', included: true },
+        { name: 'Mobile canvassing app', included: true },
+        { name: 'Real-time leaderboards', included: true },
+        { name: 'Data import (CSV, Excel)', included: true },
+        { name: 'Email alerts', included: true },
         { name: 'Email support', included: true },
-        { name: 'API access', included: false },
-        { name: 'AI route optimization', included: false },
-        { name: 'Predictive analytics', included: false },
-        { name: 'Priority support', included: false },
+        { name: 'Route optimization', included: false },
+        { name: 'Slack integration', included: false },
+        { name: 'Priority support (24-hour)', included: false },
       ],
     },
     {
       name: 'Professional',
-      description: 'For regional campaigns',
-      price: billingCycle === 'monthly' ? 2000 : 20000,
+      description: 'Regional & multi-ward campaigns',
+      price: billingCycle === 'monthly' ? 299 : 2990,
       period: billingCycle,
       contacts: '50,000',
+      volunteers: '100',
       color: 'bg-green-50',
       cta: 'Start Free Trial',
       featured: true,
       features: [
-        { name: 'Contact management', included: true },
-        { name: 'Advanced canvassing', included: true },
-        { name: 'Team collaboration', included: true },
-        { name: 'Phone & email support', included: true },
-        { name: 'API access', included: true },
+        { name: 'Unlimited users per campaign', included: true },
+        { name: 'Contact management & geocoding', included: true },
+        { name: 'Mobile canvassing app', included: true },
+        { name: 'Real-time leaderboards', included: true },
+        { name: 'Data import (CSV, Excel, TMC)', included: true },
+        { name: 'Email alerts & Slack integration', included: true },
         { name: 'AI route optimization', included: true },
-        { name: 'Predictive analytics', included: true },
-        { name: 'Priority support', included: false },
+        { name: 'Turf management & mapping', included: true },
+        { name: 'Phone & email support', included: true },
+        { name: 'Priority support (24-hour)', included: false },
       ],
     },
     {
       name: 'Enterprise',
-      description: 'National campaigns & organizations',
+      description: 'National campaigns & party infrastructure',
       price: 'Custom',
       period: 'contact sales',
       contacts: 'Unlimited',
+      volunteers: 'Unlimited',
       color: 'bg-purple-50',
       cta: 'Contact Sales',
       features: [
-        { name: 'Contact management', included: true },
-        { name: 'Advanced canvassing', included: true },
-        { name: 'Team collaboration', included: true },
-        { name: '24/7 support', included: true },
-        { name: 'API access', included: true },
-        { name: 'AI route optimization', included: true },
-        { name: 'Predictive analytics', included: true },
-        { name: 'Priority support', included: true },
+        { name: 'All Professional features', included: true },
+        { name: 'Unlimited users & campaigns', included: true },
+        { name: 'SMS notifications', included: true },
+        { name: 'Advanced analytics & reporting', included: true },
+        { name: 'White-label platform', included: true },
+        { name: 'Custom integrations', included: true },
+        { name: 'Dedicated account manager', included: true },
+        { name: '24/7 priority support', included: true },
+        { name: 'SLA guarantee (99.5% uptime)', included: true },
+        { name: 'Onsite training & implementation', included: true },
       ],
     },
   ];
 
   const addOns = [
-    { name: 'Data Migration', price: '£2,000', description: 'Import existing voter data' },
-    { name: 'Training (per day)', price: '£500', description: 'On-site or remote training' },
-    { name: 'SMS Gateway', price: '£100/mo', description: 'Send up to 10K SMS per month' },
-    { name: 'Email Campaign', price: '£50/mo', description: 'Send up to 50K emails per month' },
-    { name: 'Voter Data Enrichment', price: 'Variable', description: 'Append demographics & history' },
-    { name: 'White-label Setup', price: '£5,000', description: 'Custom branding & domain' },
+    { name: 'Data Migration', price: '£2,000', description: 'Migrate existing voter data from CSV, Excel, or legacy systems' },
+    { name: 'Team Training', price: '£500/day', description: 'On-site or remote training for campaign managers & volunteers' },
+    { name: 'SMS Notifications', price: '£100/mo', description: 'Send up to 10K SMS alerts for volunteer coordination' },
+    { name: 'Advanced Reporting', price: '£50/mo', description: 'Custom dashboards and email reports' },
+    { name: 'Implementation Support', price: '£3,000', description: 'Dedicated setup, turf mapping, and go-live support' },
+    { name: 'Custom Integrations', price: 'Custom', description: 'Connect to CRM, email providers, or custom systems' },
   ];
 
   return (
@@ -82,9 +91,9 @@ export default function Pricing() {
       <div className="max-w-7xl mx-auto space-y-12">
         {/* Header */}
         <div className="text-center space-y-4">
-          <h1 className="text-4xl font-heading font-bold">Simple, Transparent Pricing</h1>
+          <h1 className="text-4xl font-heading font-bold">Campaign Software Made Simple</h1>
           <p className="text-xl text-muted-foreground">
-            Choose the plan that fits your campaign size. All plans include core features.
+            One platform for canvassing, coordination, and accountability. No setup fees. Free 30-day trial on all plans. Cancel anytime.
           </p>
         </div>
 
@@ -141,7 +150,7 @@ export default function Pricing() {
                     {typeof plan.price === 'number' ? `per ${plan.period}` : plan.period}
                   </p>
                   <p className="text-sm text-primary font-medium mt-2">
-                    Up to {plan.contacts} contacts
+                    Up to {plan.contacts} contacts · {plan.volunteers} volunteers
                   </p>
                 </div>
 
@@ -254,19 +263,19 @@ export default function Pricing() {
             {[
               {
                 q: 'Can I upgrade or downgrade anytime?',
-                a: 'Yes, upgrade or downgrade your plan any time. Changes take effect immediately.',
-              },
-              {
-                q: 'Do you offer discounts for multi-year commitments?',
-                a: 'Yes, we offer 20% discount for 2-year commitments. Contact sales for details.',
+                a: 'Yes, change your plan anytime with no fees or penalties. Changes take effect immediately.',
               },
               {
                 q: 'Is there a free trial?',
-                a: '30-day free trial available for all plans. No credit card required.',
+                a: '30-day free trial on all plans. No credit card required to start.',
               },
               {
-                q: 'What about data after the election?',
-                a: 'Your data is yours. Export anytime. We retain data for 12 months post-election.',
+                q: 'What happens after the election?',
+                a: 'Your data is yours to keep. Export contacts, reports, and insights in CSV. We store your data for 12 months at no cost, then delete it unless you ask us to keep it.',
+              },
+              {
+                q: 'Do you offer annual discounts?',
+                a: 'Yes — save 17% when you pay annually. Custom discounts available for multi-year campaigns and party infrastructure.',
               },
             ].map((faq, i) => (
               <Card key={i}>
