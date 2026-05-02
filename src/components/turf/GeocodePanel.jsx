@@ -16,9 +16,11 @@ export default function GeocodePanel({ onClose }) {
     staleTime: 10000,
   });
 
-  const geocodedCount = contacts.filter(c => c.latitude != null).length;
+  // latitude=0 is a "geocode failed" sentinel — exclude from both counts
+  const geocodedCount = contacts.filter(c => c.latitude != null && c.latitude !== 0).length;
+  const failedCount = contacts.filter(c => c.latitude === 0).length;
   const addressedCount = contacts.filter(c => c.address?.trim() || c.postcode?.trim()).length;
-  const remaining = addressedCount - geocodedCount;
+  const remaining = addressedCount - geocodedCount - failedCount;
 
   async function runGeocode() {
     setRunning(true);
@@ -33,8 +35,13 @@ export default function GeocodePanel({ onClose }) {
       const res = await base44.functions.invoke('batchGeocodeContacts', {});
       const r = res.data?.results;
       moreRemaining = r?.more_remaining ?? false;
-      currentDone += r?.succeeded ?? 0;
+      const succeeded = r?.succeeded ?? 0;
+      currentDone += succeeded;
       setDone(currentDone);
+
+      // If nothing succeeded this round, all remaining have invalid postcodes — stop
+      if (succeeded === 0) break;
+
       if (moreRemaining) {
         await new Promise(resolve => setTimeout(resolve, 400));
       }
@@ -63,10 +70,10 @@ export default function GeocodePanel({ onClose }) {
 
       <div className="p-4 space-y-4">
         {/* Stats */}
-        <div className="grid grid-cols-3 gap-2 text-center">
+        <div className="grid grid-cols-4 gap-2 text-center">
           <div className="bg-muted rounded-lg p-2">
             <div className="text-lg font-bold text-foreground">{addressedCount.toLocaleString()}</div>
-            <div className="text-xs text-muted-foreground">Total with address</div>
+            <div className="text-xs text-muted-foreground">Total</div>
           </div>
           <div className="bg-green-50 rounded-lg p-2">
             <div className="text-lg font-bold text-green-700">{geocodedCount.toLocaleString()}</div>
@@ -74,7 +81,11 @@ export default function GeocodePanel({ onClose }) {
           </div>
           <div className="bg-amber-50 rounded-lg p-2">
             <div className="text-lg font-bold text-amber-700">{remaining.toLocaleString()}</div>
-            <div className="text-xs text-muted-foreground">Still needed</div>
+            <div className="text-xs text-muted-foreground">Pending</div>
+          </div>
+          <div className="bg-red-50 rounded-lg p-2">
+            <div className="text-lg font-bold text-red-600">{failedCount.toLocaleString()}</div>
+            <div className="text-xs text-muted-foreground">No postcode</div>
           </div>
         </div>
 
@@ -96,13 +107,13 @@ export default function GeocodePanel({ onClose }) {
 
         {finished && (
           <p className="text-sm text-green-700 font-medium text-center">
-            ✓ All contacts geocoded — walking routes are now fully accurate.
+            ✓ Done! {failedCount > 0 ? `${failedCount} contacts had no valid postcode and were skipped.` : 'All contacts geocoded successfully.'}
           </p>
         )}
 
         {!finished && remaining === 0 && !running && (
           <p className="text-sm text-green-700 font-medium text-center">
-            ✓ All contacts already geocoded.
+            ✓ All addressable contacts are geocoded.{failedCount > 0 ? ` (${failedCount} skipped — no valid postcode)` : ''}
           </p>
         )}
 
