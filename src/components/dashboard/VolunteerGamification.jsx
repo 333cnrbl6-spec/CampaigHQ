@@ -1,19 +1,81 @@
-import React, { useEffect, useState } from 'react';
+import React from 'react';
 import { base44 } from '@/api/base44Client';
 import { useQuery } from '@tanstack/react-query';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
-import { Flame, Trophy, Star, Zap, Medal } from 'lucide-react';
+import { Flame, Trophy, Star, Medal } from 'lucide-react';
+import { useCampaign } from '@/lib/CampaignContext';
 
 export default function VolunteerGamification() {
-  const { data: achievements, isLoading } = useQuery({
-    queryKey: ['volunteerAchievements'],
-    queryFn: () => base44.functions.invoke('calculateVolunteerAchievements', {}),
-    refetchInterval: 60000, // Refresh every minute
+  const { campaign } = useCampaign();
+  const campaignId = campaign?.id;
+
+  // Fetch canvassing logs to calculate achievements
+  const { data: volunteers = [], isLoading } = useQuery({
+    queryKey: ['volunteerAchievements', campaignId],
+    queryFn: async () => {
+      if (!campaignId) return [];
+      try {
+        const all = await base44.entities.CanvassingLog.list('-created_date', 10000);
+        const logs = Array.isArray(all) ? all.filter(l => l.campaign_id === campaignId) : [];
+        
+        // Group by volunteer and calculate achievements
+        const byVolunteer = {};
+        logs.forEach(log => {
+          const email = log.volunteer_email || log.volunteer_name || 'Unknown';
+          if (!byVolunteer[email]) {
+            byVolunteer[email] = {
+              name: log.volunteer_name || email,
+              email: email,
+              total_doors: 0,
+              sessions_count: 0,
+              positive_responses: 0,
+              negative_responses: 0,
+              current_streak: 0,
+              days_since_last_session: 0,
+              response_rate: 0,
+              momentum_score: 0,
+              badges: [],
+            };
+          }
+          byVolunteer[email].total_doors += log.doors_knocked || 0;
+          byVolunteer[email].sessions_count += 1;
+          byVolunteer[email].positive_responses += log.positive_responses || 0;
+          byVolunteer[email].negative_responses += log.negative_responses || 0;
+        });
+
+        // Calculate metrics
+        Object.values(byVolunteer).forEach(vol => {
+          vol.response_rate = vol.total_doors > 0 
+            ? Math.round((vol.positive_responses / vol.total_doors) * 100)
+            : 0;
+          vol.momentum_score = vol.total_doors + (vol.positive_responses * 2);
+          
+          // Assign basic badges
+          if (vol.sessions_count >= 10) vol.badges.push({ id: 1, label: 'Active', description: '10+ sessions' });
+          if (vol.response_rate >= 50) vol.badges.push({ id: 2, label: 'Persuader', description: '50%+ positive' });
+          if (vol.total_doors >= 100) vol.badges.push({ id: 3, label: 'Canvasser', description: '100+ doors' });
+        });
+
+        return Object.values(byVolunteer).sort((a, b) => b.momentum_score - a.momentum_score);
+      } catch (err) {
+        console.error('Failed to fetch achievements:', err);
+        return [];
+      }
+    },
+    enabled: !!campaignId,
+    staleTime: 60000,
+    refetchInterval: 60000,
   });
 
-  const volunteers = achievements?.data?.volunteers || [];
-  const summary = achievements?.data?.summary || {};
+  const summary = {
+    total_volunteers: volunteers.length,
+    top_streak: Math.max(...volunteers.map(v => v.current_streak || 0), 0),
+    average_response_rate: volunteers.length > 0 
+      ? Math.round(volunteers.reduce((sum, v) => sum + v.response_rate, 0) / volunteers.length)
+      : 0,
+    most_active: volunteers[0]?.name || 'None yet',
+  };
   const topVolunteers = volunteers.slice(0, 5);
 
   if (isLoading) {

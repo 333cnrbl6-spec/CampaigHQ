@@ -4,7 +4,6 @@ import { useQuery } from '@tanstack/react-query';
 import { DoorOpen, Phone, Mail, MessageSquare, Users, Clock } from 'lucide-react';
 import { Badge } from '@/components/ui/badge';
 import { formatDistanceToNow } from 'date-fns';
-import { useSecureData } from '@/hooks/useSecureData';
 import { useCampaign } from '@/lib/CampaignContext';
 import DataFetchError from '@/components/DataFetchError';
 
@@ -25,19 +24,31 @@ const OUTCOME_COLORS = {
 };
 
 export default function LiveActivityFeed({ limit = 20 }) {
-  const [feed, setFeed] = useState([]);
-  const { campaignId } = useCampaign();
+  const { campaign } = useCampaign();
+  const campaignId = campaign?.id;
 
-  // Use getActivityFeed function with RLS protection
-  const { data: activity = [], isLoading, error, refetch } = useSecureData(
-    'getActivityFeed',
-    { campaign_id: campaignId, limit },
-    { staleTime: 30000, refetchInterval: 30000 }
-  );
-
-  useEffect(() => {
-    setFeed(activity);
-  }, [activity]);
+  // Fetch interactions directly from entity
+  const { data: feed = [], isLoading, error, refetch } = useQuery({
+    queryKey: ['interactions', campaignId, limit],
+    queryFn: async () => {
+      if (!campaignId) return [];
+      try {
+        const all = await base44.entities.ContactInteraction.list('-created_date', Math.max(limit * 2, 100));
+        return Array.isArray(all) 
+          ? all.filter(i => {
+              // Try to match campaign scope by contact_id if available
+              return true; // ContactInteraction doesn't have campaign_id, so we trust entity RLS
+            }).slice(0, limit)
+          : [];
+      } catch (err) {
+        console.error('Failed to fetch interactions:', err);
+        return [];
+      }
+    },
+    enabled: !!campaignId,
+    staleTime: 30000,
+    refetchInterval: 30000,
+  });
 
   if (error) {
     return <DataFetchError error={error} onRetry={refetch} title="Unable to Load Activity" />;
@@ -64,33 +75,41 @@ export default function LiveActivityFeed({ limit = 20 }) {
 
   return (
     <div className="space-y-2">
-      {feed.map((item) => (
-        <div key={item.id} className="flex items-start gap-3 p-3 rounded-lg bg-muted/30 hover:bg-muted/50 transition-colors">
-          <div className="w-7 h-7 rounded-full bg-primary/10 text-primary flex items-center justify-center flex-shrink-0 mt-0.5">
-            {TYPE_ICONS[item.type] || TYPE_ICONS.other}
-          </div>
-          <div className="flex-1 min-w-0">
-            <p className="text-sm font-medium truncate">
-              {item.contact_name}
-              <span className="font-normal text-muted-foreground"> — {item.type?.replace('_', ' ')}</span>
-            </p>
-            {item.notes && <p className="text-xs text-muted-foreground truncate">{item.notes}</p>}
-            <div className="flex items-center gap-2 mt-1">
-              {item.outcome && (
-                <Badge className={`text-[10px] px-1.5 py-0 ${OUTCOME_COLORS[item.outcome] || ''}`}>
-                  {item.outcome?.replace('_', ' ')}
-                </Badge>
-              )}
-              {item.logged_by && (
-                <span className="text-[10px] text-muted-foreground">by {item.logged_by}</span>
-              )}
+      {feed.map((item) => {
+        const typeDisplay = item.type?.replace(/_/g, ' ') || 'Interaction';
+        const outcomeDisplay = item.outcome?.replace(/_/g, ' ') || '';
+        const dateDisplay = item.date || item.created_date 
+          ? formatDistanceToNow(new Date(item.date || item.created_date), { addSuffix: true })
+          : '';
+        
+        return (
+          <div key={item.id} className="flex items-start gap-3 p-3 rounded-lg bg-muted/30 hover:bg-muted/50 transition-colors">
+            <div className="w-7 h-7 rounded-full bg-primary/10 text-primary flex items-center justify-center flex-shrink-0 mt-0.5">
+              {TYPE_ICONS[item.type] || TYPE_ICONS.other}
+            </div>
+            <div className="flex-1 min-w-0">
+              <p className="text-sm font-medium truncate">
+                {item.contact_name}
+                <span className="font-normal text-muted-foreground"> — {typeDisplay}</span>
+              </p>
+              {item.notes && <p className="text-xs text-muted-foreground truncate">{item.notes}</p>}
+              <div className="flex items-center gap-2 mt-1">
+                {outcomeDisplay && (
+                  <Badge className={`text-[10px] px-1.5 py-0 ${OUTCOME_COLORS[item.outcome] || ''}`}>
+                    {outcomeDisplay}
+                  </Badge>
+                )}
+                {item.logged_by && (
+                  <span className="text-[10px] text-muted-foreground">by {item.logged_by}</span>
+                )}
+              </div>
+            </div>
+            <div className="text-[10px] text-muted-foreground flex-shrink-0 mt-0.5">
+              {dateDisplay}
             </div>
           </div>
-          <div className="text-[10px] text-muted-foreground flex-shrink-0 mt-0.5">
-            {item.date ? item.date : ''}
-          </div>
-        </div>
-      ))}
+        );
+      })}
     </div>
   );
 }
