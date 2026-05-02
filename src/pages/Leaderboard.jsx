@@ -1,5 +1,6 @@
 import { useCampaign } from '@/lib/CampaignContext';
-import { useSecureData } from '@/hooks/useSecureData';
+import { useQuery } from '@tanstack/react-query';
+import { base44 } from '@/api/base44Client';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
 import DataFetchError from '@/components/DataFetchError';
@@ -25,12 +26,50 @@ export default function Leaderboard() {
   const { campaign } = useCampaign();
   const campaignId = campaign?.id;
 
-  // Fetch leaderboard data via RLS-protected function
-  const { data: leaderboard = [], isLoading, error, refetch } = useSecureData(
-    'getLeaderboardData',
-    campaignId ? {} : null,
-    { staleTime: 300000, refetchInterval: 300000, enabled: !!campaignId } // Cache for 5 minutes
-  );
+  // Fetch canvassing logs and aggregate into leaderboard
+  const { data: leaderboard = [], isLoading, error, refetch } = useQuery({
+    queryKey: ['leaderboard', campaignId],
+    queryFn: async () => {
+      if (!campaignId) return [];
+      try {
+        const all = await base44.entities.CanvassingLog.list('-created_date', 10000);
+        const logs = Array.isArray(all) ? all.filter(l => l.campaign_id === campaignId) : [];
+        
+        // Group by volunteer email and sum stats
+        const byVolunteer = {};
+        logs.forEach(log => {
+          const email = log.volunteer_email || log.volunteer_name || 'Unknown';
+          if (!byVolunteer[email]) {
+            byVolunteer[email] = {
+              name: log.volunteer_name || email,
+              email: email,
+              doors_knocked: 0,
+              positive_responses: 0,
+              negative_responses: 0,
+              no_answers: 0,
+              undecided_count: 0,
+            };
+          }
+          byVolunteer[email].doors_knocked += log.doors_knocked || 0;
+          byVolunteer[email].positive_responses += log.positive_responses || 0;
+          byVolunteer[email].negative_responses += log.negative_responses || 0;
+          byVolunteer[email].no_answers += log.no_answers || 0;
+          byVolunteer[email].undecided_count += log.undecided_count || 0;
+        });
+        
+        // Convert to array and sort by doors knocked descending
+        return Object.values(byVolunteer)
+          .map(v => ({ ...v, total: v.doors_knocked }))
+          .sort((a, b) => b.doors_knocked - a.doors_knocked);
+      } catch (err) {
+        console.error('Failed to fetch leaderboard:', err);
+        return [];
+      }
+    },
+    enabled: !!campaignId,
+    staleTime: 300000,
+    refetchInterval: 300000,
+  });
 
   const ranked = leaderboard || [];
   const activeCanvassers = ranked.length;
