@@ -12,32 +12,50 @@ export const useSecureData = (functionName, params, options = {}) => {
   const { data, isLoading, error, refetch, isFetching } = useQuery(
     [functionName, JSON.stringify(params)],
     async () => {
+      if (!functionName || !params) {
+        throw new Error('Function name and params are required');
+      }
+      
       try {
         const response = await base44.functions.invoke(functionName, params);
         
-        // Log successful data access
-        base44.analytics.track({
-          eventName: 'secure_data_access',
-          properties: {
-            function: functionName,
-            status: 'success',
-            user_email: user?.email
-          }
-        });
+        // Ensure response has expected structure
+        const result = response?.data ?? null;
+        if (!Array.isArray(result) && result !== null) {
+          console.warn(`Expected array or null from ${functionName}, got:`, typeof result);
+          return Array.isArray(result) ? result : [];
+        }
         
-        return response.data;
-      } catch (err) {
-        // Handle 403 (RLS denial) gracefully
-        if (err.response?.status === 403) {
-          // Log denied access attempt
+        // Log successful data access
+        try {
           base44.analytics.track({
             eventName: 'secure_data_access',
             properties: {
               function: functionName,
-              status: 'denied',
+              status: 'success',
               user_email: user?.email
             }
           });
+        } catch (trackErr) {
+          console.warn('Analytics tracking failed:', trackErr);
+        }
+        
+        return result || [];
+      } catch (err) {
+        // Handle 403 (RLS denial) gracefully
+        if (err.response?.status === 403) {
+          try {
+            base44.analytics.track({
+              eventName: 'secure_data_access',
+              properties: {
+                function: functionName,
+                status: 'denied',
+                user_email: user?.email
+              }
+            });
+          } catch (trackErr) {
+            console.warn('Analytics tracking failed:', trackErr);
+          }
           
           throw new Error('You do not have access to this data.');
         }
@@ -47,7 +65,7 @@ export const useSecureData = (functionName, params, options = {}) => {
           throw new Error('Authentication required. Please log in.');
         }
         
-        // Handle other errors
+        console.error(`useSecureData error in ${functionName}:`, err);
         throw err;
       }
     },
@@ -56,7 +74,7 @@ export const useSecureData = (functionName, params, options = {}) => {
       cacheTime: 120000, // Default 2 minutes
       retry: 2,
       retryDelay: (attemptIndex) => Math.min(1000 * 2 ** attemptIndex, 30000),
-      enabled: !!user, // Only run if user is authenticated
+      enabled: !!(user && params && functionName), // Only run if user, params, and functionName present
       ...options
     }
   );

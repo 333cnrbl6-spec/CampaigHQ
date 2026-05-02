@@ -21,50 +21,50 @@ export default function Dashboard() {
   const [showOptimizationHint, setShowOptimizationHint] = useState(true);
   const { campaignId } = useCampaign();
 
-  // Fetch RLS-protected data with secure data hooks
+  // Fetch RLS-protected data with secure data hooks — defensive loading with defaults
   const { data: contacts = [], error: contactError, refetch: refetchContacts } = useSecureData(
     'getContactDetails',
-    { campaign_id: campaignId },
-    { staleTime: 120000, refetchInterval: 120000 }
+    campaignId ? { campaign_id: campaignId } : null,
+    { staleTime: 120000, refetchInterval: 120000, enabled: !!campaignId }
   );
 
   const { data: events = [], error: eventError, refetch: refetchEvents } = useSecureData(
     'getActivityFeed',
-    { campaign_id: campaignId },
-    { staleTime: 180000, refetchInterval: 180000 }
+    campaignId ? { campaign_id: campaignId } : null,
+    { staleTime: 180000, refetchInterval: 180000, enabled: !!campaignId }
   );
 
   const { data: tasks = [], error: taskError, refetch: refetchTasks } = useSecureData(
     'getSessionLogs',
-    { campaign_id: campaignId },
-    { staleTime: 120000, refetchInterval: 120000 }
+    campaignId ? { campaign_id: campaignId } : null,
+    { staleTime: 120000, refetchInterval: 120000, enabled: !!campaignId }
   );
 
   // Get interactions via ActivityFeed function
   const { data: allActivity = [] } = useSecureData(
     'getActivityFeed',
-    { campaign_id: campaignId },
-    { staleTime: 60000, refetchInterval: 60000 }
+    campaignId ? { campaign_id: campaignId } : null,
+    { staleTime: 60000, refetchInterval: 60000, enabled: !!campaignId }
   );
-  const interactions = allActivity || [];
+  const interactions = Array.isArray(allActivity) ? allActivity : [];
 
   // Get logs via SessionLogs function
   const { data: logs = [] } = useSecureData(
     'getSessionLogs',
-    { campaign_id: campaignId },
-    { staleTime: 120000, refetchInterval: 120000 }
+    campaignId ? { campaign_id: campaignId } : null,
+    { staleTime: 120000, refetchInterval: 120000, enabled: !!campaignId }
   );
 
   // For issues, use a simple empty array since we don't have a dedicated function yet
   const issues = [];
 
-  const canvassed = contacts.filter(c => c.canvassed).length;
-  const supporters = contacts.filter(c => ['strong_supporter', 'leaning'].includes(c.support_level)).length;
-  const upcomingEvents = events.filter(e => e.status === 'upcoming');
-  const activeTasks = tasks.filter(t => t.status !== 'done').length;
+  const canvassed = Array.isArray(contacts) ? contacts.filter(c => c?.canvassed).length : 0;
+  const supporters = Array.isArray(contacts) ? contacts.filter(c => ['strong_supporter', 'leaning'].includes(c?.support_level)).length : 0;
+  const upcomingEvents = Array.isArray(events) ? events.filter(e => e?.status === 'upcoming') : [];
+  const activeTasks = Array.isArray(tasks) ? tasks.filter(t => t?.status !== 'done').length : 0;
   // Exclude latitude=0 sentinel (permanently failed) from "needs geocoding" count
-  const needsGeocoding = contacts.filter(c => (!c.latitude || !c.longitude) && c.latitude !== 0).length;
-  const doorsThisWeek = logs.reduce((sum, l) => sum + (l.doors_knocked || 0), 0);
+  const needsGeocoding = Array.isArray(contacts) ? contacts.filter(c => (!c?.latitude || !c?.longitude) && c?.latitude !== 0).length : 0;
+  const doorsThisWeek = Array.isArray(logs) ? logs.reduce((sum, l) => sum + (l?.doors_knocked || 0), 0) : 0;
 
   // Show data fetch error if present
   const dataError = contactError || eventError || taskError;

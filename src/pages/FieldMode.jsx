@@ -41,16 +41,29 @@ export default function FieldMode() {
   const [welfareCheckedIn, setWelfareCheckedIn] = useState(false);
   const [showWelfareAlert, setShowWelfareAlert] = useState(false);
 
-  // Gate: check volunteer profile on mount
+  // Gate: check volunteer profile on mount — with defensive error handling
   useEffect(() => {
-    base44.auth.me().then(user => {
-      if (!user) return;
-      base44.entities.VolunteerProfile.filter({ user_email: user.email }).then(profiles => {
-        const complete = profiles.some(p => p.setup_complete && p.gdpr_consent);
-        setProfileComplete(complete);
+    const checkProfile = async () => {
+      try {
+        const user = await base44.auth.me();
+        if (!user?.email) {
+          setProfileChecked(true);
+          return;
+        }
+        try {
+          const profiles = await base44.entities.VolunteerProfile.filter({ user_email: user.email });
+          const complete = Array.isArray(profiles) && profiles.some(p => p?.setup_complete && p?.gdpr_consent);
+          setProfileComplete(complete);
+        } catch (err) {
+          console.error('Failed to fetch volunteer profile:', err);
+        }
+      } catch (err) {
+        console.error('Auth check failed:', err);
+      } finally {
         setProfileChecked(true);
-      }).catch(() => setProfileChecked(true));
-    }).catch(() => setProfileChecked(true));
+      }
+    };
+    checkProfile();
   }, []);
 
   const urlParams = new URLSearchParams(window.location.search);
@@ -115,10 +128,18 @@ export default function FieldMode() {
 
   const { campaign } = useCampaign();
 
-  // Fetch interaction history for current contact
+  // Fetch interaction history for current contact — with safe defaults
   const { data: interactions = [] } = useQuery({
     queryKey: ['interactions', campaign?.id, contacts[currentIndex]?.id],
-    queryFn: () => base44.entities.ContactInteraction.filter({ contact_id: contacts[currentIndex]?.id, campaign_id: campaign?.id }, '-date', 10),
+    queryFn: async () => {
+      try {
+        const result = await base44.entities.ContactInteraction.filter({ contact_id: contacts[currentIndex]?.id, campaign_id: campaign?.id }, '-date', 10);
+        return Array.isArray(result) ? result : [];
+      } catch (err) {
+        console.error('Failed to fetch interactions:', err);
+        return [];
+      }
+    },
     enabled: !!contacts[currentIndex]?.id && isOnline && !!campaign?.id,
   });
 
@@ -213,6 +234,10 @@ export default function FieldMode() {
   }
 
   const handleLogInteraction = async (formData) => {
+    if (!currentContact?.id) {
+      console.error('No current contact');
+      return;
+    }
     setIsSubmittingInteraction(true);
     try {
       const interactionPayload = {
@@ -220,11 +245,11 @@ export default function FieldMode() {
         type: 'door_knock',
         date: new Date().toISOString().split('T')[0],
         time: new Date().toLocaleTimeString('en-GB', { hour: '2-digit', minute: '2-digit' }),
-        notes: formData.notes,
-        outcome: formData.outcome,
+        notes: formData?.notes || '',
+        outcome: formData?.outcome || 'no_answer',
       };
 
-      const contactUpdatePayload = formData.support_level !== 'unknown' ? {
+      const contactUpdatePayload = formData?.support_level && formData.support_level !== 'unknown' ? {
         id: currentContact.id,
         data: { support_level: formData.support_level, canvassed: true, canvass_date: new Date().toISOString().split('T')[0] }
       } : null;
@@ -232,7 +257,7 @@ export default function FieldMode() {
       await logInteraction(interactionPayload, contactUpdatePayload);
 
       // Update volunteer location
-      if (location) {
+      if (location?.latitude && location?.longitude) {
         base44.functions.invoke('updateVolunteerLocation', {
           latitude: location.latitude,
           longitude: location.longitude,
@@ -247,6 +272,9 @@ export default function FieldMode() {
 
       setShowInteractionDialog(false);
       setCurrentIndex(i => Math.min(i + 1, displayContacts.length - 1));
+    } catch (err) {
+      console.error('Interaction logging failed:', err);
+      alert('Failed to log interaction — check your internet connection');
     } finally {
       setIsSubmittingInteraction(false);
     }

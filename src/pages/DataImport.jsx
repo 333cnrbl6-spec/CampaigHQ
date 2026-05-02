@@ -39,8 +39,18 @@ export default function DataImport() {
 
   const { data: lastImportLog } = useQuery({
     queryKey: ['import_logs', campaign?.id],
-    queryFn: () => base44.entities.ImportLog.filter({ campaign_id: campaign?.id }, '-created_date', 1),
+    queryFn: async () => {
+      try {
+        if (!campaign?.id) return [];
+        const result = await base44.entities.ImportLog.filter({ campaign_id: campaign?.id }, '-created_date', 1);
+        return Array.isArray(result) ? result : [];
+      } catch (err) {
+        console.error('Failed to fetch import logs:', err);
+        return [];
+      }
+    },
     initialData: [],
+    enabled: !!campaign?.id,
   });
 
   const [state, setState] = useState(INITIAL_STATE);
@@ -231,7 +241,10 @@ Return JSON with:
 
   // ─── Stage 4: Extract & Validate Records ────────────────────────────────────
    const handleConfirmImport = async (fieldOverrides) => {
-     if (!state.fileUrl || !state.assessment) return;
+      if (!state.fileUrl || !state.assessment || !campaign?.id) {
+        update({ error: 'Campaign or file missing — please reload' });
+        return;
+      }
 
      update({
        currentStage: 4,
@@ -283,9 +296,21 @@ Return JSON with:
       });
 
       const VALID_ENTITIES = ['Contact', 'LeafletRun', 'Turf', 'Issue', 'Task', 'CanvassingLog'];
-      const rawSuggested = state.assessment.suggestedEntity || 'Contact';
+      const rawSuggested = state.assessment?.suggestedEntity || 'Contact';
       const entityName = VALID_ENTITIES.includes(rawSuggested) ? rawSuggested : 'Contact';
-      const entitySchema = await base44.entities[entityName].schema();
+      
+      let entitySchema = {};
+      try {
+        entitySchema = await base44.entities[entityName].schema();
+        if (!entitySchema || typeof entitySchema !== 'object') {
+          update({ error: `Failed to load schema for ${entityName}` });
+          return;
+        }
+      } catch (err) {
+        console.error(`Failed to fetch schema for ${entityName}:`, err);
+        update({ error: `Could not load schema for ${entityName}` });
+        return;
+      }
 
       const validationErrors = [];
       const validRecords = [];
@@ -335,26 +360,39 @@ Return JSON with:
   // ─── Stage 5: Final Import ───────────────────────────────────────────────────
   const handleFinalImport = async () => {
     const { validationResult, currentFile, fileUrl } = state;
-    if (!validationResult?.validRecords?.length) {
-      update({ error: 'No valid records to import' });
+    if (!validationResult?.validRecords?.length || !campaign?.id) {
+      update({ error: 'No valid records to import or campaign missing' });
       return;
     }
 
     update({ loading: true, error: null, loadingStep: { step: 1, total: 1, label: 'Saving records to database…', detail: `Writing ${validationResult.validRecords.length} records. Nearly there!` } });
 
     try {
-      const createdRecords = await base44.entities[validationResult.entityName].bulkCreate(validationResult.validRecords);
-      const recordIds = (createdRecords || []).map(r => r.id);
+      let createdRecords = [];
+      try {
+        createdRecords = await base44.entities[validationResult.entityName].bulkCreate(validationResult.validRecords);
+      } catch (err) {
+        console.error('Bulk create failed:', err);
+        update({ error: `Failed to create records: ${err.message}` });
+        return;
+      }
+      
+      const recordIds = Array.isArray(createdRecords) ? createdRecords.map(r => r?.id).filter(Boolean) : [];
 
-      await base44.entities.ImportLog.create({
-        campaign_id: campaign?.id,
-        file_name: currentFile.name,
-        file_url: fileUrl,
-        entity_type: validationResult.entityName,
-        record_count: recordIds.length,
-        status: 'completed',
-        created_record_ids: recordIds,
-      });
+      try {
+        await base44.entities.ImportLog.create({
+          campaign_id: campaign.id,
+          file_name: currentFile?.name || 'unknown',
+          file_url: fileUrl,
+          entity_type: validationResult.entityName,
+          record_count: recordIds.length,
+          status: 'completed',
+          created_record_ids: recordIds,
+        });
+      } catch (err) {
+        console.error('Failed to log import:', err);
+        // Continue even if logging fails
+      }
 
       queryClient.invalidateQueries({ queryKey: [validationResult.entityName.toLowerCase(), campaign?.id] });
       queryClient.invalidateQueries({ queryKey: ['import_logs', campaign?.id] });

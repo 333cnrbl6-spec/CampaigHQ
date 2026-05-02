@@ -46,22 +46,35 @@ export function useOfflineFieldMode() {
         const isCacheValid = cacheExpiry && Date.now() < parseInt(cacheExpiry);
         
         // Try online fetch first
-        const data = await base44.entities.Contact.list();
+        let data = [];
+        try {
+          data = await base44.entities.Contact.list();
+        } catch (err) {
+          console.error('Failed to fetch contacts online:', err);
+          throw err;
+        }
+        
+        if (!Array.isArray(data)) {
+          console.warn('Contacts list is not an array, defaulting to []');
+          data = [];
+        }
+        
         setContacts(data);
         saveCache(CONTACTS_KEY, data);
         localStorage.setItem(CONTACTS_EXPIRY_KEY, (Date.now() + CACHE_DURATION).toString());
         setCacheStatus({ isValid: true, age: 0 });
-      } catch {
+      } catch (err) {
+        console.error('Error loading contacts:', err);
         // Fallback to cache
         const cached = loadCache(CONTACTS_KEY);
         const cacheExpiry = localStorage.getItem(CONTACTS_EXPIRY_KEY);
         const isCacheValid = cacheExpiry && Date.now() < parseInt(cacheExpiry);
         
-        setContacts(cached);
+        setContacts(Array.isArray(cached) ? cached : []);
         setCacheStatus({ 
           isValid: isCacheValid, 
           age: isCacheValid ? 'recent' : 'stale',
-          count: cached.length
+          count: Array.isArray(cached) ? cached.length : 0
         });
       }
       setIsLoadingContacts(false);
@@ -76,12 +89,16 @@ export function useOfflineFieldMode() {
       // came back online — refresh contacts
       base44.entities.Contact.list()
         .then(data => { 
+          if (!Array.isArray(data)) {
+            console.warn('Contacts list is not an array after reconnection');
+            data = [];
+          }
           setContacts(data); 
           saveCache(CONTACTS_KEY, data);
           localStorage.setItem(CONTACTS_EXPIRY_KEY, (Date.now() + CACHE_DURATION).toString());
           setCacheStatus({ isValid: true, age: 0 });
         })
-        .catch(() => {});
+        .catch(err => console.error('Failed to refresh contacts on reconnect:', err));
     }
     prevOnlineRef.current = isOnline;
   }, [isOnline]);
@@ -99,12 +116,19 @@ export function useOfflineFieldMode() {
   }, [isOnline]); // eslint-disable-line react-hooks/exhaustive-deps
 
   const enqueue = useCallback((action) => {
+    if (!action || typeof action !== 'object') {
+      console.error('Invalid action for enqueue:', action);
+      return null;
+    }
+    
     const item = { ...action, _id: Date.now() + Math.random() };
-    setQueue(prev => [...prev, item]);
+    setQueue(prev => Array.isArray(prev) ? [...prev, item] : [item]);
+    
     // Also optimistically update local contacts cache for support_level changes
-    if (action.type === 'update_contact') {
+    if (action.type === 'update_contact' && action.payload?.id) {
       setContacts(prev => {
-        const updated = prev.map(c => c.id === action.payload.id ? { ...c, ...action.payload.data } : c);
+        if (!Array.isArray(prev)) return prev;
+        const updated = prev.map(c => c?.id === action.payload.id ? { ...c, ...action.payload.data } : c);
         saveCache(CONTACTS_KEY, updated);
         return updated;
       });
@@ -115,7 +139,7 @@ export function useOfflineFieldMode() {
   const syncQueue = useCallback(async () => {
     if (isSyncingRef.current) return;
     const current = loadCache(QUEUE_KEY);
-    if (current.length === 0) return;
+    if (!Array.isArray(current) || current.length === 0) return;
 
     isSyncingRef.current = true;
     setIsSyncing(true);
@@ -125,13 +149,24 @@ export function useOfflineFieldMode() {
 
     for (const item of current) {
       try {
-        if (item.type === 'create_interaction') {
-          await base44.entities.ContactInteraction.create(item.payload);
-        } else if (item.type === 'update_contact') {
-          await base44.entities.Contact.update(item.payload.id, item.payload.data);
+        if (!item || typeof item !== 'object') {
+          failed++;
+          remaining.push(item);
+          continue;
         }
-        synced++;
-      } catch {
+        
+        if (item.type === 'create_interaction' && item.payload) {
+          await base44.entities.ContactInteraction.create(item.payload);
+          synced++;
+        } else if (item.type === 'update_contact' && item.payload?.id && item.payload?.data) {
+          await base44.entities.Contact.update(item.payload.id, item.payload.data);
+          synced++;
+        } else {
+          failed++;
+          remaining.push(item);
+        }
+      } catch (err) {
+        console.error('Sync failed for item:', item, err);
         failed++;
         remaining.push(item);
       }
@@ -146,18 +181,29 @@ export function useOfflineFieldMode() {
   }, []);
 
   const logInteraction = useCallback((interactionPayload, contactUpdatePayload) => {
+    if (!interactionPayload || typeof interactionPayload !== 'object') {
+      console.error('Invalid interaction payload');
+      return Promise.reject(new Error('Invalid interaction payload'));
+    }
+    
     if (isOnline) {
       // Online: direct save
       return Promise.all([
-        base44.entities.ContactInteraction.create(interactionPayload),
-        contactUpdatePayload
-          ? base44.entities.Contact.update(contactUpdatePayload.id, contactUpdatePayload.data)
+        base44.entities.ContactInteraction.create(interactionPayload).catch(err => {
+          console.error('Failed to create interaction:', err);
+          throw err;
+        }),
+        contactUpdatePayload && contactUpdatePayload.id && contactUpdatePayload.data
+          ? base44.entities.Contact.update(contactUpdatePayload.id, contactUpdatePayload.data).catch(err => {
+              console.error('Failed to update contact:', err);
+              throw err;
+            })
           : Promise.resolve(),
       ]);
     } else {
       // Offline: queue it
       enqueue({ type: 'create_interaction', payload: interactionPayload });
-      if (contactUpdatePayload) {
+      if (contactUpdatePayload && contactUpdatePayload.id && contactUpdatePayload.data) {
         enqueue({ type: 'update_contact', payload: contactUpdatePayload });
       }
       return Promise.resolve('queued');
