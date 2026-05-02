@@ -9,9 +9,10 @@ import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/com
 import { Badge } from '@/components/ui/badge';
 import { Copy, Save, Flag } from 'lucide-react';
 import { toast } from 'sonner';
+import CampaignMembersPanel from '@/components/campaign/CampaignMembersPanel';
 
 export default function CampaignSettings() {
-  const { campaign, loadCampaign } = useCampaign();
+  const { campaign, loadCampaign, userRole } = useCampaign();
   const { user } = useAuth();
   const [form, setForm] = useState(campaign || {});
   const [saving, setSaving] = useState(false);
@@ -152,6 +153,9 @@ export default function CampaignSettings() {
           </span>
         </CardContent>
       </Card>
+
+      {/* Team members management */}
+      <CampaignMembersPanel />
     </div>
   );
 }

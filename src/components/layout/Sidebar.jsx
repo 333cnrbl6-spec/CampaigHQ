@@ -57,6 +57,7 @@ const navSections = [
       { path: '/tasks', label: 'Tasks', icon: ClipboardList },
       { path: '/import', label: 'Import Data', icon: Upload },
       { path: '/gdpr', label: 'GDPR Compliance', icon: Shield },
+      { path: '/export', label: 'Export Data', icon: FileText },
       { path: '/vote', label: 'Campaign Landing Page', icon: Globe },
     ],
   },

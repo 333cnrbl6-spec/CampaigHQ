@@ -1,23 +1,36 @@
-import { usePermissions } from '@/hooks/usePermissions';
+import { useCampaign } from '@/lib/CampaignContext';
+import { canAccess } from '@/lib/permissions';
+import { AlertCircle } from 'lucide-react';
 
 /**
- * Conditionally renders children based on permissions.
- *
- * <PermissionGate permission="contacts_edit">  — single permission
- * <PermissionGate anyOf={['contacts_edit','contacts_create']}> — any
- * <PermissionGate allOf={['outreach_send','contacts_view']}> — all
- * <PermissionGate adminOnly> — only admins
- *
- * Renders `fallback` (default: null) when access is denied.
+ * Component that conditionally renders based on user permissions
+ * Shows fallback content if user doesn't have access
  */
-export default function PermissionGate({ permission, anyOf, allOf, adminOnly, fallback = null, children }) {
-  const { can, canAny, canAll, isAdmin } = usePermissions();
+export default function PermissionGate({
+  entityType,
+  action = 'read',
+  children,
+  fallback = null,
+}) {
+  const { userRole } = useCampaign();
 
-  let allowed = true;
-  if (adminOnly) allowed = isAdmin;
-  else if (allOf) allowed = canAll(allOf);
-  else if (anyOf) allowed = canAny(anyOf);
-  else if (permission) allowed = can(permission);
+  if (!userRole) {
+    return fallback || (
+      <div className="p-4 bg-amber-50 border border-amber-200 rounded-lg text-sm text-amber-700">
+        <AlertCircle className="w-4 h-4 inline mr-2" />
+        Loading permissions...
+      </div>
+    );
+  }
 
-  return allowed ? children : fallback;
+  if (!canAccess(userRole, entityType, action)) {
+    return fallback || (
+      <div className="p-4 bg-red-50 border border-red-200 rounded-lg text-sm text-red-700">
+        <AlertCircle className="w-4 h-4 inline mr-2" />
+        You don't have permission to {action} {entityType}.
+      </div>
+    );
+  }
+
+  return children;
 }

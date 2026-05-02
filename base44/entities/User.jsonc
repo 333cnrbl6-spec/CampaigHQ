@@ -6,45 +6,58 @@
       "type": "string",
       "enum": [
         "admin",
-        "organizer",
-        "canvasser",
-        "viewer"
+        "user"
       ],
-      "default": "viewer",
-      "description": "User's primary role"
+      "default": "user",
+      "description": "Platform-level role (admin has access to all campaigns)"
+    },
+    "campaign_memberships": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "properties": {
+          "campaign_id": {
+            "type": "string",
+            "description": "Campaign ID"
+          },
+          "role": {
+            "type": "string",
+            "enum": [
+              "volunteer",
+              "organiser",
+              "campaign_admin"
+            ],
+            "description": "Role within this campaign"
+          },
+          "added_date": {
+            "type": "string",
+            "format": "date-time",
+            "description": "When user was added to campaign"
+          },
+          "status": {
+            "type": "string",
+            "enum": [
+              "active",
+              "inactive",
+              "removed"
+            ],
+            "default": "active"
+          }
+        },
+        "required": [
+          "campaign_id",
+          "role"
+        ]
+      },
+      "description": "List of campaigns this user has access to with their role in each"
     },
     "campaign_id": {
       "type": "string",
-      "description": "ID of the Campaign this user belongs to"
+      "description": "Deprecated: use campaign_memberships instead. Kept for backward compatibility."
     },
-    "campaign_role": {
+    "default_campaign_id": {
       "type": "string",
-      "enum": [
-        "campaign_admin",
-        "organizer",
-        "canvasser",
-        "viewer"
-      ],
-      "default": "canvasser",
-      "description": "Role within their specific campaign"
-    },
-    "custom_permissions": {
-      "type": "array",
-      "items": {
-        "type": "string"
-      },
-      "description": "Extra permissions granted on top of the role defaults"
-    },
-    "revoked_permissions": {
-      "type": "array",
-      "items": {
-        "type": "string"
-      },
-      "description": "Permissions explicitly removed from the role defaults"
+      "description": "Which campaign to load on login (if user is member of multiple)"
     }
-  },
-  "required": [
-    "custom_permissions",
-    "revoked_permissions"
-  ]
+  }
 }
