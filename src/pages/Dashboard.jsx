@@ -1,6 +1,6 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
+import { useNavigate } from 'react-router-dom';
 import { useCampaign } from '@/lib/CampaignContext';
-import useSecureData from '@/hooks/useSecureData';
 import { useQuery } from '@tanstack/react-query';
 import { base44 } from '@/api/base44Client';
 import { useCampaignStats } from '@/hooks/useCampaignMemo';
@@ -22,7 +22,15 @@ import WeeklySummaryWidget from '../components/dashboard/WeeklySummaryWidget';
 
 export default function Dashboard() {
   const [geocodingStatus, setGecodingStatus] = useState(null);
-  const { campaign } = useCampaign();
+  const { campaign, user } = useCampaign();
+  const navigate = useNavigate();
+  
+  // For national demo/sales pitch account, redirect to national dashboard
+  useEffect(() => {
+    if (user?.email === '333cnrbl6@gmail.com') {
+      navigate('/national');
+    }
+  }, [user?.email, navigate]);
   
   // Defensive: campaign might not have loaded yet
   const campaignId = campaign?.id;
