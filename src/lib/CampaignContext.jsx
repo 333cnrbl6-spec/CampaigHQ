@@ -18,85 +18,95 @@ export const CampaignProvider = ({ children }) => {
   const initializeCampaigns = async () => {
     try {
       const currentUser = await base44.auth.me();
-      setUser(currentUser);
-
       if (!currentUser) {
         setNeedsSetup(true);
         setIsLoadingCampaign(false);
         return;
       }
 
-      // Fetch all campaigns once (don't refetch for each membership)
-      const allCampaigns = await base44.entities.Campaign.list('name', 1000);
+      setUser(currentUser);
 
-      // Load campaigns user is member of
-      const campaignsList = [];
+      // Fetch all active campaigns
+      const allCampaigns = await base44.entities.Campaign.list('name', 1000);
+      const activeCampaigns = allCampaigns.filter(c => c.status === 'active');
+
+      // Build list of campaigns user can access
+      const accessibleCampaigns = [];
+
+      // 1. Check campaign_memberships (modern structure)
       if (currentUser.campaign_memberships && Array.isArray(currentUser.campaign_memberships)) {
-        // User has new campaign_memberships structure
-        const activeMemberships = currentUser.campaign_memberships.filter(m => m.status === 'active');
-        
-        for (const membership of activeMemberships) {
-          const found = allCampaigns.find(c => c.id === membership.campaign_id);
-          if (found) {
-            campaignsList.push({
-              ...found,
-              userRole: membership.role,
-            });
+        for (const membership of currentUser.campaign_memberships) {
+          if (membership.status === 'active') {
+            const campaign = activeCampaigns.find(c => c.id === membership.campaign_id);
+            if (campaign) {
+              accessibleCampaigns.push({
+                ...campaign,
+                userRole: membership.role || 'volunteer',
+              });
+            }
           }
         }
-      } else if (currentUser.campaign_id) {
-        // Fallback: user has old single campaign_id
-        const found = allCampaigns.find(c => c.id === currentUser.campaign_id);
-        if (found) {
-          campaignsList.push({
-            ...found,
-            userRole: 'organiser', // Assume organiser for legacy users
-          });
-        }
-      } else {
-        // If no explicit membership, check if user email matches owner_email
-        const userCampaigns = allCampaigns.filter(c => c.owner_email === currentUser.email && c.status === 'active');
-        for (const camp of userCampaigns) {
-          campaignsList.push({
-            ...camp,
+      }
+
+      // 2. Check if user is campaign owner (by owner_email)
+      const ownedCampaigns = activeCampaigns.filter(c => c.owner_email === currentUser.email);
+      for (const owned of ownedCampaigns) {
+        // Don't duplicate if already in memberships
+        if (!accessibleCampaigns.find(c => c.id === owned.id)) {
+          accessibleCampaigns.push({
+            ...owned,
             userRole: 'campaign_admin',
           });
         }
       }
 
-      setCampaigns(campaignsList);
+      setCampaigns(accessibleCampaigns);
 
-      // Determine which campaign to load
-      let activeCampaign = null;
-      
-      // Priority 1: Load user's default campaign if set
+      // Select campaign to load
+      let selectedCampaign = null;
+
+      // 1. Try default_campaign_id if set and valid
       if (currentUser.default_campaign_id) {
-        activeCampaign = campaignsList.find(c => c.id === currentUser.default_campaign_id);
-      }
-      
-      // Priority 2: Load first available campaign
-      if (!activeCampaign && campaignsList.length > 0) {
-        activeCampaign = campaignsList[0];
+        selectedCampaign = accessibleCampaigns.find(c => c.id === currentUser.default_campaign_id);
       }
 
-      if (activeCampaign) {
-        setCampaign(activeCampaign);
-        setUserRole(activeCampaign.userRole);
-        // Auto-set as default if not already set & sync campaign_memberships if missing
-        if (!currentUser.default_campaign_id || !currentUser.campaign_memberships?.length) {
-          const updates = { default_campaign_id: activeCampaign.id };
-          if (!currentUser.campaign_memberships?.length) {
-            updates.campaign_memberships = [{
-              campaign_id: activeCampaign.id,
-              role: activeCampaign.userRole || 'campaign_admin',
-              added_date: new Date().toISOString(),
-              status: 'active',
-            }];
+      // 2. Fall back to first accessible campaign
+      if (!selectedCampaign && accessibleCampaigns.length > 0) {
+        selectedCampaign = accessibleCampaigns[0];
+      }
+
+      // Load campaign or show setup
+      if (selectedCampaign) {
+        setCampaign(selectedCampaign);
+        setUserRole(selectedCampaign.userRole);
+
+        // Ensure user record is synced: set default_campaign_id and campaign_memberships if missing
+        const needsSync = !currentUser.default_campaign_id || !currentUser.campaign_memberships?.length;
+        if (needsSync) {
+          const updates = {
+            default_campaign_id: selectedCampaign.id,
+          };
+
+          // Ensure campaign_memberships has an entry for this campaign
+          if (!currentUser.campaign_memberships?.some(m => m.campaign_id === selectedCampaign.id && m.status === 'active')) {
+            updates.campaign_memberships = [
+              ...(currentUser.campaign_memberships?.filter(m => m.status === 'active') || []),
+              {
+                campaign_id: selectedCampaign.id,
+                role: selectedCampaign.userRole,
+                added_date: new Date().toISOString(),
+                status: 'active',
+              },
+            ];
+          } else if (!currentUser.default_campaign_id) {
+            // Just update default if memberships are already correct
+            updates.campaign_memberships = currentUser.campaign_memberships;
           }
+
           await base44.auth.updateMe(updates);
         }
       } else {
-        // User is not member of any campaigns
+        // No campaigns accessible — show setup
         setNeedsSetup(true);
       }
 
