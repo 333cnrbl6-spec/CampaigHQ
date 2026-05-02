@@ -55,6 +55,7 @@ Deno.serve(async (req) => {
 
     const body = await req.json();
     const { 
+      campaign_id,
       contact_ids = [], 
       turf_id = null,
       target_date = null,
@@ -62,9 +63,13 @@ Deno.serve(async (req) => {
       strategy = 'balanced' // 'balanced', 'distance', or 'geospatial'
     } = body;
 
-    // Fetch contacts
+    if (!campaign_id) {
+      return Response.json({ error: 'campaign_id is required' }, { status: 400 });
+    }
+
+    // Fetch contacts for this campaign
     let contacts = [];
-    const allContacts = await base44.entities.Contact.list('name', 5000);
+    const allContacts = await base44.asServiceRole.entities.Contact.filter({ campaign_id }, 'name', 5000);
     
     if (contact_ids.length > 0) {
       contacts = allContacts.filter(c => contact_ids.includes(c.id));

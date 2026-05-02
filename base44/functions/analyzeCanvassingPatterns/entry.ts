@@ -5,14 +5,21 @@ Deno.serve(async (req) => {
     const base44 = createClientFromRequest(req);
     const user = await base44.auth.me();
 
-    if (!user?.role || user.role !== 'admin') {
-      return Response.json({ error: 'Admin access required' }, { status: 403 });
+    if (!user) {
+      return Response.json({ error: 'Unauthorized' }, { status: 401 });
     }
 
-    // Fetch all canvassing logs and interactions
+    const body = await req.json();
+    const { campaign_id } = body;
+
+    if (!campaign_id) {
+      return Response.json({ error: 'campaign_id is required' }, { status: 400 });
+    }
+
+    // Fetch canvassing logs and interactions for this campaign
     const [logs, interactions] = await Promise.all([
-      base44.asServiceRole.entities.CanvassingLog.list('-session_date', 1000),
-      base44.asServiceRole.entities.ContactInteraction.list('-date', 2000),
+      base44.asServiceRole.entities.CanvassingLog.filter({ campaign_id }, '-session_date', 1000),
+      base44.asServiceRole.entities.ContactInteraction.filter({ campaign_id }, '-date', 2000),
     ]);
 
     // Group logs by street and time window

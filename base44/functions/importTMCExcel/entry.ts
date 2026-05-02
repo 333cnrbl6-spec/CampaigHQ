@@ -9,9 +9,12 @@ Deno.serve(async (req) => {
       return Response.json({ error: 'Unauthorized' }, { status: 401 });
     }
 
-    const { file_url } = await req.json();
+    const { file_url, campaign_id } = await req.json();
     if (!file_url) {
       return Response.json({ error: 'file_url required' }, { status: 400 });
+    }
+    if (!campaign_id) {
+      return Response.json({ error: 'campaign_id is required' }, { status: 400 });
     }
 
     // Extract raw data from XLSX
@@ -71,8 +74,9 @@ Deno.serve(async (req) => {
       return Response.json({ error: 'No valid records to import' }, { status: 400 });
     }
 
-    // Bulk create
-    const created = await base44.entities.Contact.bulkCreate(contactRecords);
+    // Bulk create with campaign_id injected
+    const contactsWithCampaign = contactRecords.map(r => ({ ...r, campaign_id }));
+    const created = await base44.entities.Contact.bulkCreate(contactsWithCampaign);
 
     return Response.json({
       success: true,

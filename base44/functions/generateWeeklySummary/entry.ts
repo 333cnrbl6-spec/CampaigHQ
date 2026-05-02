@@ -5,8 +5,15 @@ Deno.serve(async (req) => {
     const base44 = createClientFromRequest(req);
     const user = await base44.auth.me();
 
-    if (!user?.role || user.role !== 'admin') {
-      return Response.json({ error: 'Admin access required' }, { status: 403 });
+    if (!user) {
+      return Response.json({ error: 'Unauthorized' }, { status: 401 });
+    }
+
+    const body = await req.json();
+    const { campaign_id } = body;
+
+    if (!campaign_id) {
+      return Response.json({ error: 'campaign_id is required' }, { status: 400 });
     }
 
     // Calculate date range (past 7 days)
@@ -14,11 +21,11 @@ Deno.serve(async (req) => {
     const weekAgo = new Date(today);
     weekAgo.setDate(weekAgo.getDate() - 7);
 
-    // Fetch data for the past week
+    // Fetch data for the past week, filtered by campaign
     const [logs, contacts, interactions] = await Promise.all([
-      base44.asServiceRole.entities.CanvassingLog.list('-session_date', 1000),
-      base44.asServiceRole.entities.Contact.list('name', 5000),
-      base44.asServiceRole.entities.ContactInteraction.list('-date', 2000),
+      base44.asServiceRole.entities.CanvassingLog.filter({ campaign_id }, '-session_date', 1000),
+      base44.asServiceRole.entities.Contact.filter({ campaign_id }, 'name', 5000),
+      base44.asServiceRole.entities.ContactInteraction.filter({ campaign_id }, '-date', 2000),
     ]);
 
     // Filter for past 7 days

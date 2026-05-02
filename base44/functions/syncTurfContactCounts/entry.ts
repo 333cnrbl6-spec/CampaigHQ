@@ -9,9 +9,16 @@ Deno.serve(async (req) => {
       return Response.json({ error: 'Unauthorized' }, { status: 401 });
     }
 
-    // Fetch all contacts and turfs
-    const contacts = await base44.entities.Contact.list('', 10000);
-    const turfs = await base44.entities.Turf.list('', 10000);
+    const body = await req.json();
+    const { campaign_id } = body;
+
+    if (!campaign_id) {
+      return Response.json({ error: 'campaign_id is required' }, { status: 400 });
+    }
+
+    // Fetch contacts and turfs for this campaign only
+    const contacts = await base44.asServiceRole.entities.Contact.filter({ campaign_id }, '', 10000);
+    const turfs = await base44.asServiceRole.entities.Turf.filter({ campaign_id }, '', 10000);
 
     // Count contacts per turf tag
     const turfCounts = {};
