@@ -12,7 +12,7 @@ import { toast } from 'sonner';
 import CampaignMembersPanel from '@/components/campaign/CampaignMembersPanel';
 
 export default function CampaignSettings() {
-  const { campaign, loadCampaign, userRole } = useCampaign();
+  const { campaign, userRole } = useCampaign();
   const { user } = useAuth();
   const [form, setForm] = useState(campaign || {});
   const [saving, setSaving] = useState(false);
@@ -21,11 +21,16 @@ export default function CampaignSettings() {
 
   const handleSave = async (e) => {
     e.preventDefault();
+    if (!campaign?.id) return;
     setSaving(true);
-    await base44.entities.Campaign.update(campaign.id, form);
-    await loadCampaign();
-    toast.success('Campaign settings saved.');
-    setSaving(false);
+    try {
+      await base44.entities.Campaign.update(campaign.id, form);
+      toast.success('Campaign settings saved.');
+    } catch (err) {
+      toast.error('Failed to save settings: ' + err.message);
+    } finally {
+      setSaving(false);
+    }
   };
 
   const copyInviteCode = () => {

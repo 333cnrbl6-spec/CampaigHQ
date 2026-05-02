@@ -9,20 +9,25 @@ export default function CampaignSwitcher() {
     return null;
   }
 
+  const handleSwitch = async (campaignId) => {
+    try {
+      await switchCampaign(campaignId);
+    } catch (err) {
+      console.error('Campaign switch failed:', err);
+    }
+  };
+
   return (
     <div className="flex items-center gap-2">
       <MapPin className="w-4 h-4 text-muted-foreground" />
-      <Select value={campaign?.id} onValueChange={switchCampaign}>
+      <Select value={campaign?.id || ''} onValueChange={handleSwitch}>
         <SelectTrigger className="w-48">
           <SelectValue placeholder="Select campaign" />
         </SelectTrigger>
         <SelectContent>
           {campaigns.map(c => (
             <SelectItem key={c.id} value={c.id}>
-              {c.name}
-              <span className="text-xs text-muted-foreground ml-2">
-                ({c.userRole})
-              </span>
+              {c.name} ({c.userRole})
             </SelectItem>
           ))}
         </SelectContent>

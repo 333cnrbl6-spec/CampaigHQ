@@ -22,19 +22,43 @@ export default function VolunteerProfiles() {
 
   const { data: profiles = [], isLoading } = useQuery({
     queryKey: ['volunteer_profiles', campaign?.id],
-    queryFn: () => base44.entities.VolunteerProfile.filter({ campaign_id: campaign?.id }, '-created_date', 100),
+    queryFn: async () => {
+      if (!campaign?.id) return [];
+      try {
+        return await base44.entities.VolunteerProfile.filter({ user_email: undefined }, '-created_date', 100);
+      } catch (err) {
+        console.error('Failed to fetch volunteer profiles:', err);
+        return [];
+      }
+    },
     enabled: !!campaign?.id,
   });
 
   const { data: turfs = [] } = useQuery({
-    queryKey: ['turfs', campaign?.id],
-    queryFn: () => base44.entities.Turf.filter({ campaign_id: campaign?.id }),
+    queryKey: ['turfs-vol', campaign?.id],
+    queryFn: async () => {
+      if (!campaign?.id) return [];
+      try {
+        return await base44.entities.Turf.filter({ campaign_id: campaign.id }, '-created_date', 100);
+      } catch (err) {
+        console.error('Failed to fetch turfs:', err);
+        return [];
+      }
+    },
     enabled: !!campaign?.id,
   });
 
   const { data: leafletRuns = [] } = useQuery({
-    queryKey: ['leaflet_runs', campaign?.id],
-    queryFn: () => base44.entities.LeafletRun.filter({ campaign_id: campaign?.id }),
+    queryKey: ['leaflet_runs-vol', campaign?.id],
+    queryFn: async () => {
+      if (!campaign?.id) return [];
+      try {
+        return await base44.entities.LeafletRun.filter({ campaign_id: campaign.id }, '-created_date', 100);
+      } catch (err) {
+        console.error('Failed to fetch leaflet runs:', err);
+        return [];
+      }
+    },
     enabled: !!campaign?.id,
   });
 
