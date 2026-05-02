@@ -81,6 +81,7 @@ import BillingPortal from './pages/BillingPortal';
 import AdminBilling from './pages/AdminBilling';
 import SubscriptionManagement from './pages/SubscriptionManagement';
 import CustomerSuccessDashboard from './pages/CustomerSuccessDashboard';
+import LaunchChecklist from './pages/LaunchChecklist';
 
 const AuthenticatedApp = () => {
   const { isLoadingAuth, isLoadingPublicSettings, authError, navigateToLogin } = useAuth();
@@ -169,6 +170,7 @@ const AuthenticatedApp = () => {
         <Route path="/admin-billing" element={<AdminBilling />} />
         <Route path="/subscription-management" element={<SubscriptionManagement />} />
         <Route path="/customer-success" element={<CustomerSuccessDashboard />} />
+        <Route path="/launch-checklist" element={<LaunchChecklist />} />
         <Route path="/export" element={<DataExport />} />
         <Route path="/help" element={<HelpCenter />} />
         <Route path="/load-test" element={<LoadTestDashboard />} />

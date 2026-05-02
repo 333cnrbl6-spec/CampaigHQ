@@ -2,6 +2,7 @@ import { useState } from 'react';
 import { base44 } from '@/api/base44Client';
 import { useCampaign } from '@/lib/CampaignContext';
 import { useNavigate } from 'react-router-dom';
+import { trackEvent, analyticsEvents } from '@/utils/analytics';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
@@ -37,6 +38,7 @@ export default function CampaignSetup() {
     setLoading(true);
     setError('');
     try {
+      trackEvent(analyticsEvents.CAMPAIGN_CREATED, { campaign_name: form.name, party: form.party });
       // Generate a simple invite code
       const slug = form.name.toLowerCase().replace(/[^a-z0-9]+/g, '-').slice(0, 30);
       const invite_code = slug + '-' + Math.random().toString(36).slice(2, 6).toUpperCase();

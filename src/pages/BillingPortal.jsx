@@ -2,6 +2,7 @@ import { useState, useEffect } from 'react';
 import { useQuery, useMutation } from '@tanstack/react-query';
 import { base44 } from '@/api/base44Client';
 import { useCampaign } from '@/lib/CampaignContext';
+import { trackEvent, analyticsEvents } from '@/utils/analytics';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
@@ -32,6 +33,7 @@ export default function BillingPortal() {
   const handleUpgrade = async (plan) => {
     setLoading(true);
     try {
+      trackEvent(analyticsEvents.CHECKOUT_STARTED, { plan });
       const response = await base44.functions.invoke('createCheckoutSession', {
         campaign_id: campaign.id,
         plan,
