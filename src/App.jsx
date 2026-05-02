@@ -64,6 +64,7 @@ import DataExport from './pages/DataExport';
 import HelpCenter from './pages/HelpCenter';
 import LoadTestDashboard from './pages/LoadTestDashboard';
 import NationalDashboard from './pages/NationalDashboard';
+import NationalReporting from './pages/NationalReporting';
 
 const AuthenticatedApp = () => {
   const { isLoadingAuth, isLoadingPublicSettings, authError, navigateToLogin } = useAuth();
@@ -152,6 +153,7 @@ const AuthenticatedApp = () => {
         <Route path="/help" element={<HelpCenter />} />
         <Route path="/load-test" element={<LoadTestDashboard />} />
         <Route path="/national" element={<NationalDashboard />} />
+        <Route path="/national-reporting" element={<NationalReporting />} />
       </Route>
       <Route path="*" element={<PageNotFound />} />
     </Routes>
