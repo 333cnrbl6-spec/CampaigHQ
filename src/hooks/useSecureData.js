@@ -12,7 +12,7 @@ export const useSecureData = (functionName, params, options = {}) => {
   const { data, isLoading, error, refetch, isFetching } = useQuery({
     queryKey: [functionName, JSON.stringify(params)],
     queryFn: async () => {
-      if (!functionName || !params) {
+      if (!functionName || params === null || params === undefined) {
         throw new Error('Function name and params are required');
       }
       

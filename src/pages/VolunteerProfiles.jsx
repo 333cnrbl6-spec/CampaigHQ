@@ -25,7 +25,7 @@ export default function VolunteerProfiles() {
     queryFn: async () => {
       if (!campaign?.id) return [];
       try {
-        return await base44.entities.VolunteerProfile.filter({ user_email: undefined }, '-created_date', 100);
+        return await base44.entities.VolunteerProfile.list('-created_date', 1000);
       } catch (err) {
         console.error('Failed to fetch volunteer profiles:', err);
         return [];
@@ -39,7 +39,9 @@ export default function VolunteerProfiles() {
     queryFn: async () => {
       if (!campaign?.id) return [];
       try {
-        return await base44.entities.Turf.filter({ campaign_id: campaign.id }, '-created_date', 100);
+        return await base44.entities.Turf.list('-created_date', 1000).then(all => 
+          all.filter(t => t.campaign_id === campaign.id)
+        );
       } catch (err) {
         console.error('Failed to fetch turfs:', err);
         return [];
@@ -53,7 +55,9 @@ export default function VolunteerProfiles() {
     queryFn: async () => {
       if (!campaign?.id) return [];
       try {
-        return await base44.entities.LeafletRun.filter({ campaign_id: campaign.id }, '-created_date', 100);
+        return await base44.entities.LeafletRun.list('-created_date', 1000).then(all =>
+          all.filter(r => r.campaign_id === campaign.id)
+        );
       } catch (err) {
         console.error('Failed to fetch leaflet runs:', err);
         return [];
