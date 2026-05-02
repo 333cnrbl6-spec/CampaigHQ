@@ -7,6 +7,9 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/com
 import { Badge } from '@/components/ui/badge';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Loader2, MapPin, Users, CheckCircle2, Clock } from 'lucide-react';
+import { useCampaign } from '@/lib/CampaignContext';
+import useSecureData from '@/hooks/useSecureData';
+import DataFetchError from '@/components/DataFetchError';
 
 // Per-volunteer distinct colours
 const VOLUNTEER_COLORS = [
@@ -89,45 +92,28 @@ function MapBounds({ locations, turfs }) {
 }
 
 export default function VolunteerLiveMap() {
+  const { campaignId } = useCampaign();
   const [selectedTurf, setSelectedTurf] = useState('all');
-  const [liveLocations, setLiveLocations] = useState({});
-  // Stable colour assignment per volunteer email
   const colorMapRef = React.useRef({});
 
-  const { data: volunteers = [], isLoading: volunteerLoading } = useQuery({
-    queryKey: ['volunteerLocations'],
-    queryFn: () => base44.entities.VolunteerLocation.list('-last_updated', 500),
-    refetchInterval: 5000, // Refresh every 5 seconds
+  // Fetch RLS-protected volunteer locations (10s polling for real-time)
+  const { data: allLocations = [], isLoading, error, refetch } = useSecureData(
+    'getVolunteerLocations',
+    { campaign_id: campaignId },
+    { staleTime: 5000, refetchInterval: 10000 }
+  );
+
+  // Fetch turfs
+  const { data: turfs = [] } = useQuery({
+    queryKey: ['turfs', campaignId],
+    queryFn: () => base44.entities.Turf.filter({ campaign_id: campaignId }, 'name', 500),
   });
 
-  const { data: turfs = [], isLoading: turfLoading } = useQuery({
-    queryKey: ['turfs'],
-    queryFn: () => base44.entities.Turf.list('name', 500),
-  });
-
+  // Fetch canvassing logs for today's stats
   const { data: canvassingLogs = [] } = useQuery({
-    queryKey: ['canvassingLogs'],
-    queryFn: () => base44.entities.CanvassingLog.list('-session_date', 1000),
+    queryKey: ['canvassingLogs', campaignId],
+    queryFn: () => base44.entities.CanvassingLog.filter({ campaign_id: campaignId }, '-session_date', 1000),
   });
-
-  // Subscribe to real-time location updates
-  useEffect(() => {
-    const unsubscribe = base44.entities.VolunteerLocation.subscribe((event) => {
-      setLiveLocations(prev => ({
-        ...prev,
-        [event.id]: event.data
-      }));
-    });
-
-    return unsubscribe;
-  }, []);
-
-  const isLoading = volunteerLoading || turfLoading;
-
-  // Combine query and subscription data
-  const allLocations = Object.values(liveLocations).length > 0 
-    ? Object.values(liveLocations)
-    : volunteers;
 
   // Get today's canvassing activity
   const today = new Date().toLocaleDateString('en-CA');
@@ -149,7 +135,7 @@ export default function VolunteerLiveMap() {
   const positiveResponses = todayLogs.reduce((sum, log) => sum + (log.positive_responses || 0), 0);
   const activeVolunteers = new Set(allLocations.filter(l => l.status === 'active').map(l => l.volunteer_email)).size;
 
-  if (isLoading && volunteers.length === 0) {
+  if (isLoading) {
     return (
       <div className="flex justify-center items-center h-96">
         <Loader2 className="w-8 h-8 animate-spin text-primary" />
@@ -163,6 +149,8 @@ export default function VolunteerLiveMap() {
         <h1 className="font-heading text-3xl font-bold">Live Canvassing Map</h1>
         <p className="text-muted-foreground mt-1">Real-time volunteer positions and turf progress</p>
       </div>
+
+      {error && <DataFetchError error={error} onRetry={refetch} title="Unable to Load Live Map" />}
 
       {/* Stats Cards */}
       <div className="grid grid-cols-1 md:grid-cols-4 gap-4 mb-6">

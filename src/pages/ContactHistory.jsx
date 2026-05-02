@@ -10,6 +10,9 @@ import { Badge } from '@/components/ui/badge';
 import { Textarea } from '@/components/ui/textarea';
 import { Phone, Mail, MapPin, MessageSquare, Plus, Trash2 } from 'lucide-react';
 import { format } from 'date-fns';
+import { useCampaign } from '@/lib/CampaignContext';
+import useSecureData from '@/hooks/useSecureData';
+import DataFetchError from '@/components/DataFetchError';
 
 const INTERACTION_TYPES = {
   phone_call: { icon: Phone, label: 'Phone Call', color: 'bg-blue-100 text-blue-800' },
@@ -28,21 +31,25 @@ const OUTCOME_COLORS = {
 };
 
 export default function ContactHistory() {
+  const { campaignId } = useCampaign();
   const [selectedContact, setSelectedContact] = useState(null);
   const [showNewInteraction, setShowNewInteraction] = useState(false);
   const [formData, setFormData] = useState({ type: 'door_knock', outcome: 'neutral' });
 
   const queryClient = useQueryClient();
 
-  const { data: contacts = [] } = useQuery({
-    queryKey: ['contacts'],
-    queryFn: () => base44.entities.Contact.list(),
-  });
+  // Fetch RLS-protected contacts and interactions
+  const { data: contacts = [], error: contactError, refetch: refetchContacts } = useSecureData(
+    'getContactDetails',
+    { campaign_id: campaignId },
+    { staleTime: 120000, refetchInterval: 120000 }
+  );
 
-  const { data: interactions = [] } = useQuery({
-    queryKey: ['interactions'],
-    queryFn: () => base44.entities.ContactInteraction.list(),
-  });
+  const { data: interactions = [], error: interactionError, refetch: refetchInteractions } = useSecureData(
+    'getContactInteractions',
+    { campaign_id: campaignId },
+    { staleTime: 60000, refetchInterval: 60000 }
+  );
 
   const createInteractionMutation = useMutation({
     mutationFn: (data) => base44.entities.ContactInteraction.create(data),
@@ -82,6 +89,17 @@ export default function ContactHistory() {
       <div className="flex justify-between items-center">
         <h1 className="text-3xl font-bold font-heading text-foreground">Contact History</h1>
       </div>
+
+      {(contactError || interactionError) && (
+        <DataFetchError 
+          error={contactError || interactionError} 
+          onRetry={() => {
+            refetchContacts();
+            refetchInteractions();
+          }}
+          title="Unable to Load Contact Data" 
+        />
+      )}
 
       <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
         {/* Contact List */}
