@@ -10,7 +10,7 @@ const RadioGroup = React.forwardRef(({ className, ...props }, ref) => (
     ref={ref}
   />
 ))
-RadioGroup.displayName = RadioGroupPrimitive.Root.displayName
+RadioGroup.displayName = "RadioGroup"
 
 const RadioGroupItem = React.forwardRef(({ className, ...props }, ref) => (
   <RadioGroupPrimitive.Item
@@ -26,8 +26,6 @@ const RadioGroupItem = React.forwardRef(({ className, ...props }, ref) => (
     </RadioGroupPrimitive.Indicator>
   </RadioGroupPrimitive.Item>
 ))
-RadioGroupItem.displayName = RadioGroupPrimitive.Item.displayName
+RadioGroupItem.displayName = "RadioGroupItem"
 
-const Radio = RadioGroupItem
-
-export { RadioGroup, RadioGroupItem, Radio }
+export { RadioGroup, RadioGroupItem }
