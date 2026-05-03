@@ -138,7 +138,8 @@ export default function TurfRoutePanel({ turf, onRouteReady, onClose }) {
       }
 
       await refetchContacts();
-      buildRoute();
+      // Force route rebuild after geocoding completes
+      setTimeout(() => buildRoute(), 300);
     } finally {
       setGeocoding(false);
     }
