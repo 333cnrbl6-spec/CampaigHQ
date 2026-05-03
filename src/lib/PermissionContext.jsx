@@ -20,7 +20,7 @@ export function PermissionProvider({ children }) {
   });
 
   // CONFIGURE THIS FOR YOUR APP - change to your developer email
-  const DEVELOPER_EMAIL = 'developer@yourdomain.com';
+  const DEVELOPER_EMAIL = 'cnrbl6@gmail.com';
 
   useEffect(() => {
     loadPermissions();
