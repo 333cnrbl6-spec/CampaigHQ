@@ -1,4 +1,4 @@
-import React, { useMemo } from 'react';
+import React, { useMemo, useState } from 'react';
 import { base44 } from '@/api/base44Client';
 import { useQuery } from '@tanstack/react-query';
 import { useCampaign } from '@/lib/CampaignContext';
@@ -6,11 +6,14 @@ import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import CanvassingStatsCards from '@/components/dashboard/CanvassingStatsCards';
 import VolunteerProgressTable from '@/components/dashboard/VolunteerProgressTable';
+import TurfBoundaryMap from '@/components/map/TurfBoundaryMap';
+import CanvassingTurfPanel from '@/components/map/CanvassingTurfPanel';
 import { BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, Legend, ResponsiveContainer, PieChart, Pie, Cell } from 'recharts';
 import { RefreshCw, Calendar } from 'lucide-react';
 
 export default function CanvassingDashboard() {
   const { campaign } = useCampaign();
+  const [selectedTurf, setSelectedTurf] = useState(null);
 
   // Fetch all relevant data
   const { data: canvassingLogs = [], isLoading: logsLoading, refetch: refetchLogs } = useQuery({
@@ -31,6 +34,15 @@ export default function CanvassingDashboard() {
   const { data: tasks = [] } = useQuery({
     queryKey: ['tasks', campaign?.id],
     queryFn: () => base44.entities.Task.filter({ category: 'canvassing', campaign_id: campaign?.id }),
+  });
+
+  const { data: turfs = [] } = useQuery({
+    queryKey: ['turfs', campaign?.id],
+    queryFn: async () => {
+      if (!campaign?.id) return [];
+      const all = await base44.entities.Turf.list('-created_date', 1000);
+      return Array.isArray(all) ? all.filter(t => t.campaign_id === campaign.id) : [];
+    },
   });
 
   // Aggregate stats
@@ -202,6 +214,37 @@ export default function CanvassingDashboard() {
 
         {/* Main stats cards */}
         <CanvassingStatsCards stats={stats} />
+
+        {/* Map with turf boundaries */}
+        {turfs.length > 0 && (
+          <div className="relative">
+            <Card>
+              <CardHeader>
+                <CardTitle>Turf Map & Progress</CardTitle>
+              </CardHeader>
+              <CardContent>
+                <div className="h-96 rounded-lg overflow-hidden">
+                  <TurfBoundaryMap 
+                    turfs={turfs}
+                    contacts={contacts}
+                    onTurfClick={setSelectedTurf}
+                    highlightAssigned={true}
+                  />
+                </div>
+              </CardContent>
+            </Card>
+            
+            {/* Turf detail panel */}
+            {selectedTurf && (
+              <CanvassingTurfPanel 
+                turf={selectedTurf}
+                contacts={contacts}
+                logs={canvassingLogs}
+                onClose={() => setSelectedTurf(null)}
+              />
+            )}
+          </div>
+        )}
 
         {/* Charts row */}
         <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
