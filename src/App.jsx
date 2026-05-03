@@ -88,6 +88,7 @@ import GreenPartyDemo from './pages/GreenPartyDemo';
 import RequestDemo from './pages/RequestDemo';
 import FieldHub from './pages/FieldHub';
 import LeafletFieldMode from './pages/LeafletFieldMode';
+import LeafletPrintSheets from './pages/LeafletPrintSheets';
 
 const AuthenticatedApp = () => {
   const { isLoadingAuth, isLoadingPublicSettings, authError, navigateToLogin } = useAuth();
@@ -192,6 +193,7 @@ const AuthenticatedApp = () => {
         <Route path="/pitch" element={<PitchPresentation />} />
         <Route path="/field-hub" element={<FieldHub />} />
         <Route path="/leaflet-field" element={<LeafletFieldMode />} />
+        <Route path="/leaflet-sheets" element={<LeafletPrintSheets />} />
       </Route>
       <Route path="*" element={<PageNotFound />} />
     </Routes>
