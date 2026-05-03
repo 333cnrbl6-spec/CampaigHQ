@@ -222,7 +222,8 @@ function App() {
           <CampaignProvider>
             <Routes>
               {/* Public routes — redirect to dashboard if authenticated */}
-              <Route path="/" element={<HomeRoute />} />
+              <Route path="/" element={<GreenPartyDemo />} />
+              <Route path="/home" element={<HomeRoute />} />
               <Route path="/vote" element={<LandingPage />} />
               <Route path="/volunteer" element={<VolunteerSignup />} />
               <Route path="/pricing" element={<Pricing />} />
