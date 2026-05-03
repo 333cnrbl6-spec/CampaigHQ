@@ -101,7 +101,13 @@ Deno.serve(async (req) => {
   }
 
   // Run updates with low concurrency
-  await runWithConcurrency(updateTasks, 1);
+  try {
+    const updateResults = await runWithConcurrency(updateTasks, 1);
+    // Count successful updates from results
+    merged = updateResults.filter(r => r.status === 'fulfilled').length;
+  } catch (err) {
+    console.error('Update batch failed:', err);
+  }
 
   // Batch delete remaining duplicates
   for (let i = 0; i < deleteIds.length; i++) {
@@ -109,7 +115,9 @@ Deno.serve(async (req) => {
       await callWithRetry(() => base44.asServiceRole.entities.Contact.delete(deleteIds[i]));
       deleted++;
     } catch (err) {
-      if (!err?.message?.includes('not found')) throw err;
+      if (!err?.message?.includes('not found')) {
+        console.error(`Failed to delete contact ${deleteIds[i]}:`, err);
+      }
     }
     // Pause between deletes to respect rate limits
     if (i < deleteIds.length - 1) await delay(100);
