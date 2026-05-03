@@ -22,6 +22,7 @@ import WeeklySummaryWidget from '../components/dashboard/WeeklySummaryWidget';
 import CanvassingProgressWidget from '../components/dashboard/CanvassingProgressWidget';
 import SupportTrendsWidget from '../components/dashboard/SupportTrendsWidget';
 import RecentActivityFeed from '../components/dashboard/RecentActivityFeed';
+import ProcessingFeedback from '@/components/ui/ProcessingFeedback';
 
 export default function Dashboard() {
   const [geocodingStatus, setGecodingStatus] = useState(null);
@@ -208,16 +209,32 @@ export default function Dashboard() {
         />
       </div>
 
+      {/* Geocoding feedback */}
+      {geocodingStatus === 'processing' && (
+        <div className="mb-8">
+          <ProcessingFeedback
+            label="Geocoding contacts…"
+            detail="Looking up GPS coordinates for each postcode via postcodes.io. You can navigate away freely."
+            tips={[
+              'Each UK postcode is resolved to a lat/lng pair for map display and routing.',
+              'If a full postcode fails, the outward code (e.g. M29) is tried as a fallback.',
+              'Contacts without any postcode will be skipped and flagged in the results.',
+              'This can take 1–3 minutes for large contact lists — hang tight!',
+            ]}
+          />
+        </div>
+      )}
+
       {/* Infrastructure & Alerts */}
-      <div className="mb-8">
-        <InfrastructureStatus 
-          contactsNeedingGeocode={stats.needsGeocoding}
-          totalContacts={stats.totalContacts}
-          onGeocodeClick={() => setGecodingStatus('processing')}
-          onOptimizeClick={() => window.location.href = '/route-analysis'}
-          geocodingInProgress={geocodingStatus === 'processing'}
-        />
-      </div>
+       <div className="mb-8">
+         <InfrastructureStatus 
+           contactsNeedingGeocode={stats.needsGeocoding}
+           totalContacts={stats.totalContacts}
+           onGeocodeClick={() => setGecodingStatus('processing')}
+           onOptimizeClick={() => window.location.href = '/route-analysis'}
+           geocodingInProgress={geocodingStatus === 'processing'}
+         />
+       </div>
 
       {/* Canvassing Map */}
       <ErrorBoundary>
