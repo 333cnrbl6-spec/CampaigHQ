@@ -86,6 +86,8 @@ import PreLaunchTesting from './pages/PreLaunchTesting';
 import MobileResponsivenessTester from './pages/MobileResponsivenessTester';
 import GreenPartyDemo from './pages/GreenPartyDemo';
 import RequestDemo from './pages/RequestDemo';
+import FieldHub from './pages/FieldHub';
+import LeafletFieldMode from './pages/LeafletFieldMode';
 
 const AuthenticatedApp = () => {
   const { isLoadingAuth, isLoadingPublicSettings, authError, navigateToLogin } = useAuth();
@@ -188,6 +190,8 @@ const AuthenticatedApp = () => {
         <Route path="/training" element={<TrainingCenter />} />
         <Route path="/demo-import" element={<DemoDataImporter />} />
         <Route path="/pitch" element={<PitchPresentation />} />
+        <Route path="/field-hub" element={<FieldHub />} />
+        <Route path="/leaflet-field" element={<LeafletFieldMode />} />
       </Route>
       <Route path="*" element={<PageNotFound />} />
     </Routes>

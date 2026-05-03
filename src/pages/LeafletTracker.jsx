@@ -8,7 +8,7 @@ import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Badge } from '@/components/ui/badge';
-import { Plus, CheckCircle2, Clock, Loader2, MapPin, User, Home, Printer, ChevronDown, ChevronUp, Navigation, X } from 'lucide-react';
+import { Plus, CheckCircle2, Clock, Loader2, MapPin, User, Home, Printer, ChevronDown, ChevronUp, Navigation, X, Smartphone } from 'lucide-react';
 import LeafletRunForm from '../components/leaflet/LeafletRunForm';
 import RoundProgressCard from '../components/leaflet/RoundProgressCard';
 import PrePrintBriefing from '../components/print/PrePrintBriefing';
@@ -160,9 +160,14 @@ export default function LeafletTracker() {
           <h1 className="font-heading text-3xl font-bold">Leaflet Rounds Tracker</h1>
           <p className="text-muted-foreground mt-1">Manage up to 3 rounds of leafleting — track postal voters separately</p>
         </div>
-        <Button onClick={() => { setEditing(null); setShowForm(true); }} className="gap-2">
-          <Plus className="w-4 h-4" /> Add Street
-        </Button>
+        <div className="flex gap-2">
+          <Button variant="outline" className="gap-2 text-sm" onClick={() => navigate('/leaflet-field')}>
+            <Smartphone className="w-4 h-4" /> Field Mode
+          </Button>
+          <Button onClick={() => { setEditing(null); setShowForm(true); }} className="gap-2">
+            <Plus className="w-4 h-4" /> Add Street
+          </Button>
+        </div>
       </div>
 
       {/* Turf zone context banner */}
@@ -365,23 +370,25 @@ export default function LeafletTracker() {
                             <button
                               key={r}
                               onClick={() => toggleRoundDone(run, r)}
-                              className={`text-left px-3 py-2.5 rounded-lg border text-xs transition-all ${
+                              className={`text-left px-4 py-3 rounded-xl border text-sm transition-all active:scale-95 min-h-[56px] ${
                                 done
                                   ? 'bg-green-50 border-green-300 text-green-800'
                                   : 'bg-card border-border hover:border-primary/50'
                               }`}
                             >
-                              <div className="flex items-center gap-2">
-                                <span className={`w-5 h-5 rounded-full flex items-center justify-center text-[10px] font-bold ${
+                              <div className="flex items-center gap-2.5">
+                                <span className={`w-6 h-6 rounded-full flex items-center justify-center text-xs font-bold flex-shrink-0 ${
                                   done ? 'bg-green-500 text-white' : 'bg-muted text-muted-foreground'
                                 }`}>{done ? '✓' : r}</span>
-                                <span className="font-medium">{r === 1 ? 'All HH' : r === 2 ? 'Postal Only' : 'Non-Postal'}</span>
+                                <div>
+                                  <p className="font-semibold text-sm leading-tight">{r === 1 ? 'All HH' : r === 2 ? 'Postal Only' : 'Non-Postal'}</p>
+                                  <p className="text-xs text-muted-foreground mt-0.5">
+                                    {r === 1 && `${run.total_houses || 0} households`}
+                                    {r === 2 && `${run.postal_voter_houses || 0} postal addresses`}
+                                    {r === 3 && `${(run.total_houses || 0) - (run.postal_voter_houses || 0)} non-postal`}
+                                  </p>
+                                </div>
                               </div>
-                              <p className="text-[10px] text-muted-foreground mt-1 pl-7">
-                                {r === 1 && `${run.total_houses || 0} households`}
-                                {r === 2 && `${run.postal_voter_houses || 0} postal addresses`}
-                                {r === 3 && `${(run.total_houses || 0) - (run.postal_voter_houses || 0)} non-postal`}
-                              </p>
                             </button>
                           );
                         })}
