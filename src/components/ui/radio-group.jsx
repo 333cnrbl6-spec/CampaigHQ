@@ -28,4 +28,5 @@ const RadioGroupItem = React.forwardRef(({ className, ...props }, ref) => (
 ))
 RadioGroupItem.displayName = "RadioGroupItem"
 
-export { RadioGroup, RadioGroupItem }
+// Export only the valid components, not 'Radio'
+export { RadioGroup, RadioGroupItem };
