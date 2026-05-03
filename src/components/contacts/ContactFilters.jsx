@@ -2,11 +2,10 @@ import { Input } from '@/components/ui/input';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Search } from 'lucide-react';
 
-export default function ContactFilters({ search, setSearch, filter, setFilter, turfFilter, setTurfFilter, sortBy, setSortBy, allTurfs, onFilterChange }) {
+export default function ContactFilters({ search, setSearch, filter, setFilter, sortBy, setSortBy, onFilterChange }) {
   const handleFilterChange = (type, value) => {
     if (type === 'search') setSearch(value);
     if (type === 'filter') setFilter(value);
-    if (type === 'turf') setTurfFilter(value);
     if (type === 'sort') setSortBy(value);
     onFilterChange?.();
   };
@@ -35,15 +34,6 @@ export default function ContactFilters({ search, setSearch, filter, setFilter, t
           <SelectItem value="undecided">Undecided</SelectItem>
           <SelectItem value="opposed">Opposed</SelectItem>
           <SelectItem value="unknown">Unknown</SelectItem>
-        </SelectContent>
-      </Select>
-      <Select value={turfFilter} onValueChange={(v) => handleFilterChange('turf', v)}>
-        <SelectTrigger className="w-full sm:w-[140px] flex-shrink-0">
-          <SelectValue placeholder="Turf" />
-        </SelectTrigger>
-        <SelectContent>
-          <SelectItem value="all">All Turfs</SelectItem>
-          {allTurfs.map(t => <SelectItem key={t} value={t}>{t}</SelectItem>)}
         </SelectContent>
       </Select>
       <Select value={sortBy} onValueChange={(v) => handleFilterChange('sort', v)}>

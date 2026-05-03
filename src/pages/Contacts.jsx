@@ -1,6 +1,8 @@
-import React, { useState } from 'react';
+import React, { useState, useMemo } from 'react';
 import { useMutation, useQueryClient, useQuery } from '@tanstack/react-query';
 import { useCampaign } from '@/lib/CampaignContext';
+import { useTurfSelection } from '@/lib/TurfSelectionContext';
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import useSecureData from '@/hooks/useSecureData';
 import useAuditLog from '@/hooks/useAuditLog';
 import DataFetchError from '@/components/DataFetchError';
@@ -25,13 +27,13 @@ export default function Contacts() {
   const [filter, setFilter] = useState('all');
   const [selectedIds, setSelectedIds] = useState(new Set());
   const [showTagDialog, setShowTagDialog] = useState(false);
-  const [turfFilter, setTurfFilter] = useState('all');
   const [sortBy, setSortBy] = useState('name');
   const [page, setPage] = useState(1);
   const PAGE_SIZE = 100;
   const queryClient = useQueryClient();
   const navigate = useNavigate();
   const { campaign } = useCampaign();
+  const { selectedTurfId, setSelectedTurfId } = useTurfSelection();
   const { log: auditLog } = useAuditLog();
   const campaignId = campaign?.id;
 
@@ -211,11 +213,14 @@ export default function Contacts() {
   });
 
   // Derive all turf zones from tags (defensive against non-array)
-  const allTurfs = Array.isArray(contacts) 
-    ? [...new Set(contacts.flatMap(c => Array.isArray(c?.tags) ? c.tags : []))].filter(Boolean).sort()
-    : [];
+  const allTurfs = useMemo(() =>
+    Array.isArray(contacts) 
+      ? [...new Set(contacts.flatMap(c => Array.isArray(c?.tags) ? c.tags : []))].filter(Boolean).sort()
+      : [],
+    [contacts]
+  );
 
-  const filtered = contacts.filter(c => {
+  const filtered = useMemo(() => contacts.filter(c => {
     const matchesSearch = !search || c.name?.toLowerCase().includes(search.toLowerCase()) ||
       c.address?.toLowerCase().includes(search.toLowerCase()) ||
       c.postcode?.toLowerCase().includes(search.toLowerCase());
@@ -223,7 +228,7 @@ export default function Contacts() {
       filter === 'voters' ? c.registered_voter :
       filter === 'non-voters' ? !c.registered_voter :
       c.support_level === filter;
-    const matchesTurf = turfFilter === 'all' ? true : (c.tags || []).includes(turfFilter);
+    const matchesTurf = !selectedTurfId ? true : (c.tags || []).length > 0;
     return matchesSearch && matchesFilter && matchesTurf;
   }).sort((a, b) => {
     if (sortBy === 'name') return (a.name || '').localeCompare(b.name || '');
@@ -234,7 +239,7 @@ export default function Contacts() {
     }
     if (sortBy === 'address') return (a.address || '').localeCompare(b.address || '');
     return 0;
-  });
+  }), [contacts, search, filter, sortBy, selectedTurfId]);
 
   const totalPages = Math.ceil(filtered.length / PAGE_SIZE);
   const paginated = filtered.slice((page - 1) * PAGE_SIZE, page * PAGE_SIZE);
@@ -354,7 +359,7 @@ export default function Contacts() {
             variant="ghost"
             size="sm"
             className="gap-2"
-            onClick={() => navigate(`/route${turfFilter !== 'all' ? `?turf=${encodeURIComponent(turfFilter)}` : ''}`)}
+            onClick={() => navigate(`/route`)}
           >
             <Navigation className="w-4 h-4" /> Plan Route
           </Button>
@@ -475,16 +480,33 @@ export default function Contacts() {
 
       {/* Filters & Bulk Actions */}
       <div className="space-y-4 mb-6">
+        {/* Turf selector — sync with global context */}
+        {allTurfs.length > 0 && (
+          <div className="bg-card rounded-lg border border-border p-3">
+            <label className="text-xs font-semibold text-muted-foreground mb-2 block">Filter by Turf Zone</label>
+            <Select value={selectedTurfId || ''} onValueChange={(v) => { setSelectedTurfId(v || null); setPage(1); }}>
+              <SelectTrigger className="w-full">
+                <SelectValue placeholder="All zones" />
+              </SelectTrigger>
+              <SelectContent>
+                <SelectItem value={null}>All zones</SelectItem>
+                {allTurfs.map(turf => (
+                  <SelectItem key={turf} value={turf}>
+                    {turf}
+                  </SelectItem>
+                ))}
+              </SelectContent>
+            </Select>
+          </div>
+        )}
+
         <ContactFilters 
           search={search}
           setSearch={setSearch}
           filter={filter}
           setFilter={setFilter}
-          turfFilter={turfFilter}
-          setTurfFilter={setTurfFilter}
           sortBy={sortBy}
           setSortBy={setSortBy}
-          allTurfs={allTurfs}
           onFilterChange={() => setPage(1)}
         />
 
