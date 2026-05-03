@@ -5,6 +5,7 @@ import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Upload, ArrowRight, ArrowLeft, CheckCircle2, AlertTriangle, Copy, MapPin, Loader2, X } from 'lucide-react';
+import * as XLSX from 'xlsx';
 
 // ── Schema fields we can map to ──────────────────────────────────────────────
 const CONTACT_FIELDS = [
@@ -88,8 +89,19 @@ function normalizeValue(field, raw) {
   return s;
 }
 
+// ── Excel/CSV file → { headers, rows } ───────────────────────────────────────
+function parseXlsx(buffer) {
+  const wb = XLSX.read(buffer, { type: 'array' });
+  const ws = wb.Sheets[wb.SheetNames[0]];
+  const data = XLSX.utils.sheet_to_json(ws, { header: 1, defval: '' });
+  if (data.length < 2) return { headers: [], rows: [] };
+  const headers = data[0].map(String);
+  const rows = data.slice(1).filter(r => r.some(cell => cell !== '')).map(r => r.map(String));
+  return { headers, rows };
+}
+
 // ── Steps ─────────────────────────────────────────────────────────────────────
-const STEPS = ['Upload CSV', 'Map Columns', 'Review & Fix', 'Import'];
+const STEPS = ['Upload File', 'Map Columns', 'Review & Fix', 'Import'];
 
 export default function CsvVoterImportWizard({ onDone }) {
   const queryClient = useQueryClient();
@@ -107,16 +119,23 @@ export default function CsvVoterImportWizard({ onDone }) {
   // ── Step 0: File upload ─────────────────────────────────────────────────────
   const handleFile = useCallback((file) => {
     if (!file) return;
-    if (!file.name.toLowerCase().endsWith('.csv')) {
-      setError('Please upload a CSV file (.csv).');
+    const ext = file.name.split('.').pop()?.toLowerCase();
+    const isXlsx = ext === 'xlsx' || ext === 'xls';
+    const isCsv = ext === 'csv';
+    if (!isXlsx && !isCsv) {
+      setError('Please upload a CSV (.csv) or Excel (.xlsx / .xls) file.');
       return;
     }
     setError(null);
     const reader = new FileReader();
     reader.onload = (e) => {
-      const text = e.target.result;
-      const { headers: h, rows: r } = parseCsv(text);
-      if (h.length === 0) { setError('Could not parse CSV — check the file format.'); return; }
+      let h, r;
+      if (isXlsx) {
+        ({ headers: h, rows: r } = parseXlsx(e.target.result));
+      } else {
+        ({ headers: h, rows: r } = parseCsv(e.target.result));
+      }
+      if (h.length === 0) { setError('Could not parse file — check the file format.'); return; }
       setFileName(file.name);
       setHeaders(h);
       setRows(r);
@@ -129,7 +148,11 @@ export default function CsvVoterImportWizard({ onDone }) {
       setMapping(autoGuessMapping(h));
       setStep(1);
     };
-    reader.readAsText(file);
+    if (isXlsx) {
+      reader.readAsArrayBuffer(file);
+    } else {
+      reader.readAsText(file);
+    }
   }, []);
 
   const onDrop = (e) => {
@@ -241,9 +264,9 @@ export default function CsvVoterImportWizard({ onDone }) {
             onDragOver={e => e.preventDefault()}
           >
             <Upload className="w-8 h-8 text-muted-foreground mx-auto mb-3" />
-            <p className="font-semibold text-sm mb-1">Drop your CSV voter list here</p>
-            <p className="text-xs text-muted-foreground">or click to browse — .csv files only</p>
-            <input ref={fileRef} type="file" accept=".csv" className="hidden" onChange={e => handleFile(e.target.files[0])} />
+            <p className="font-semibold text-sm mb-1">Drop your voter list here</p>
+            <p className="text-xs text-muted-foreground">or click to browse — .csv, .xlsx or .xls</p>
+            <input ref={fileRef} type="file" accept=".csv,.xlsx,.xls" className="hidden" onChange={e => handleFile(e.target.files[0])} />
           </div>
         )}
 
