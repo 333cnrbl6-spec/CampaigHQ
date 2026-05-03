@@ -224,7 +224,7 @@ function App() {
               {/* Public routes — redirect to dashboard if authenticated */}
               <Route path="/" element={<GreenPartyDemo />} />
               <Route path="/home" element={<HomeRoute />} />
-              <Route path="/vote" element={<LandingPage />} />
+              <Route path="/vote" element={<Navigate to="/" replace />} />
               <Route path="/volunteer" element={<VolunteerSignup />} />
               <Route path="/pricing" element={<Pricing />} />
               <Route path="/case-studies" element={<CaseStudies />} />

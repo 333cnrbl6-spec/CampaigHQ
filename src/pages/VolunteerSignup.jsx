@@ -114,7 +114,7 @@ export default function VolunteerSignup() {
                 <div className="space-y-1.5">
                   <Label>Invite Code *</Label>
                   <Input
-                    placeholder="e.g. tyldesley-green-2026-AB3X"
+                    placeholder="e.g. manchester-green-2026-AB3X"
                     value={inviteCode}
                     onChange={e => setInviteCode(e.target.value.toUpperCase())}
                     className="font-mono"

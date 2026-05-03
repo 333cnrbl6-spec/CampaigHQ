@@ -103,7 +103,7 @@ export default function CampaignSetup() {
                   <div className="space-y-1.5">
                     <Label>Campaign Name *</Label>
                     <Input
-                      placeholder="e.g. Tyldesley Green Party 2026"
+                      placeholder="e.g. Manchester Green Party 2026"
                       value={form.name}
                       onChange={e => setForm({ ...form, name: e.target.value })}
                     />
@@ -112,7 +112,7 @@ export default function CampaignSetup() {
                     <div className="space-y-1.5">
                       <Label>Candidate Name *</Label>
                       <Input
-                        placeholder="e.g. Paul Jones"
+                        placeholder="e.g. Jane Smith"
                         value={form.candidate_name}
                         onChange={e => setForm({ ...form, candidate_name: e.target.value })}
                       />
@@ -120,7 +120,7 @@ export default function CampaignSetup() {
                     <div className="space-y-1.5">
                       <Label>Party</Label>
                       <Input
-                        placeholder="e.g. Green Party"
+                        placeholder="e.g. Green Party, Labour, Lib Dems"
                         value={form.party}
                         onChange={e => setForm({ ...form, party: e.target.value })}
                       />
@@ -130,7 +130,7 @@ export default function CampaignSetup() {
                     <div className="space-y-1.5">
                       <Label>Constituency / Ward</Label>
                       <Input
-                        placeholder="e.g. Tyldesley Ward"
+                        placeholder="e.g. Didsbury East Ward"
                         value={form.constituency}
                         onChange={e => setForm({ ...form, constituency: e.target.value })}
                       />
@@ -138,7 +138,7 @@ export default function CampaignSetup() {
                     <div className="space-y-1.5">
                       <Label>Area / Town</Label>
                       <Input
-                        placeholder="e.g. Wigan"
+                        placeholder="e.g. Manchester"
                         value={form.area}
                         onChange={e => setForm({ ...form, area: e.target.value })}
                       />
@@ -176,7 +176,7 @@ export default function CampaignSetup() {
                   <div className="space-y-1.5">
                     <Label>Invite Code</Label>
                     <Input
-                      placeholder="e.g. tyldesley-green-2026-AB3X"
+                      placeholder="e.g. manchester-green-2026-AB3X"
                       value={inviteCode}
                       onChange={e => setInviteCode(e.target.value)}
                       className="font-mono"
