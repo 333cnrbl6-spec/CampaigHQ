@@ -24,6 +24,7 @@ import TeamChat from './pages/TeamChat';
 import CampaignMaterials from './pages/CampaignMaterials';
 import Outreach from './pages/Outreach';
 import Leaderboard from './pages/Leaderboard';
+import EngagementLeaderboard from './pages/EngagementLeaderboard';
 import TurfManagement from './pages/TurfManagement';
 import TurfSheets from './pages/TurfSheets';
 import PollingMap from './pages/PollingMap';
@@ -143,6 +144,7 @@ const AuthenticatedApp = () => {
         <Route path="/map" element={<WardMap />} />
         <Route path="/outreach" element={<Outreach />} />
         <Route path="/leaderboard" element={<Leaderboard />} />
+        <Route path="/engagement" element={<EngagementLeaderboard />} />
         <Route path="/gotv" element={<GOTVTracker />} />
         <Route path="/activity" element={<ActivityFeed />} />
         <Route path="/turf" element={<TurfManagement />} />
