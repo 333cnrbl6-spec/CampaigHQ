@@ -197,7 +197,7 @@ export default function RouteOptimizer() {
   const urlParams = new URLSearchParams(window.location.search);
   const initialTurf = urlParams.get('turf') || 'all';
 
-  const [turfFilter, setTurfFilter] = useState(initialTurf);
+  const [selectedTurfId, setSelectedTurfId] = useState(initialTurf === 'all' ? null : initialTurf);
   const [search, setSearch] = useState('');
   const [selectedIds, setSelectedIds] = useState(new Set());
   const [geocoding, setGeocoding] = useState(false);
@@ -209,35 +209,51 @@ export default function RouteOptimizer() {
   const [showTurfBoundaries, setShowTurfBoundaries] = useState(false);
   const [showBatchAssignment, setShowBatchAssignment] = useState(false);
 
-  const { data: contacts = [], isLoading, refetch: refetchContacts } = useQuery({
-    queryKey: ['contacts-route', campaignId],
-    queryFn: () => base44.entities.Contact.filter({ campaign_id: campaignId }, '-created_date', 5000),
-    enabled: !!campaignId,
-    staleTime: 120000,
-  });
-
-  const { data: turfs = [] } = useQuery({
+  // Fetch all turfs (includes parent & split sub-turfs)
+  const { data: turfs = [], isLoading: turfsLoading } = useQuery({
     queryKey: ['turfs-route', campaignId],
     queryFn: () => base44.entities.Turf.filter({ campaign_id: campaignId }, 'name'),
     enabled: !!campaignId,
     staleTime: 120000,
   });
 
-  const allTurfs = useMemo(() =>
-    turfs.map(t => t.name).filter(Boolean).sort(),
+  // Fetch contacts for selected turf only
+  const { data: contacts = [], isLoading: contactsLoading, refetch: refetchContacts } = useQuery({
+    queryKey: ['contacts-turf', campaignId, selectedTurfId],
+    queryFn: async () => {
+      if (!selectedTurfId) return [];
+      const turf = turfs.find(t => t.id === selectedTurfId);
+      if (!turf) return [];
+      // Get contacts tagged with this turf (matches by turf name for backward compatibility)
+      return base44.entities.Contact.filter({ campaign_id: campaignId, tags: turf.name }, '-created_date', 1000);
+    },
+    enabled: !!campaignId && !!selectedTurfId,
+    staleTime: 120000,
+  });
+
+  const turfOptions = useMemo(() =>
+    turfs
+      .sort((a, b) => (a.parent_turf_id || '') > (b.parent_turf_id || '') ? 1 : -1)
+      .map(t => ({
+        id: t.id,
+        label: t.part_label ? `${t.name} — Part ${t.part_label}` : t.name,
+        stops: t.contact_count || 0,
+      })),
     [turfs]
   );
 
   const filteredContacts = useMemo(() => {
     return contacts.filter(c => {
-      const matchesTurf = turfFilter === 'all' || (c.tags || []).includes(turfFilter);
       const matchesSearch = !search ||
         c.name?.toLowerCase().includes(search.toLowerCase()) ||
         c.address?.toLowerCase().includes(search.toLowerCase()) ||
         c.postcode?.toLowerCase().includes(search.toLowerCase());
-      return matchesTurf && matchesSearch;
+      return matchesSearch;
     });
-  }, [contacts, turfFilter, search]);
+  }, [contacts, search]);
+
+  const selectedTurf = selectedTurfId ? turfs.find(t => t.id === selectedTurfId) : null;
+  const isLoading = turfsLoading || contactsLoading;
 
   const handleToggle = (id) => {
     const next = new Set(selectedIds);
@@ -295,7 +311,7 @@ export default function RouteOptimizer() {
 
       const response = await base44.functions.invoke('generateRoutePDF', {
         route: route.map((s, i) => ({ ...s.contact, stop_number: i + 1, id: s.contact.id })),
-        turf_name: turfFilter !== 'all' ? turfFilter : 'Generated Route',
+        turf_name: selectedTurf ? selectedTurf.name : 'Generated Route',
         contact_details: contactMap,
       });
 
@@ -304,7 +320,7 @@ export default function RouteOptimizer() {
       const url = window.URL.createObjectURL(pdfBlob);
       const el = document.createElement('a');
       el.href = url;
-      el.download = `route-${turfFilter !== 'all' ? turfFilter.replace(/\s+/g, '-') : 'export'}-${new Date().toISOString().split('T')[0]}.pdf`;
+      el.download = `route-${selectedTurf ? selectedTurf.name.replace(/\s+/g, '-') : 'export'}-${new Date().toISOString().split('T')[0]}.pdf`;
       el.click();
       window.URL.revokeObjectURL(url);
     } catch (err) {
@@ -325,7 +341,10 @@ export default function RouteOptimizer() {
         <div>
           <h1 className="font-heading text-2xl font-bold">Route Optimizer</h1>
           <p className="text-sm text-muted-foreground">
-            Groups contacts by postcode, optimises the postcode order, then sorts house numbers within each street
+            {selectedTurf
+              ? `Route for ${selectedTurf.name} — up to ${contacts.length} contacts`
+              : 'Select a turf zone to generate an optimized route'
+            }
           </p>
         </div>
         <div className="flex items-center gap-2">
@@ -335,8 +354,8 @@ export default function RouteOptimizer() {
            {route && (
              <>
                <Badge variant="secondary" className="text-sm px-3 py-1">
-                 {route.length} stops · {uniquePostcodesInRoute} postcodes · {totalDist.toFixed(1)} km
-               </Badge>
+                  {route.length}/{contacts.length} stops · {uniquePostcodesInRoute} postcodes · {totalDist.toFixed(1)} km
+                </Badge>
                <Button 
                  variant="outline" 
                  size="sm" 
@@ -384,13 +403,16 @@ export default function RouteOptimizer() {
         <div className="w-80 flex-shrink-0 border-r border-border flex flex-col bg-background overflow-hidden">
           {/* Filters */}
           <div className="p-4 space-y-3 border-b border-border">
-            <Select value={turfFilter} onValueChange={(v) => { setTurfFilter(v); setSelectedIds(new Set()); }}>
+            <Select value={selectedTurfId || ''} onValueChange={(v) => { setSelectedTurfId(v || null); setSelectedIds(new Set()); setSearch(''); }}>
               <SelectTrigger className="w-full">
-                <SelectValue placeholder="All Turf Zones" />
+                <SelectValue placeholder="Select a Turf Zone" />
               </SelectTrigger>
               <SelectContent>
-                <SelectItem value="all">All Turf Zones</SelectItem>
-                {allTurfs.map(t => <SelectItem key={t} value={t}>{t}</SelectItem>)}
+                {turfOptions.map(t => (
+                  <SelectItem key={t.id} value={t.id}>
+                    {t.label} ({t.stops} contacts)
+                  </SelectItem>
+                ))}
               </SelectContent>
             </Select>
             <div className="relative">
@@ -415,13 +437,23 @@ export default function RouteOptimizer() {
           </div>
 
           {/* How it works hint */}
+          {selectedTurf && (
           <div className="mx-4 mt-3 mb-1 flex items-start gap-2 bg-blue-50 border border-blue-100 rounded-lg p-2.5">
             <Info className="w-3.5 h-3.5 text-blue-500 flex-shrink-0 mt-0.5" />
             <p className="text-[10px] text-blue-700 leading-relaxed">
-              Contacts are grouped by postcode, postcodes ordered by walking distance, then house numbers sorted within each street.
-              <strong> Postcodes are required</strong> for accurate routing.
+              This turf has been split into manageable zones (max 25 stops). Routes are optimized by postcode walking distance, with house numbers sorted within each street.
             </p>
           </div>
+          )}
+
+          {!selectedTurf && (
+          <div className="mx-4 mt-3 mb-1 flex items-start gap-2 bg-amber-50 border border-amber-100 rounded-lg p-2.5">
+            <XCircle className="w-3.5 h-3.5 text-amber-600 flex-shrink-0 mt-0.5" />
+            <p className="text-[10px] text-amber-700 leading-relaxed">
+              <strong>Select a turf zone</strong> to view its contacts and generate a route.
+            </p>
+          </div>
+          )}
 
           {/* Contact list */}
            <div className="flex-1 overflow-y-auto p-2">
@@ -474,11 +506,11 @@ export default function RouteOptimizer() {
             </div>
 
             {/* Warning if no postcodes */}
-            {filteredContacts.length > 0 && filteredContacts.every(c => !c.postcode) && (
+            {selectedTurf && filteredContacts.length > 0 && filteredContacts.every(c => !c.postcode) && (
             <div className="mx-4 mb-3 flex items-start gap-2 bg-amber-50 border border-amber-200 rounded-lg p-2.5">
               <XCircle className="w-3.5 h-3.5 text-amber-600 flex-shrink-0 mt-0.5" />
               <p className="text-[10px] text-amber-700 leading-relaxed">
-                <strong>No postcodes found.</strong> Contacts must have postcodes to generate a route. Go to Contacts and bulk-add postcodes for <strong>{turfFilter}</strong>.
+                <strong>No postcodes found.</strong> Go to Contacts and bulk-add postcodes for <strong>{selectedTurf.name}</strong>.
               </p>
             </div>
             )}
@@ -523,7 +555,7 @@ export default function RouteOptimizer() {
             </button>
           )}
 
-          {showTurfBoundaries && !route && (
+          {showTurfBoundaries && !route && selectedTurf && (
             <TurfBoundaryMap turfs={turfs} contacts={filteredContacts} highlightAssigned={false} />
           )}
 
@@ -563,7 +595,7 @@ export default function RouteOptimizer() {
             <div className="absolute top-4 right-4 w-72 bg-background/95 backdrop-blur-sm border border-border rounded-xl shadow-lg max-h-[calc(100vh-8rem)] flex flex-col">
               <div className="px-4 py-3 border-b border-border flex items-center justify-between">
                 <h3 className="font-semibold text-sm">Visit Order</h3>
-                <span className="text-xs text-muted-foreground">{route.length} stops {route.length > 25 ? `(${Math.ceil(route.length / 24)} routes)` : ''} · {totalDist.toFixed(1)} km</span>
+                <span className="text-xs text-muted-foreground">{route.length} stops · {totalDist.toFixed(1)} km</span>
               </div>
 
               {/* Integration actions */}
@@ -579,8 +611,8 @@ export default function RouteOptimizer() {
                 >
                   <Navigation className="w-4 h-4 text-primary flex-shrink-0" />
                   <div className="min-w-0">
-                    <p className="text-xs font-semibold">Google Maps {route.length > 25 ? `(${Math.ceil(route.length / 24)} routes)` : ''}</p>
-                    <p className="text-[10px] text-muted-foreground">Full route with all stops</p>
+                    <p className="text-xs font-semibold">Google Maps</p>
+                    <p className="text-[10px] text-muted-foreground">Navigate all {route.length} stops</p>
                   </div>
                 </button>
                 <button
@@ -609,15 +641,15 @@ export default function RouteOptimizer() {
                     <p className="text-[10px] text-muted-foreground">Pre-selected in route order</p>
                   </div>
                 </button>
-                {turfFilter !== 'all' && (
+                {selectedTurf && (
                   <button
-                    onClick={() => navigate(`/leaflets?turf=${encodeURIComponent(turfFilter)}`)}
+                    onClick={() => navigate(`/leaflets?turf=${encodeURIComponent(selectedTurf.name)}`)}
                     className="w-full flex items-center gap-2.5 px-3 py-2 rounded-lg border border-border hover:bg-primary/5 hover:border-primary/30 transition-colors text-left"
                   >
                     <ClipboardList className="w-4 h-4 text-primary flex-shrink-0" />
                     <div className="min-w-0">
                       <p className="text-xs font-semibold">Leaflet Tracker</p>
-                      <p className="text-[10px] text-muted-foreground truncate">Streets for {turfFilter}</p>
+                      <p className="text-[10px] text-muted-foreground truncate">Streets for {selectedTurf.name}</p>
                     </div>
                   </button>
                 )}
@@ -650,19 +682,19 @@ export default function RouteOptimizer() {
       {showWalkSheet && route && (
         <WalkSheetPrint
           stops={route}
-          title={turfFilter !== 'all' ? `${turfFilter} — ${route.length} stops` : `${route.length} stops`}
+          title={selectedTurf ? `${selectedTurf.name} — ${route.length} stops` : `${route.length} stops`}
           onClose={() => setShowWalkSheet(false)}
         />
       )}
 
       {/* Batch assignment modal */}
-      {showBatchAssignment && route && (
+      {showBatchAssignment && route && selectedTurf && (
         <div className="fixed inset-0 z-50 bg-black/50 flex items-center justify-center p-4 overflow-y-auto">
           <div className="bg-background rounded-xl max-w-3xl w-full my-8 shadow-xl">
             <div className="px-6 py-4 border-b border-border flex items-center justify-between sticky top-0">
               <h2 className="text-lg font-semibold flex items-center gap-2">
                 <Zap className="w-5 h-5" />
-                Batch Assign Route
+                Assign {selectedTurf.name} to Volunteer
               </h2>
               <Button
                 variant="ghost"
@@ -674,7 +706,7 @@ export default function RouteOptimizer() {
             </div>
             <div className="p-6 overflow-y-auto max-h-[calc(100vh-12rem)]">
               <RouteBatchAssignment
-                turfId={turfFilter !== 'all' ? turfFilter : null}
+                turfId={selectedTurfId}
                 contactIds={route.map(s => s.contact.id)}
               />
             </div>
