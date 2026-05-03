@@ -27,6 +27,27 @@ async function bulkGeocodePostcodes(postcodes) {
   }
 }
 
+// Google Geocoding API fallback for addresses without valid postcodes
+async function geocodeAddressGoogle(address) {
+  try {
+    const encodedAddress = encodeURIComponent(address);
+    const res = await fetch(`https://maps.googleapis.com/maps/api/geocode/json?address=${encodedAddress}&key=${Deno.env.get('GOOGLE_MAPS_API_KEY')}`);
+    if (!res.ok) return null;
+    const data = await res.json();
+    if (data.results && data.results.length > 0) {
+      const location = data.results[0].geometry.location;
+      return {
+        latitude: location.lat,
+        longitude: location.lng,
+      };
+    }
+    return null;
+  } catch (e) {
+    console.error('Google Geocoding fallback error:', e.message);
+    return null;
+  }
+}
+
 Deno.serve(async (req) => {
   try {
     const base44 = createClientFromRequest(req);
@@ -91,7 +112,13 @@ Deno.serve(async (req) => {
     for (let i = 0; i < toProcess.length; i++) {
       const contact = toProcess[i];
       const pc = contactPostcodes[i];
-      const coords = pc ? postcodeMap[pc] : null;
+      let coords = pc ? postcodeMap[pc] : null;
+      
+      // Fallback to Google Geocoding if postcodes.io failed
+      if (!coords && contact.address?.trim()) {
+        coords = await geocodeAddressGoogle(contact.address);
+      }
+      
       if (coords) {
         await base44.asServiceRole.entities.Contact.update(contact.id, {
           latitude: coords.latitude,
