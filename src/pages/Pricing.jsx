@@ -11,7 +11,7 @@ function PricingInner() {
   const plans = [
     {
       name: 'Starter',
-      description: 'Local campaigns and wards',
+      description: 'Local campaigns and single wards',
       price: billingCycle === 'monthly' ? 99 : 990,
       period: billingCycle,
       contacts: '5,000',
@@ -20,20 +20,20 @@ function PricingInner() {
       cta: 'Start Free Trial',
       features: [
         { name: 'Unlimited users per campaign', included: true },
-        { name: 'Contact management & geocoding', included: true },
-        { name: 'Mobile canvassing app', included: true },
-        { name: 'Real-time leaderboards', included: true },
-        { name: 'Data import (CSV, Excel)', included: true },
-        { name: 'Email alerts', included: true },
-        { name: 'Email support', included: true },
-        { name: 'Route optimization', included: false },
-        { name: 'Slack integration', included: false },
+        { name: 'Contact management, geocoding & deduplication', included: true },
+        { name: 'Mobile canvassing app (offline-capable)', included: true },
+        { name: 'Real-time volunteer leaderboards', included: true },
+        { name: 'Data import (CSV, Excel, TMC)', included: true },
+        { name: 'Email & Slack alerts', included: true },
+        { name: 'Basic turf management', included: true },
+        { name: 'GDPR compliance tools', included: true },
+        { name: 'AI route optimization', included: false },
         { name: 'Priority support (24-hour)', included: false },
       ],
     },
     {
       name: 'Professional',
-      description: 'Regional & multi-ward campaigns',
+      description: 'Multi-ward & regional campaigns',
       price: billingCycle === 'monthly' ? 299 : 2990,
       period: billingCycle,
       contacts: '50,000',
@@ -43,20 +43,22 @@ function PricingInner() {
       featured: true,
       features: [
         { name: 'Unlimited users per campaign', included: true },
-        { name: 'Contact management & geocoding', included: true },
-        { name: 'Mobile canvassing app', included: true },
-        { name: 'Real-time leaderboards', included: true },
-        { name: 'Data import (CSV, Excel, TMC)', included: true },
-        { name: 'Email alerts & Slack integration', included: true },
-        { name: 'AI route optimization', included: true },
-        { name: 'Turf management & mapping', included: true },
-        { name: 'Phone & email support', included: true },
-        { name: 'Priority support (24-hour)', included: false },
+        { name: 'Complete contact database with geocoding', included: true },
+        { name: 'Mobile canvassing app with offline sync', included: true },
+        { name: 'Real-time leaderboards & performance tracking', included: true },
+        { name: 'Multi-format data import & voter list tools', included: true },
+        { name: 'Email, Slack & SMS alert integration', included: true },
+        { name: 'AI-powered route optimization & mapping', included: true },
+        { name: 'Advanced turf management & leaflet tracking', included: true },
+        { name: 'Volunteer shift scheduling & assignment', included: true },
+        { name: 'National dashboard access', included: true },
+        { name: 'GDPR compliance & audit logging', included: true },
+        { name: 'Priority support (24-hour)', included: true },
       ],
     },
     {
       name: 'Enterprise',
-      description: 'National campaigns & party infrastructure',
+      description: 'Multi-constituency & national campaigns',
       price: 'Custom',
       period: 'contact sales',
       contacts: 'Unlimited',
@@ -65,26 +67,26 @@ function PricingInner() {
       cta: 'Contact Sales',
       features: [
         { name: 'All Professional features', included: true },
-        { name: 'Unlimited users & campaigns', included: true },
-        { name: 'SMS notifications', included: true },
-        { name: 'Advanced analytics & reporting', included: true },
-        { name: 'White-label platform', included: true },
-        { name: 'Custom integrations', included: true },
-        { name: 'Dedicated account manager', included: true },
-        { name: '24/7 priority support', included: true },
-        { name: 'SLA guarantee (99.5% uptime)', included: true },
-        { name: 'Onsite training & implementation', included: true },
+        { name: 'Unlimited campaigns, users & contacts', included: true },
+        { name: 'SMS & advanced notification channels', included: true },
+        { name: 'Advanced analytics, post-election reports & insights', included: true },
+        { name: 'White-label platform with custom branding', included: true },
+        { name: 'Custom integrations & API access', included: true },
+        { name: 'Dedicated account manager & technical support', included: true },
+        { name: '24/7 priority support (election day war room)', included: true },
+        { name: 'SLA guarantee (99.9% uptime)', included: true },
+        { name: 'Onsite training, implementation & strategy support', included: true },
       ],
     },
   ];
 
   const addOns = [
-    { name: 'Data Migration', price: '£2,000', description: 'Migrate existing voter data from CSV, Excel, or legacy systems' },
-    { name: 'Team Training', price: '£500/day', description: 'On-site or remote training for campaign managers & volunteers' },
-    { name: 'SMS Notifications', price: '£100/mo', description: 'Send up to 10K SMS alerts for volunteer coordination' },
-    { name: 'Advanced Reporting', price: '£50/mo', description: 'Custom dashboards and email reports' },
-    { name: 'Implementation Support', price: '£3,000', description: 'Dedicated setup, turf mapping, and go-live support' },
-    { name: 'Custom Integrations', price: 'Custom', description: 'Connect to CRM, email providers, or custom systems' },
+    { name: 'Data Migration & Import', price: '£2,000', description: 'Full voter data migration from legacy systems, electoral roll, or existing platforms' },
+    { name: 'Campaign Training Program', price: '£500/day', description: 'On-site or remote training for managers, volunteers, and field teams' },
+    { name: 'SMS Notification Service', price: '£100/mo', description: 'Up to 10K SMS alerts for volunteer coordination and alerts' },
+    { name: 'Advanced Analytics & Reporting', price: '£50/mo', description: 'Custom dashboards, weekly reports, and post-election analysis' },
+    { name: 'Implementation & Go-Live Support', price: '£3,000', description: 'Dedicated project management, setup, turf mapping, and launch support' },
+    { name: 'Custom Integrations & API', price: 'Custom', description: 'Connect to CRM, email platforms, or build custom workflows' },
   ];
 
   return (
@@ -92,9 +94,9 @@ function PricingInner() {
       <div className="max-w-7xl mx-auto space-y-12">
         {/* Header */}
         <div className="text-center space-y-4">
-          <h1 className="text-4xl font-heading font-bold">Campaign Software Made Simple</h1>
+          <h1 className="text-4xl font-heading font-bold">Comprehensive Campaign Software</h1>
           <p className="text-xl text-muted-foreground">
-            One platform for canvassing, coordination, and accountability. No setup fees. Free 30-day trial on all plans. Cancel anytime.
+            Complete platform for voter contact, volunteer coordination, field operations, territory management, and real-time reporting. No setup fees. Free 30-day trial. Cancel anytime.
           </p>
         </div>
 

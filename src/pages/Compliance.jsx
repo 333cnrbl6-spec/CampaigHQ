@@ -9,14 +9,14 @@ export default function Compliance() {
       icon: Shield,
       status: 'Certified',
       description: 'Security, availability, processing integrity, confidentiality, and privacy controls',
-      details: ['Annual audits', 'Real-time monitoring', 'Incident response procedures'],
+      details: ['Independent auditor certification', 'Annual recertification', 'Real-time monitoring', '1-hour incident response'],
     },
     {
-      name: 'GDPR Compliant',
+      name: 'UK GDPR Compliant',
       icon: Lock,
       status: 'Certified',
-      description: 'Full compliance with UK and EU data protection regulations',
-      details: ['Data Processing Agreements', 'Right to be forgotten', 'Data portability'],
+      description: 'Full compliance with UK GDPR and Data Protection Act 2018',
+      details: ['Signed Data Processing Agreements', 'Right to be forgotten automation', 'Data portability & export', 'Consent management tools'],
     },
     {
       name: 'ISO 27001',
@@ -111,9 +111,9 @@ export default function Compliance() {
       <div className="max-w-7xl mx-auto space-y-12">
         {/* Header */}
         <div className="text-center space-y-4">
-          <h1 className="text-4xl font-heading font-bold">Security & Compliance</h1>
+          <h1 className="text-4xl font-heading font-bold">Security, Privacy & Compliance</h1>
           <p className="text-xl text-muted-foreground">
-            Enterprise-grade security with full regulatory compliance
+            Enterprise-grade security, GDPR/UK DPA compliant, SOC 2 certified, voter data protection
           </p>
         </div>
 

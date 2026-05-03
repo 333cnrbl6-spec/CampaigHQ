@@ -82,7 +82,7 @@ export default function Testimonials() {
         <div className="text-center space-y-4">
           <h1 className="text-4xl font-heading font-bold">Trusted by Campaign Leaders</h1>
           <p className="text-xl text-muted-foreground">
-            See how successful campaigns use our platform
+            Hear from campaigns that won using Base44's comprehensive canvassing platform
           </p>
         </div>
 
@@ -161,16 +161,16 @@ export default function Testimonials() {
           <CardContent className="pt-6">
             <div className="grid grid-cols-1 md:grid-cols-4 gap-6 text-center">
               <div>
-                <p className="text-3xl font-bold text-primary">45+</p>
-                <p className="text-sm text-muted-foreground">Campaigns</p>
+                <p className="text-3xl font-bold text-primary">50+</p>
+                <p className="text-sm text-muted-foreground">Active Campaigns</p>
               </div>
               <div>
-                <p className="text-3xl font-bold text-primary">340+</p>
-                <p className="text-sm text-muted-foreground">Volunteers</p>
+                <p className="text-3xl font-bold text-primary">1000+</p>
+                <p className="text-sm text-muted-foreground">Total Volunteers</p>
               </div>
               <div>
-                <p className="text-3xl font-bold text-primary">185K+</p>
-                <p className="text-sm text-muted-foreground">Contacts</p>
+                <p className="text-3xl font-bold text-primary">500K+</p>
+                <p className="text-sm text-muted-foreground">Voter Contacts</p>
               </div>
               <div>
                 <p className="text-3xl font-bold text-primary">4.9★</p>

@@ -11,19 +11,19 @@ const faqs = [
     items: [
       {
         q: 'How long does setup take?',
-        a: 'Campaign setup takes ~5 minutes. Import contacts (5 mins), assign volunteers (2 mins), start canvassing (live). Full onboarding available in Training Center.',
+        a: 'Campaign setup takes ~5 minutes. Create campaign, import voter list (5-10 mins), assign volunteers to turfs (2 mins), launch canvassing. Full onboarding in Training Center.',
       },
       {
         q: 'Do you offer a free trial?',
-        a: 'Yes — 30-day free trial on all plans. No credit card required. Full access to all features. Cancel anytime.',
+        a: 'Yes — 30-day free trial on all plans. No credit card required. Full feature access including mobile app, reporting, and integrations. Cancel anytime.',
       },
       {
-        q: 'Can I invite an unlimited number of volunteers?',
-        a: 'Yes. All plans include unlimited users. Each volunteer gets their own mobile app login and can work simultaneously.',
+        q: 'How many volunteers and contacts can I have?',
+        a: 'Starter: 10 volunteers, 5K contacts. Professional: 100 volunteers, 50K contacts. Enterprise: unlimited. All plans include unlimited campaign users (managers, organizers).',
       },
       {
-        q: 'What if I need to add more features mid-campaign?',
-        a: 'Upgrade anytime with prorated billing. Or contact sales for custom setup — we support add-ons like SMS, integrations, and training.',
+        q: 'Can I upgrade mid-campaign?',
+        a: 'Yes. Change plans anytime with prorated billing. Add extras like SMS, advanced analytics, or training at any time during your campaign.',
       },
     ],
   },
@@ -31,20 +31,20 @@ const faqs = [
     category: 'Canvassing & Field Work',
     items: [
       {
-        q: 'How does the mobile app work in the field?',
-        a: 'Volunteers open the app on their phone, see their assigned turf/street, and log door responses. The app shows support levels, previous notes, and proximity. Works fully offline — syncs when reconnected.',
+        q: 'How does the mobile app work?',
+        a: 'Volunteers see their assigned contacts sorted by proximity to current location. Log each door knock with support level (Strong/Leaning/Undecided/Opposed) and outcome. Contacts show previous notes and interaction history. Works offline with automatic sync when reconnected.',
       },
       {
-        q: 'How do we track volunteer safety?',
-        a: 'Volunteers get a welfare check-in every 30 minutes. If they don\'t check in, team leads get an alert. GPS location (with consent) allows real-time tracking on the live map.',
+        q: 'How is volunteer safety managed?',
+        a: 'Automatic welfare check-ins every 30 minutes. If volunteer doesn\'t respond, team lead gets alert. Optional GPS tracking (with consent) shows location on live map. Emergency contact details linked to each session.',
       },
       {
-        q: 'Can volunteers see real-time leaderboards?',
-        a: 'Yes. The app shows live leaderboards with doors knocked, support levels, and rankings. Updates in real-time to encourage friendly competition.',
+        q: 'What real-time features are available?',
+        a: 'Live leaderboards show doors knocked, support breakdown, and volunteer rankings. Campaign dashboard updates in real-time with canvassing progress, coverage map, and session summaries. Team leads see active volunteers on map.',
       },
       {
-        q: 'What happens if volunteers work offline?',
-        a: 'All interactions save locally on the phone. When reconnected to WiFi/mobile, data syncs automatically. No data loss.',
+        q: 'Does the app work offline?',
+        a: 'Yes. Full offline support — all door knocks, notes, and interactions save locally. Auto-syncs when WiFi/mobile returns. Works even with no internet connection.',
       },
     ],
   },
@@ -53,23 +53,23 @@ const faqs = [
     items: [
       {
         q: 'What data formats can I import?',
-        a: 'CSV, Excel (.xlsx), and TMC (Targeted Micro Canvassing) format. Required columns: name, address, postcode. Optional: phone, email, support level, notes.',
+        a: 'CSV, Excel (.xlsx), JSON, PDF, Word documents. Electoral register spreadsheets auto-parse postcodes and turf zones. Required: name, address, postcode. Optional: phone, email, support level, notes, tags.',
       },
       {
-        q: 'How do I prevent duplicate contacts?',
-        a: 'Use Deduplicate tool (Contacts → Data Tools). It automatically finds addresses appearing multiple times and merges them, keeping one primary record.',
+        q: 'How do I handle duplicate contacts?',
+        a: 'Use automated Deduplicate tool in Data Import. Scans for duplicate addresses and merges them intelligently. Also prevents duplicates during import by matching existing records.',
       },
       {
-        q: 'Is my voter data secure?',
-        a: 'Yes. All data encrypted at rest and in transit (HTTPS). Row-level security ensures users only see their campaign\'s data. Full audit trail of all access.',
+        q: 'Is voter data secure and compliant?',
+        a: 'Yes. AES-256 encryption at rest, TLS 1.3 in transit. Row-level security — users only access their campaign data. Complete audit trail, GDPR compliant, SOC 2 certified.',
       },
       {
-        q: 'Can I own my data after the campaign?',
-        a: 'Yes. Download your full contact list and interaction history anytime as CSV. We retain data for 12 months post-election, then delete unless you ask us to keep it.',
+        q: 'Can I export my data?',
+        a: 'Yes. Export full contacts, interactions, and reports as CSV or JSON anytime. We keep data for 12 months post-election, then delete unless you request retention.',
       },
       {
-        q: 'How do I handle GDPR right-to-be-forgotten requests?',
-        a: 'Go to GDPR Compliance, log request with contact email. System automatically anonymizes/deletes their data within 30 days. Audit log maintained for compliance.',
+        q: 'How do I process GDPR deletion requests?',
+        a: 'Go to GDPR Compliance → Right to Be Forgotten. Search contact, request deletion. System auto-deletes data within 30 days and maintains audit log for compliance proof.',
       },
     ],
   },
@@ -77,12 +77,12 @@ const faqs = [
     category: 'Reporting & Analytics',
     items: [
       {
-        q: 'What reports are available?',
-        a: 'Reports include: Canvassing Progress, Volunteer Leaderboard, Issue Tracking, and National Overview (admins).',
+        q: 'What reports and dashboards are available?',
+        a: 'Campaign Dashboard with live progress, support breakdown, and coverage map. Canvassing Reports with progress by area, volunteer leaderboard, issue tracking. National Dashboard for multi-campaign overview. Weekly reports, post-election analysis, GDPR compliance audit.',
       },
       {
-        q: 'Can I export campaign data?',
-        a: 'Yes, go to Data Export and choose your format (CSV, JSON). All data respects GDPR filters.',
+        q: 'Can I export data and reports?',
+        a: 'Yes. Go to Data Export, choose format (CSV, JSON, PDF). Export full contacts, interactions, reports, turf sheets. All respects GDPR filters and audit logs.',
       },
     ],
   },
