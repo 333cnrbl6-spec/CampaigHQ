@@ -57,6 +57,7 @@ import FieldNavigation from './pages/FieldNavigation';
 import VolunteerLiveMap from './pages/VolunteerLiveMap';
 import AutomatedSequences from './pages/AutomatedSequences';
 import VolunteerProfileSetup from './pages/VolunteerProfileSetup';
+import VolunteerRegistration from './pages/VolunteerRegistration';
 import VolunteerProfiles from './pages/VolunteerProfiles';
 import CampaignSettings from './pages/CampaignSettings';
 import VolunteerSignup from './pages/VolunteerSignup';
@@ -239,6 +240,7 @@ function App() {
               <Route path="/home" element={<HomeRoute />} />
               <Route path="/vote" element={<Navigate to="/" replace />} />
               <Route path="/volunteer" element={<VolunteerSignup />} />
+              <Route path="/volunteer-registration" element={<VolunteerRegistration />} />
               <Route path="/pricing" element={<Pricing />} />
               <Route path="/case-studies" element={<CaseStudies />} />
               <Route path="/testimonials" element={<Testimonials />} />
