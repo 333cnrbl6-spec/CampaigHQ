@@ -1,0 +1,97 @@
+{
+  "name": "TargetList",
+  "type": "object",
+  "properties": {
+    "campaign_id": {
+      "type": "string",
+      "description": "ID of the Campaign this target list belongs to"
+    },
+    "name": {
+      "type": "string",
+      "description": "Name of the target list (e.g., 'Undecided Voters')"
+    },
+    "description": {
+      "type": "string",
+      "description": "What this list targets and why"
+    },
+    "segment_type": {
+      "type": "string",
+      "enum": [
+        "support_level",
+        "interaction_history",
+        "demographic",
+        "custom"
+      ],
+      "description": "How this list was segmented"
+    },
+    "filters": {
+      "type": "object",
+      "properties": {
+        "support_levels": {
+          "type": "array",
+          "items": {
+            "type": "string"
+          },
+          "description": "Included support levels"
+        },
+        "registered_voter": {
+          "type": "boolean"
+        },
+        "min_interactions": {
+          "type": "number",
+          "description": "Minimum number of interactions"
+        },
+        "last_interaction_days": {
+          "type": "number",
+          "description": "Last interaction within X days"
+        },
+        "tags": {
+          "type": "array",
+          "items": {
+            "type": "string"
+          },
+          "description": "Must have these tags"
+        },
+        "turfs": {
+          "type": "array",
+          "items": {
+            "type": "string"
+          },
+          "description": "Must be in these turfs"
+        }
+      },
+      "description": "Filtering criteria"
+    },
+    "contact_ids": {
+      "type": "array",
+      "items": {
+        "type": "string"
+      },
+      "description": "IDs of contacts in this target list"
+    },
+    "contact_count": {
+      "type": "number",
+      "default": 0,
+      "description": "Total contacts in this list"
+    },
+    "created_by": {
+      "type": "string",
+      "description": "Email of user who created this list"
+    },
+    "last_updated": {
+      "type": "string",
+      "format": "date-time",
+      "description": "When the contact list was last refreshed"
+    },
+    "is_active": {
+      "type": "boolean",
+      "default": true,
+      "description": "Is this target list active?"
+    }
+  },
+  "required": [
+    "name",
+    "campaign_id",
+    "filters"
+  ]
+}
