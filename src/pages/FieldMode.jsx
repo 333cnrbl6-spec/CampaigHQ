@@ -95,6 +95,25 @@ export default function FieldMode() {
     return [...ordered, ...rest];
   }, [allContacts, routeIds]);
 
+  // Sort contacts by proximity to field rep, then apply search
+  const sortedByProximity = useMemo(() => {
+    if (!contacts.length) return contacts;
+    return contacts; // location-based sort happens after location is set
+  }, [contacts]);
+
+  const filteredContacts = useMemo(() => {
+    if (!searchQuery.trim()) return sortedByProximity;
+    const query = searchQuery.toLowerCase();
+    return sortedByProximity.filter(c =>
+      c.name?.toLowerCase().includes(query) ||
+      c.postcode?.toLowerCase().includes(query) ||
+      c.address?.toLowerCase().includes(query)
+    );
+  }, [sortedByProximity, searchQuery]);
+
+  const displayContacts = searchMode ? filteredContacts : contacts;
+  const currentContact = displayContacts[currentIndex] || displayContacts[0];
+
   const { location, requestLocation, calculateDistance } = useGeolocation();
 
   // Request location on mount and periodically update volunteer location
@@ -156,35 +175,6 @@ export default function FieldMode() {
     enabled: !!contacts[currentIndex]?.id && isOnline && !!campaign?.id,
   });
 
-  // Sort contacts by proximity to field rep, then apply search
-  const sortedByProximity = useMemo(() => {
-    if (!location) return contacts;
-    // Sort by real geocoded coordinates — contacts without coords go to the end
-    return [...contacts].sort((a, b) => {
-      const aHasCoords = a.latitude && a.latitude !== 0 && a.longitude;
-      const bHasCoords = b.latitude && b.latitude !== 0 && b.longitude;
-      if (!aHasCoords && !bHasCoords) return 0;
-      if (!aHasCoords) return 1;
-      if (!bHasCoords) return -1;
-      const dist1 = haversineMeters(location.latitude, location.longitude, a.latitude, a.longitude);
-      const dist2 = haversineMeters(location.latitude, location.longitude, b.latitude, b.longitude);
-      return dist1 - dist2;
-    });
-  }, [contacts, location]);
-
-  // Search contacts by name, postcode, address
-  const filteredContacts = useMemo(() => {
-    if (!searchQuery.trim()) return sortedByProximity;
-    const query = searchQuery.toLowerCase();
-    return sortedByProximity.filter(c =>
-      c.name?.toLowerCase().includes(query) ||
-      c.postcode?.toLowerCase().includes(query) ||
-      c.address?.toLowerCase().includes(query)
-    );
-  }, [sortedByProximity, searchQuery]);
-
-  const displayContacts = searchMode ? filteredContacts : contacts;
-  const currentContact = displayContacts[currentIndex] || displayContacts[0];
   const nextContact = displayContacts[currentIndex + 1] || null;
   const progress = displayContacts.length > 0 ? Math.round((currentIndex / displayContacts.length) * 100) : 0;
 
