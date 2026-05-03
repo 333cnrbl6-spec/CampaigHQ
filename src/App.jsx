@@ -5,6 +5,7 @@ import { BrowserRouter as Router, Route, Routes, Navigate } from 'react-router-d
 import PageNotFound from './lib/PageNotFound';
 import { AuthProvider, useAuth } from '@/lib/AuthContext';
 import { CampaignProvider, useCampaign } from '@/lib/CampaignContext';
+import { PermissionProvider } from '@/lib/PermissionContext';
 import CampaignSetup from './pages/CampaignSetup';
 import { useHardRefreshListener } from '@/hooks/useHardRefreshListener';
 import UserNotRegisteredError from '@/components/UserNotRegisteredError';
@@ -234,8 +235,9 @@ function App() {
   return (
     <AuthProvider>
       <QueryClientProvider client={queryClientInstance}>
-        <Router>
-          <CampaignProvider>
+        <PermissionProvider>
+          <Router>
+            <CampaignProvider>
             <Routes>
               {/* Public routes — redirect to dashboard if authenticated */}
               <Route path="/" element={<GreenPartyDemo />} />
@@ -255,8 +257,9 @@ function App() {
               <Route path="/*" element={<AuthenticatedApp />} />
             </Routes>
           </CampaignProvider>
-        </Router>
-        <Toaster />
+          </Router>
+          <Toaster />
+        </PermissionProvider>
       </QueryClientProvider>
     </AuthProvider>
   )
