@@ -314,23 +314,25 @@ export default function FieldMode() {
           </div>
         )}
 
-        {/* Online/Offline status bar */}
-        <div className={`flex items-center justify-between px-3 py-2 rounded-lg text-xs font-medium ${isOnline ? 'bg-green-50 text-green-700' : 'bg-amber-50 text-amber-700 border border-amber-200'}`}>
+        {/* Online/Offline status bar with sync queue */}
+        <div className={`flex items-center justify-between px-3 py-2 rounded-lg text-xs font-medium transition-colors ${isOnline && queue.length === 0 ? 'bg-green-50 text-green-700 border border-green-200' : isOnline ? 'bg-blue-50 text-blue-700 border border-blue-200' : 'bg-amber-50 text-amber-700 border border-amber-200'}`}>
           <div className="flex items-center gap-2">
             {isOnline ? <Wifi className="w-4 h-4" /> : <WifiOff className="w-4 h-4" />}
-            <span>{isOnline ? '✓ Online' : '📱 Offline — syncing when connected'}</span>
+            <span>{isOnline ? (queue.length === 0 ? '✓ Connected' : '⚡ Connected — syncing') : '📱 Offline Mode'}</span>
           </div>
-          {queue.length > 0 && (
-            <div className="flex items-center gap-2">
-              <span className="bg-yellow-200 text-yellow-800 text-xs px-2 py-0.5 rounded-full font-bold">{queue.length} pending</span>
-              {isOnline && (
-                <button onClick={syncQueue} disabled={isSyncing} className="flex items-center gap-1 text-xs underline">
-                  {isSyncing ? <RefreshCw className="w-3 h-3 animate-spin" /> : <CloudUpload className="w-3 h-3" />}
-                  {isSyncing ? 'Syncing…' : 'Sync now'}
-                </button>
-              )}
-            </div>
-          )}
+          <div className="flex items-center gap-2">
+            {queue.length > 0 && (
+              <span className={`text-xs px-2 py-0.5 rounded-full font-bold ${isSyncing ? 'bg-blue-200 text-blue-800' : 'bg-yellow-200 text-yellow-800'}`}>
+                {isSyncing ? 'Syncing...' : `${queue.length} queued`}
+              </span>
+            )}
+            {isOnline && queue.length > 0 && !isSyncing && (
+              <button onClick={syncQueue} className="flex items-center gap-1 text-xs font-medium hover:opacity-70 transition-opacity">
+                <CloudUpload className="w-3 h-3" />
+                Sync
+              </button>
+            )}
+          </div>
         </div>
 
         {/* Sync result toast */}
