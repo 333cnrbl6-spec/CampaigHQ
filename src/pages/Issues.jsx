@@ -1,6 +1,5 @@
 import React, { useState } from 'react';
-import { useMutation, useQueryClient } from '@tanstack/react-query';
-import useSecureData from '@/hooks/useSecureData';
+import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import DataFetchError from '@/components/DataFetchError';
 import { base44 } from '@/api/base44Client';
 import { useCampaign } from '@/lib/CampaignContext';
@@ -38,25 +37,28 @@ export default function Issues() {
   const { campaign } = useCampaign();
   const campaignId = campaign?.id;
 
-  const { data: issues = [], error: issueError, isLoading, refetch } = useSecureData(
-    'getActivityFeed',
-    campaignId ? {} : null,
-    { staleTime: 180000, refetchInterval: 180000, enabled: !!campaignId }
-  );
+  const { data: issues = [], error: issueError, isLoading, refetch } = useQuery({
+    queryKey: ['issues', campaignId],
+    queryFn: () => base44.entities.Issue.filter({ campaign_id: campaignId }, '-mentions_count'),
+    enabled: !!campaignId,
+    staleTime: 180000,
+  });
+
+  const invalidate = () => queryClient.invalidateQueries({ queryKey: ['issues', campaignId] });
 
   const createMutation = useMutation({
     mutationFn: (data) => base44.entities.Issue.create({ ...data, campaign_id: campaignId }),
-    onSuccess: () => { refetch(); setDialogOpen(false); setForm(emptyIssue); },
+    onSuccess: () => { invalidate(); setDialogOpen(false); setForm(emptyIssue); },
   });
 
   const updateMutation = useMutation({
     mutationFn: ({ id, data }) => base44.entities.Issue.update(id, data),
-    onSuccess: () => { refetch(); setDialogOpen(false); setEditing(null); setForm(emptyIssue); },
+    onSuccess: () => { invalidate(); setDialogOpen(false); setEditing(null); setForm(emptyIssue); },
   });
 
   const deleteMutation = useMutation({
     mutationFn: (id) => base44.entities.Issue.delete(id),
-    onSuccess: () => refetch(),
+    onSuccess: () => invalidate(),
   });
 
   const handleSubmit = (e) => {
@@ -80,7 +82,7 @@ export default function Issues() {
         <div className="flex gap-2">
            <SmartDataImporter
              entityName="Issue"
-             onComplete={() => refetch()}
+             onComplete={() => invalidate()}
              trigger={{
                type: Button,
                props: { variant: 'outline', className: 'gap-2', children: [<Upload key="icon" className="w-4 h-4" />, 'Import Data'] }
@@ -148,7 +150,8 @@ export default function Issues() {
       ) : issues.length === 0 ? (
         <div className="text-center py-16">
           <Leaf className="w-12 h-12 text-muted-foreground mx-auto mb-4" />
-          <p className="text-muted-foreground">No issues tracked yet.</p>
+          <p className="text-muted-foreground font-medium">No issues tracked yet.</p>
+          <p className="text-sm text-muted-foreground mt-1">Add your first issue to start tracking what voters care about.</p>
         </div>
       ) : (
         <div className="grid gap-4 md:grid-cols-2">
