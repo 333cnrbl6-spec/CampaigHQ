@@ -16,6 +16,7 @@ async function bulkGeocodePostcodes(postcodes) {
         map[item.query.replace(/\s+/g, '').toUpperCase()] = {
           latitude: item.result.latitude,
           longitude: item.result.longitude,
+          postcode: item.result.postcode,
         };
       }
     }
@@ -95,6 +96,7 @@ Deno.serve(async (req) => {
         await base44.asServiceRole.entities.Contact.update(contact.id, {
           latitude: coords.latitude,
           longitude: coords.longitude,
+          postcode: coords.postcode || contact.postcode,
         });
         results.succeeded += 1;
       } else {

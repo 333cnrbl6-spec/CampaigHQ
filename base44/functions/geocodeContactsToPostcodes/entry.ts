@@ -1,5 +1,32 @@
 import { createClientFromRequest } from 'npm:@base44/sdk@0.8.25';
 
+// postcodes.io bulk endpoint — up to 100 postcodes per request
+async function bulkGeocodePostcodes(postcodes) {
+  try {
+    const res = await fetch('https://api.postcodes.io/postcodes', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ postcodes }),
+    });
+    if (!res.ok) return {};
+    const data = await res.json();
+    const map = {};
+    for (const item of (data.result || [])) {
+      if (item.result) {
+        map[item.query.replace(/\s+/g, '').toUpperCase()] = {
+          latitude: item.result.latitude,
+          longitude: item.result.longitude,
+          postcode: item.result.postcode,
+        };
+      }
+    }
+    return map;
+  } catch (e) {
+    console.error('postcodes.io bulk error:', e.message);
+    return {};
+  }
+}
+
 Deno.serve(async (req) => {
   try {
     const base44 = createClientFromRequest(req);
@@ -17,81 +44,76 @@ Deno.serve(async (req) => {
     }
 
     // Fetch contacts to geocode for this campaign
-    let contacts = [];
+    const allContacts = await base44.asServiceRole.entities.Contact.filter({ campaign_id }, '', 10000);
+    let contacts = allContacts;
     if (contactIds?.length) {
-      const allContacts = await base44.asServiceRole.entities.Contact.filter({ campaign_id }, '', 10000);
       contacts = allContacts.filter(c => contactIds.includes(c.id));
     } else if (turf) {
-      // Fetch all contacts for the turf in this campaign
-      const allContacts = await base44.asServiceRole.entities.Contact.filter({ campaign_id }, '', 10000);
       contacts = allContacts.filter(c => c.tags?.includes(turf) || c.address?.includes(turf));
     } else {
-      // Fetch all contacts without postcodes in this campaign
-      const allContacts = await base44.asServiceRole.entities.Contact.filter({ campaign_id }, '', 10000);
-      contacts = allContacts.filter(c => !c.postcode);
+      // Only contacts missing coordinates or postcode
+      contacts = allContacts.filter(c => {
+        const hasCoords = c.latitude != null && c.latitude !== 0 && c.longitude != null && c.longitude !== 0;
+        return !hasCoords || !c.postcode?.trim();
+      });
     }
 
-    const results = {
-      total: contacts.length,
-      updated: 0,
-      failed: 0,
-      errors: [],
-      updated_ids: [],
-    };
+    const results = { total: contacts.length, updated: 0, failed: 0, errors: [], updated_ids: [] };
 
-    // Process in batches with concurrent requests (with backoff)
-    const batchSize = 5;
-    for (let i = 0; i < contacts.length; i += batchSize) {
-      const batch = contacts.slice(i, i + batchSize);
-      
-      await Promise.all(batch.map(async (contact) => {
-        if (!contact.address) {
-          results.failed++;
-          results.errors.push({ id: contact.id, reason: 'No address' });
-          return;
-        }
-
-        try {
-          // Stagger requests within batch
-          await new Promise(resolve => setTimeout(resolve, Math.random() * 500));
-
-          const response = await fetch(
-            `https://nominatim.openstreetmap.org/search?format=json&q=${encodeURIComponent(
-              contact.address + ', Tyldesley, UK'
-            )}&limit=1`,
-            { headers: { 'User-Agent': 'Paul-Binns-Campaign' } }
-          );
-
-          const data = await response.json();
-          if (!data || data.length === 0) {
-            results.failed++;
-            results.errors.push({ id: contact.id, reason: 'Address not found' });
-            return;
-          }
-
-          const location = data[0];
-          const postcodeMatch = location.address?.postcode;
-
-          if (postcodeMatch) {
-            await base44.entities.Contact.update(contact.id, { postcode: postcodeMatch });
-            results.updated++;
-            results.updated_ids.push(contact.id);
-          } else {
-            results.failed++;
-            results.errors.push({ id: contact.id, reason: 'Postcode not in response' });
-          }
-        } catch (err) {
-          results.failed++;
-          results.errors.push({ id: contact.id, reason: err.message });
-        }
-      }));
-
-      // Delay between batches
-      await new Promise(resolve => setTimeout(resolve, 1000));
+    if (contacts.length === 0) {
+      return Response.json({ ...results, message: 'Nothing to geocode' });
     }
 
-    return Response.json(results);
+    // Collect postcodes (from postcode field or extracted from address)
+    const UK_POSTCODE_RE = /\b([A-Z]{1,2}\d{1,2}[A-Z]?\s*\d[A-Z]{2})\b/i;
+    const contactPostcodes = contacts.map(c => {
+      if (c.postcode?.trim()) return c.postcode.replace(/\s+/g, '').toUpperCase();
+      const m = (c.address || '').match(UK_POSTCODE_RE);
+      return m ? m[1].replace(/\s+/g, '').toUpperCase() : null;
+    });
+
+    const uniquePostcodes = [...new Set(contactPostcodes.filter(Boolean))];
+
+    // Bulk geocode in batches of 100
+    const BATCH = 100;
+    const postcodeMap = {};
+    for (let i = 0; i < uniquePostcodes.length; i += BATCH) {
+      const chunk = uniquePostcodes.slice(i, i + BATCH);
+      const chunkMap = await bulkGeocodePostcodes(chunk);
+      Object.assign(postcodeMap, chunkMap);
+      if (i + BATCH < uniquePostcodes.length) {
+        await new Promise(r => setTimeout(r, 300));
+      }
+    }
+
+    // Update contacts with coordinates and postcode
+    for (let i = 0; i < contacts.length; i++) {
+      const contact = contacts[i];
+      const pc = contactPostcodes[i];
+      const coords = pc ? postcodeMap[pc] : null;
+
+      if (coords) {
+        await base44.asServiceRole.entities.Contact.update(contact.id, {
+          latitude: coords.latitude,
+          longitude: coords.longitude,
+          postcode: coords.postcode || contact.postcode,
+        });
+        results.updated++;
+        results.updated_ids.push(contact.id);
+      } else {
+        results.failed++;
+        results.errors.push({ id: contact.id, reason: pc ? 'Postcode not found in postcodes.io' : 'No postcode available' });
+      }
+
+      if ((i + 1) % 3 === 0) {
+        await new Promise(r => setTimeout(r, 200));
+      }
+    }
+
+    console.log(`Geocoded ${results.updated}/${results.total} contacts for campaign ${campaign_id}`);
+    return Response.json({ ...results, message: `Updated ${results.updated} of ${results.total} contacts` });
   } catch (error) {
+    console.error('geocodeContactsToPostcodes error:', error);
     return Response.json({ error: error.message }, { status: 500 });
   }
 });
