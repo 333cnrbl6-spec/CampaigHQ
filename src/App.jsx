@@ -60,6 +60,7 @@ import VolunteerProfileSetup from './pages/VolunteerProfileSetup';
 import VolunteerProfiles from './pages/VolunteerProfiles';
 import CampaignSettings from './pages/CampaignSettings';
 import VolunteerSignup from './pages/VolunteerSignup';
+import OutreachSequenceManager from './pages/OutreachSequenceManager';
 import DataExport from './pages/DataExport';
 import HelpCenter from './pages/HelpCenter';
 import LoadTestDashboard from './pages/LoadTestDashboard';
@@ -171,6 +172,7 @@ const AuthenticatedApp = () => {
         <Route path="/field-nav" element={<FieldNavigation />} />
         <Route path="/live-map" element={<VolunteerLiveMap />} />
         <Route path="/sequences" element={<AutomatedSequences />} />
+        <Route path="/outreach-sequences" element={<OutreachSequenceManager />} />
         <Route path="/volunteer-setup" element={<VolunteerProfileSetup />} />
         <Route path="/volunteer-profiles" element={<VolunteerProfiles />} />
         <Route path="/campaign-settings" element={<CampaignSettings />} />

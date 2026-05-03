@@ -1,20 +1,14 @@
 import { createClientFromRequest } from 'npm:@base44/sdk@0.8.25';
 
-const PLACEHOLDER_MAP = {
-  '{{name}}': (c) => c.name || '',
-  '{{postcode}}': (c) => c.postcode || '',
-  '{{address}}': (c) => c.address || '',
-  '{{support_level}}': (c) => c.support_level?.replace('_', ' ') || 'supporter',
-};
-
-const interpolateMessage = (template, contact) => {
-  let result = template;
-  Object.entries(PLACEHOLDER_MAP).forEach(([placeholder, getter]) => {
-    result = result.replace(new RegExp(placeholder, 'g'), getter(contact));
-  });
-  return result;
-};
-
+/**
+ * Processes outreach sequences triggered by contact interactions.
+ * Schedules and sends messages based on triggers.
+ * 
+ * Can be called:
+ * - Via automation on ContactInteraction creation
+ * - Via entity automation on Contact update
+ * - Via scheduled job
+ */
 Deno.serve(async (req) => {
   try {
     const base44 = createClientFromRequest(req);
@@ -24,96 +18,107 @@ Deno.serve(async (req) => {
       return Response.json({ error: 'Unauthorized' }, { status: 401 });
     }
 
-    const { campaign_id, event_type, contact_id, trigger_value } = await req.json();
+    const body = await req.json();
+    const { trigger_event, contact_id, trigger_value } = body;
 
-    if (!campaign_id) {
-      return Response.json({ error: 'campaign_id is required' }, { status: 400 });
-    }
+    // Get contact and sequences
+    const contact = contact_id ? 
+      await base44.entities.Contact.get(contact_id) : null;
+    
+    const sequences = await base44.entities.OutreachSequence.list('-created_date', 500);
+    const allSequences = Array.isArray(sequences) ? sequences : [];
 
-    // Fetch all active sequences matching this event for this campaign
-    const sequences = await base44.asServiceRole.entities.OutreachSequence.filter({
-      campaign_id,
-      trigger_event: event_type,
-      status: 'active',
-      enabled: true,
+    // Filter sequences that match this trigger
+    const matchingSequences = allSequences.filter(seq => {
+      if (seq.status !== 'active') return false;
+      if (seq.trigger_event !== trigger_event) return false;
+      
+      // Match trigger value if specified
+      if (seq.trigger_value && seq.trigger_value !== trigger_value) {
+        return false;
+      }
+
+      // Check filters
+      if (seq.filters?.support_level && contact && !seq.filters.support_level.includes(contact.support_level)) {
+        return false;
+      }
+
+      if (seq.filters?.registered_voter && contact && !contact.registered_voter) {
+        return false;
+      }
+
+      if (seq.filters?.has_contact_method) {
+        if (seq.filters.has_contact_method === 'email' && !contact?.email) return false;
+        if (seq.filters.has_contact_method === 'phone' && !contact?.phone) return false;
+      }
+
+      return true;
     });
 
-    if (!sequences.length) {
-      return Response.json({ processed: 0 });
-    }
+    console.log(`Found ${matchingSequences.length} matching sequences for ${trigger_event}`);
 
-    // Fetch the contact for this campaign
-    const allContacts = await base44.asServiceRole.entities.Contact.filter({ campaign_id });
-    const contact = allContacts.find(c => c.id === contact_id);
-    if (!contact) {
-      return Response.json({ error: 'Contact not found' }, { status: 404 });
-    }
+    const results = [];
 
-    let processed = 0;
+    // Process each matching sequence
+    for (const sequence of matchingSequences) {
+      if (!contact) continue;
 
-    for (const sequence of sequences) {
-      // Check if this sequence applies to this contact
-      if (sequence.trigger_event === 'support_level_changed' && sequence.trigger_value !== trigger_value) {
+      // Check contact has required communication method
+      const canEmail = sequence.channel === 'email' && contact.email;
+      const canSms = sequence.channel === 'sms' && contact.phone;
+
+      if (!canEmail && !canSms) {
+        console.log(`Skipping sequence ${sequence.id}: contact has no ${sequence.channel}`);
         continue;
       }
 
-      // Check contact filters
-      if (sequence.filters?.support_level?.length > 0 && !sequence.filters.support_level.includes(contact.support_level)) {
-        continue;
-      }
+      // Schedule each message in the sequence
+      for (let msgIdx = 0; msgIdx < sequence.messages.length; msgIdx++) {
+        const msg = sequence.messages[msgIdx];
+        const delayMs = (msg.delay_hours || 0) * 3600 * 1000;
+        const scheduledTime = new Date(Date.now() + delayMs).toISOString();
 
-      if (sequence.filters?.has_contact_method === 'email' && !contact.email) {
-        continue;
-      }
-
-      if (sequence.filters?.has_contact_method === 'phone' && !contact.phone) {
-        continue;
-      }
-
-      // Check if contact already has messages from this sequence
-      const existingLogs = await base44.asServiceRole.entities.OutreachLog.filter({
-        contact_id,
-        sequence_id: sequence.id,
-      });
-
-      if (existingLogs.length > 0) {
-        continue; // Skip if already processed
-      }
-
-      // Create logs for each message in the sequence
-      for (let i = 0; i < sequence.messages.length; i++) {
-        const msg = sequence.messages[i];
-        const delayMs = msg.delay_hours * 60 * 60 * 1000;
-        const scheduledFor = new Date(Date.now() + delayMs).toISOString();
-
-        const body = interpolateMessage(msg.body, contact);
-        const subject = msg.subject ? interpolateMessage(msg.subject, contact) : null;
-
-        await base44.asServiceRole.entities.OutreachLog.create({
+        // Create outreach log entry
+        const logEntry = await base44.entities.OutreachLog.create({
           sequence_id: sequence.id,
-          contact_id,
+          contact_id: contact.id,
           contact_name: contact.name,
           contact_email: contact.email,
           channel: sequence.channel,
-          message_index: i,
+          message_index: msgIdx,
           status: 'scheduled',
-          subject,
-          body,
-          trigger_event: event_type,
-          scheduled_for: scheduledFor,
+          subject: msg.subject,
+          body: msg.body,
+          trigger_event,
+          scheduled_for: scheduledTime,
         });
 
-        processed++;
+        results.push({
+          sequence: sequence.name,
+          contact: contact.name,
+          message: msgIdx + 1,
+          scheduled_for: scheduledTime,
+          log_id: logEntry.id,
+        });
+
+        console.log(`Scheduled message ${msgIdx + 1} of sequence ${sequence.name} for ${contact.name}`);
       }
 
-      // Increment sent_count on sequence
-      await base44.asServiceRole.entities.OutreachSequence.update(sequence.id, {
-        sent_count: (sequence.sent_count || 0) + sequence.messages.length,
+      // Update sequence sent count
+      const currentCount = sequence.sent_count || 0;
+      await base44.entities.OutreachSequence.update(sequence.id, {
+        sent_count: currentCount + 1,
       });
     }
 
-    return Response.json({ processed, sequences_matched: sequences.length });
+    return Response.json({
+      success: true,
+      sequences_triggered: matchingSequences.length,
+      messages_scheduled: results.length,
+      details: results,
+    });
   } catch (error) {
+    console.error('Error processing outreach sequences:', error);
     return Response.json({ error: error.message }, { status: 500 });
   }
 });

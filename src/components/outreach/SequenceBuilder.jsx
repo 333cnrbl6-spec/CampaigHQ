@@ -1,190 +1,254 @@
 import React, { useState } from 'react';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
+import { Badge } from '@/components/ui/badge';
 import { Input } from '@/components/ui/input';
 import { Textarea } from '@/components/ui/textarea';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
-import { Badge } from '@/components/ui/badge';
-import { Checkbox } from '@/components/ui/checkbox';
-import { Plus, Trash2, Clock } from 'lucide-react';
+import { X, Plus, GripVertical } from 'lucide-react';
 
-const PLACEHOLDERS = [
-  { code: '{{name}}', label: 'Full name' },
-  { code: '{{postcode}}', label: 'Postcode' },
-  { code: '{{address}}', label: 'Address' },
-  { code: '{{support_level}}', label: 'Support level' },
+const TRIGGER_EVENTS = [
+  { value: 'contact_created', label: 'New Contact Added' },
+  { value: 'canvassed_status_changed', label: 'Contact Canvassed' },
+  { value: 'support_level_changed', label: 'Support Level Changed' },
 ];
 
-export default function SequenceBuilder({ sequence, onChange }) {
-  const [messages, setMessages] = useState(sequence.messages || []);
+const SUPPORT_LEVELS = [
+  'strong_supporter',
+  'leaning',
+  'undecided',
+  'opposed',
+];
+
+export default function SequenceBuilder({ sequence, onSave, onCancel, isSaving }) {
+  const [name, setName] = useState(sequence?.name || '');
+  const [description, setDescription] = useState(sequence?.description || '');
+  const [triggerEvent, setTriggerEvent] = useState(sequence?.trigger_event || 'contact_created');
+  const [triggerValue, setTriggerValue] = useState(sequence?.trigger_value || '');
+  const [channel, setChannel] = useState(sequence?.channel || 'email');
+  const [messages, setMessages] = useState(sequence?.messages || []);
+  const [status, setStatus] = useState(sequence?.status || 'active');
 
   const addMessage = () => {
-    setMessages([...messages, { delay_hours: 0, subject: '', body: '', order: messages.length }]);
+    setMessages([
+      ...messages,
+      {
+        order: messages.length,
+        delay_hours: 0,
+        subject: '',
+        body: '',
+      },
+    ]);
   };
 
   const updateMessage = (idx, field, value) => {
     const updated = [...messages];
     updated[idx][field] = value;
     setMessages(updated);
-    onChange({ ...sequence, messages: updated });
   };
 
   const removeMessage = (idx) => {
-    const updated = messages.filter((_, i) => i !== idx);
-    setMessages(updated);
-    onChange({ ...sequence, messages: updated });
+    setMessages(messages.filter((_, i) => i !== idx));
   };
 
-  const insertPlaceholder = (idx, placeholder) => {
-    const msg = messages[idx];
-    const textarea = document.querySelector(`textarea[data-message-idx="${idx}"]`);
-    if (textarea) {
-      const start = textarea.selectionStart;
-      const end = textarea.selectionEnd;
-      const newBody = msg.body.substring(0, start) + placeholder + msg.body.substring(end);
-      updateMessage(idx, 'body', newBody);
+  const handleSave = () => {
+    if (!name.trim() || messages.length === 0) {
+      alert('Please enter a sequence name and add at least one message');
+      return;
     }
+
+    onSave({
+      name,
+      description,
+      trigger_event: triggerEvent,
+      trigger_value: triggerValue,
+      channel,
+      messages: messages.map((m, idx) => ({ ...m, order: idx })),
+      status,
+    });
   };
 
   return (
-    <div className="space-y-6">
-      {/* Basic setup */}
-      <Card>
-        <CardHeader>
-          <CardTitle className="text-base">1. Sequence Setup</CardTitle>
+    <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50 p-4">
+      <Card className="w-full max-w-2xl max-h-[90vh] overflow-y-auto">
+        <CardHeader className="sticky top-0 bg-background border-b">
+          <div className="flex items-center justify-between">
+            <CardTitle>{sequence ? 'Edit Sequence' : 'Create New Sequence'}</CardTitle>
+            <Button variant="ghost" size="icon" onClick={onCancel}>
+              <X className="w-4 h-4" />
+            </Button>
+          </div>
         </CardHeader>
-        <CardContent className="space-y-4">
-          <div>
-            <label className="text-sm font-medium">Sequence name</label>
-            <Input
-              value={sequence.name}
-              onChange={(e) => onChange({ ...sequence, name: e.target.value })}
-              placeholder="e.g., Welcome Strong Supporters"
-              className="mt-1"
-            />
-          </div>
 
-          <div>
-            <label className="text-sm font-medium">Description</label>
-            <Textarea
-              value={sequence.description || ''}
-              onChange={(e) => onChange({ ...sequence, description: e.target.value })}
-              placeholder="What does this sequence do?"
-              className="mt-1 h-20"
-            />
-          </div>
-
-          <div className="grid grid-cols-2 gap-4">
+        <CardContent className="space-y-6 p-6">
+          {/* Basic info */}
+          <div className="space-y-4">
             <div>
-              <label className="text-sm font-medium">Trigger event</label>
-              <Select value={sequence.trigger_event} onValueChange={(val) => onChange({ ...sequence, trigger_event: val })}>
-                <SelectTrigger className="mt-1">
-                  <SelectValue />
-                </SelectTrigger>
-                <SelectContent>
-                  <SelectItem value="support_level_changed">Support level changed</SelectItem>
-                  <SelectItem value="contact_created">New contact added</SelectItem>
-                  <SelectItem value="canvassed_status_changed">Canvassed status changed</SelectItem>
-                  <SelectItem value="volunteer_status_changed">Volunteer status changed</SelectItem>
-                </SelectContent>
-              </Select>
+              <label className="text-sm font-medium">Sequence Name *</label>
+              <Input
+                value={name}
+                onChange={(e) => setName(e.target.value)}
+                placeholder="e.g., Thank You - Strong Supporters"
+                className="mt-1"
+              />
             </div>
 
-            {sequence.trigger_event === 'support_level_changed' && (
+            <div>
+              <label className="text-sm font-medium">Description</label>
+              <Textarea
+                value={description}
+                onChange={(e) => setDescription(e.target.value)}
+                placeholder="What does this sequence do?"
+                className="mt-1"
+              />
+            </div>
+          </div>
+
+          {/* Trigger configuration */}
+          <div className="space-y-4 p-4 bg-muted/50 rounded-lg">
+            <h3 className="font-semibold text-sm">When to trigger?</h3>
+
+            <div className="grid grid-cols-2 gap-4">
               <div>
-                <label className="text-sm font-medium">Trigger when support is</label>
-                <Select value={sequence.trigger_value} onValueChange={(val) => onChange({ ...sequence, trigger_value: val })}>
+                <label className="text-xs font-medium text-muted-foreground">Event</label>
+                <Select value={triggerEvent} onValueChange={setTriggerEvent}>
                   <SelectTrigger className="mt-1">
                     <SelectValue />
                   </SelectTrigger>
                   <SelectContent>
-                    <SelectItem value="strong_supporter">Strong Supporter</SelectItem>
-                    <SelectItem value="leaning">Leaning</SelectItem>
-                    <SelectItem value="undecided">Undecided</SelectItem>
-                    <SelectItem value="opposed">Opposed</SelectItem>
+                    {TRIGGER_EVENTS.map((evt) => (
+                      <SelectItem key={evt.value} value={evt.value}>
+                        {evt.label}
+                      </SelectItem>
+                    ))}
                   </SelectContent>
                 </Select>
               </div>
-            )}
-          </div>
-        </CardContent>
-      </Card>
 
-      {/* Messages */}
-      <Card>
-        <CardHeader>
-          <CardTitle className="text-base">2. Message Sequence</CardTitle>
-          <p className="text-sm text-muted-foreground mt-2">Create a series of messages to send over time</p>
-        </CardHeader>
-        <CardContent className="space-y-4">
-          {messages.map((msg, idx) => (
-            <div key={idx} className="border border-border rounded-lg p-4 space-y-3">
-              <div className="flex items-center justify-between">
-                <div className="flex items-center gap-2">
-                  <Badge variant="secondary">Message {idx + 1}</Badge>
-                  <div className="flex items-center gap-1 text-sm text-muted-foreground">
-                    <Clock className="w-3.5 h-3.5" />
-                    <Input
-                      type="number"
-                      value={msg.delay_hours}
-                      onChange={(e) => updateMessage(idx, 'delay_hours', parseInt(e.target.value))}
-                      min="0"
-                      className="w-16 h-8 text-xs"
-                    />
-                    <span>hours delay</span>
-                  </div>
-                </div>
-                <Button
-                  variant="ghost"
-                  size="icon"
-                  onClick={() => removeMessage(idx)}
-                  className="text-destructive hover:text-destructive"
-                >
-                  <Trash2 className="w-4 h-4" />
-                </Button>
-              </div>
-
-              {sequence.channel === 'email' && (
+              {triggerEvent === 'support_level_changed' && (
                 <div>
-                  <label className="text-xs font-medium">Subject line</label>
-                  <Input
-                    value={msg.subject}
-                    onChange={(e) => updateMessage(idx, 'subject', e.target.value)}
-                    placeholder="E.g., Thank you for your support!"
-                    className="mt-1 text-sm"
-                  />
+                  <label className="text-xs font-medium text-muted-foreground">Support Level</label>
+                  <Select value={triggerValue} onValueChange={setTriggerValue}>
+                    <SelectTrigger className="mt-1">
+                      <SelectValue placeholder="Select level" />
+                    </SelectTrigger>
+                    <SelectContent>
+                      {SUPPORT_LEVELS.map((level) => (
+                        <SelectItem key={level} value={level}>
+                          {level.replace('_', ' ')}
+                        </SelectItem>
+                      ))}
+                    </SelectContent>
+                  </Select>
                 </div>
               )}
 
               <div>
-                <label className="text-xs font-medium">Message body</label>
-                <Textarea
-                  value={msg.body}
-                  onChange={(e) => updateMessage(idx, 'body', e.target.value)}
-                  data-message-idx={idx}
-                  placeholder="Write your message here..."
-                  className="mt-1 min-h-24 text-sm"
-                />
-                <div className="flex flex-wrap gap-1 mt-2">
-                  {PLACEHOLDERS.map(p => (
-                    <Button
-                      key={p.code}
-                      variant="outline"
-                      size="sm"
-                      className="text-xs h-7"
-                      onClick={() => insertPlaceholder(idx, p.code)}
-                    >
-                      {p.code}
-                    </Button>
-                  ))}
-                </div>
+                <label className="text-xs font-medium text-muted-foreground">Channel</label>
+                <Select value={channel} onValueChange={setChannel}>
+                  <SelectTrigger className="mt-1">
+                    <SelectValue />
+                  </SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="email">Email</SelectItem>
+                    <SelectItem value="sms">SMS</SelectItem>
+                  </SelectContent>
+                </Select>
+              </div>
+
+              <div>
+                <label className="text-xs font-medium text-muted-foreground">Status</label>
+                <Select value={status} onValueChange={setStatus}>
+                  <SelectTrigger className="mt-1">
+                    <SelectValue />
+                  </SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="active">Active</SelectItem>
+                    <SelectItem value="paused">Paused</SelectItem>
+                  </SelectContent>
+                </Select>
               </div>
             </div>
-          ))}
+          </div>
 
-          <Button onClick={addMessage} variant="outline" className="w-full gap-2">
-            <Plus className="w-4 h-4" /> Add message to sequence
-          </Button>
+          {/* Messages */}
+          <div className="space-y-4">
+            <div className="flex items-center justify-between">
+              <h3 className="font-semibold text-sm">Messages</h3>
+              <Badge variant="secondary">{messages.length} message{messages.length !== 1 ? 's' : ''}</Badge>
+            </div>
+
+            {messages.map((msg, idx) => (
+              <div key={idx} className="p-4 border border-border rounded-lg space-y-3">
+                <div className="flex items-start justify-between">
+                  <div className="flex items-center gap-2">
+                    <GripVertical className="w-4 h-4 text-muted-foreground" />
+                    <span className="text-sm font-medium text-muted-foreground">Message {idx + 1}</span>
+                  </div>
+                  <Button
+                    variant="ghost"
+                    size="icon"
+                    className="h-6 w-6 text-destructive"
+                    onClick={() => removeMessage(idx)}
+                  >
+                    <X className="w-3 h-3" />
+                  </Button>
+                </div>
+
+                <div>
+                  <label className="text-xs font-medium text-muted-foreground">Delay (hours)</label>
+                  <Input
+                    type="number"
+                    min="0"
+                    value={msg.delay_hours}
+                    onChange={(e) => updateMessage(idx, 'delay_hours', parseInt(e.target.value) || 0)}
+                    className="mt-1"
+                  />
+                </div>
+
+                {channel === 'email' && (
+                  <div>
+                    <label className="text-xs font-medium text-muted-foreground">Subject</label>
+                    <Input
+                      value={msg.subject || ''}
+                      onChange={(e) => updateMessage(idx, 'subject', e.target.value)}
+                      placeholder="Email subject line"
+                      className="mt-1"
+                    />
+                  </div>
+                )}
+
+                <div>
+                  <label className="text-xs font-medium text-muted-foreground">Message Body</label>
+                  <Textarea
+                    value={msg.body}
+                    onChange={(e) => updateMessage(idx, 'body', e.target.value)}
+                    placeholder={`Message content. Use {{contact_name}}, {{volunteer_name}} for placeholders`}
+                    className="mt-1 h-24"
+                  />
+                </div>
+              </div>
+            ))}
+
+            <Button
+              variant="outline"
+              onClick={addMessage}
+              className="w-full gap-2"
+            >
+              <Plus className="w-4 h-4" />
+              Add Message
+            </Button>
+          </div>
+
+          {/* Actions */}
+          <div className="flex gap-3 pt-6 border-t">
+            <Button variant="outline" onClick={onCancel}>
+              Cancel
+            </Button>
+            <Button onClick={handleSave} disabled={isSaving} className="flex-1">
+              {isSaving ? 'Saving...' : 'Save Sequence'}
+            </Button>
+          </div>
         </CardContent>
       </Card>
     </div>
