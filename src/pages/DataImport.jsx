@@ -66,7 +66,7 @@ export default function DataImport() {
   };
 
   // ─── Stage 2: AI Structure Analysis ─────────────────────────────────────────
-  const runStructureAnalysis = async (url) => {
+  const runStructureAnalysis = async (url, preExtractedText = null) => {
     if (!url) return;
     update({
       currentStage: 2,
@@ -80,8 +80,7 @@ export default function DataImport() {
     });
 
     try {
-      const analysisRes = await base44.integrations.Core.InvokeLLM({
-        prompt: `Analyze this dataset and provide a comprehensive assessment:
+      const prompt = `Analyze this dataset and provide a comprehensive assessment:
 1. What does this data represent?
 2. What are the main fields/columns?
 3. What is the data type of each field (string, number, date, boolean, etc)?
@@ -93,8 +92,13 @@ Return JSON with:
 - fields (array of {name, type, samples, filledPercentage})
 - explanation (what the data represents)
 - suggestedEntity (best matching entity from the list above)
-- confidence (0-100)`,
-        file_urls: [url],
+- confidence (0-100)
+
+${preExtractedText ? `Data sample:\n${preExtractedText}` : ''}`;
+
+      const analysisRes = await base44.integrations.Core.InvokeLLM({
+        prompt,
+        ...(preExtractedText ? {} : { file_urls: [url] }),
         response_json_schema: {
           type: 'object',
           properties: {
@@ -166,10 +170,23 @@ Return JSON with:
       const isStructuredFile = ['xlsx', 'xls', 'csv'].includes(ext);
 
       if (isStructuredFile) {
-        // For spreadsheet files, skip text extraction and go straight to AI analysis
-        markStageComplete(1);
-        update({ extractedText: '(spreadsheet)', fileUrl: uploadedUrl, loading: false, loadingStep: null });
-        await runStructureAnalysis(uploadedUrl);
+        // For spreadsheet files, extract data first then analyse
+        update({ loadingStep: { step: 2, total: 2, label: 'Reading spreadsheet content…', detail: 'Extracting rows and columns from your file before AI analysis.' } });
+        const extractRes = await base44.integrations.Core.ExtractDataFromUploadedFile({
+          file_url: uploadedUrl,
+          json_schema: {
+            type: 'object',
+            properties: { rows: { type: 'array', items: { type: 'object' } } },
+          },
+        });
+        if (extractRes.status === 'success') {
+          const extractedText = JSON.stringify(extractRes.output).slice(0, 8000);
+          markStageComplete(1);
+          update({ extractedText, fileUrl: uploadedUrl, loading: false, loadingStep: null });
+          await runStructureAnalysis(uploadedUrl, extractedText);
+        } else {
+          update({ error: extractRes.details || 'Failed to read spreadsheet', loading: false, loadingStep: null });
+        }
       } else {
         update({ fileUrl: uploadedUrl, loadingStep: { step: 2, total: 2, label: 'Reading and extracting content…', detail: 'AI is scanning your file to pull out all text and data — may take a moment for large files.' } });
 
@@ -214,9 +231,18 @@ Return JSON with:
       const isStructuredFile = ['xlsx', 'xls', 'csv'].includes(ext);
 
       if (isStructuredFile) {
-        markStageComplete(1);
-        update({ extractedText: '(spreadsheet)', loading: false, loadingStep: null });
-        await runStructureAnalysis(log.file_url);
+        const extractRes = await base44.integrations.Core.ExtractDataFromUploadedFile({
+          file_url: log.file_url,
+          json_schema: { type: 'object', properties: { rows: { type: 'array', items: { type: 'object' } } } },
+        });
+        if (extractRes.status === 'success') {
+          const extractedText = JSON.stringify(extractRes.output).slice(0, 8000);
+          markStageComplete(1);
+          update({ extractedText, loading: false, loadingStep: null });
+          await runStructureAnalysis(log.file_url, extractedText);
+        } else {
+          update({ error: 'Could not re-extract file content. Please re-upload the file.', loading: false, loadingStep: null });
+        }
       } else {
         const extractRes = await base44.integrations.Core.ExtractDataFromUploadedFile({
           file_url: log.file_url,
