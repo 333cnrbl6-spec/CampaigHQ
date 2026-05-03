@@ -65,6 +65,10 @@ Deno.serve(async (req) => {
   let merged = 0;
   let deleted = 0;
 
+  // Collect all operations and batch them to avoid rate limits
+  const updateTasks = [];
+  const deleteIds = [];
+
   for (const group of duplicateGroups) {
     // Prefer records with more data (postcode weighted higher)
     group.sort((a, b) => {
@@ -84,24 +88,31 @@ Deno.serve(async (req) => {
       postcode: [keep, ...dupes].map(d => d.postcode).filter(Boolean).sort((a, b) => b.length - a.length)[0] || undefined,
     };
 
-    try {
-      await callWithRetry(() => base44.asServiceRole.entities.Contact.update(keep.id, mergedData));
-      merged++;
-    } catch (err) {
-      if (!err?.message?.includes('not found')) throw err;
-    }
-
-    // Delete duplicates with concurrency control
-    const deleteTasks = dupes.map(dupe => async () => {
+    updateTasks.push(async () => {
       try {
-        await callWithRetry(() => base44.asServiceRole.entities.Contact.delete(dupe.id));
-        deleted++;
+        await callWithRetry(() => base44.asServiceRole.entities.Contact.update(keep.id, mergedData));
+        merged++;
       } catch (err) {
         if (!err?.message?.includes('not found')) throw err;
       }
     });
 
-    await runWithConcurrency(deleteTasks, 2);
+    deleteIds.push(...dupes.map(d => d.id));
+  }
+
+  // Run updates with low concurrency
+  await runWithConcurrency(updateTasks, 1);
+
+  // Batch delete remaining duplicates
+  for (let i = 0; i < deleteIds.length; i++) {
+    try {
+      await callWithRetry(() => base44.asServiceRole.entities.Contact.delete(deleteIds[i]));
+      deleted++;
+    } catch (err) {
+      if (!err?.message?.includes('not found')) throw err;
+    }
+    // Pause between deletes to respect rate limits
+    if (i < deleteIds.length - 1) await delay(100);
   }
 
   return Response.json({
