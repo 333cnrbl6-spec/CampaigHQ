@@ -28,4 +28,4 @@ const RadioGroupItem = React.forwardRef(({ className, ...props }, ref) => (
 ))
 RadioGroupItem.displayName = "RadioGroupItem"
 
-export { RadioGroup, RadioGroupItem, RadioGroupItem as Radio }
+export { RadioGroup, RadioGroupItem }
