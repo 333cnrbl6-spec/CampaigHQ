@@ -1,6 +1,5 @@
 import React, { useState } from 'react';
-import { useMutation, useQueryClient } from '@tanstack/react-query';
-import useSecureData from '@/hooks/useSecureData';
+import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import DataFetchError from '@/components/DataFetchError';
 import { base44 } from '@/api/base44Client';
 import { useCampaign } from '@/lib/CampaignContext';
@@ -28,25 +27,28 @@ export default function Events() {
   const { campaign } = useCampaign();
   const campaignId = campaign?.id;
 
-  const { data: events = [], error: eventError, isLoading, refetch } = useSecureData(
-    'getActivityFeed',
-    campaignId ? {} : null,
-    { staleTime: 180000, refetchInterval: 180000, enabled: !!campaignId }
-  );
+  const { data: events = [], error: eventError, isLoading, refetch } = useQuery({
+    queryKey: ['events', campaignId],
+    queryFn: () => base44.entities.CampaignEvent.filter({ campaign_id: campaignId }, '-date'),
+    enabled: !!campaignId,
+    staleTime: 180000,
+  });
+
+  const invalidate = () => queryClient.invalidateQueries({ queryKey: ['events', campaignId] });
 
   const createMutation = useMutation({
     mutationFn: (data) => base44.entities.CampaignEvent.create({ ...data, campaign_id: campaignId }),
-    onSuccess: () => { refetch(); setDialogOpen(false); setForm(emptyEvent); },
+    onSuccess: () => { invalidate(); setDialogOpen(false); setForm(emptyEvent); },
   });
 
   const updateMutation = useMutation({
     mutationFn: ({ id, data }) => base44.entities.CampaignEvent.update(id, data),
-    onSuccess: () => { refetch(); setDialogOpen(false); setEditing(null); setForm(emptyEvent); },
+    onSuccess: () => { invalidate(); setDialogOpen(false); setEditing(null); setForm(emptyEvent); },
   });
 
   const deleteMutation = useMutation({
     mutationFn: (id) => base44.entities.CampaignEvent.delete(id),
-    onSuccess: () => refetch(),
+    onSuccess: () => invalidate(),
   });
 
   const handleSubmit = (e) => {
