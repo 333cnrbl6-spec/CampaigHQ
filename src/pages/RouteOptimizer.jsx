@@ -464,9 +464,9 @@ export default function RouteOptimizer() {
              ) : filteredContacts.length === 0 ? (
                <div className="text-center py-8">
                  <p className="text-sm text-muted-foreground">No contacts found</p>
-                 {turfFilter !== 'all' && (
+                 {selectedTurf && (
                    <p className="text-xs text-amber-600 mt-2">
-                     Contacts in <strong>{turfFilter}</strong> may not have postcodes yet.<br />
+                     Contacts in <strong>{selectedTurf.name}</strong> may not have postcodes yet.<br />
                      Add postcodes to enable routing.
                    </p>
                  )}
