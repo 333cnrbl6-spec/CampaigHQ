@@ -85,6 +85,7 @@ import LaunchChecklist from './pages/LaunchChecklist';
 import PreLaunchTesting from './pages/PreLaunchTesting';
 import MobileResponsivenessTester from './pages/MobileResponsivenessTester';
 import GreenPartyDemo from './pages/GreenPartyDemo';
+import RequestDemo from './pages/RequestDemo';
 
 const AuthenticatedApp = () => {
   const { isLoadingAuth, isLoadingPublicSettings, authError, navigateToLogin } = useAuth();
@@ -233,6 +234,7 @@ function App() {
               <Route path="/services" element={<Services />} />
               <Route path="/compliance" element={<Compliance />} />
               <Route path="/gp-demo" element={<GreenPartyDemo />} />
+              <Route path="/request-demo" element={<RequestDemo />} />
               {/* Auth-gated campaign tool routes */}
               <Route path="/*" element={<AuthenticatedApp />} />
             </Routes>
