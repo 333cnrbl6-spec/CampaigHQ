@@ -9,11 +9,13 @@ import VolunteerProgressTable from '@/components/dashboard/VolunteerProgressTabl
 import TurfBoundaryMap from '@/components/map/TurfBoundaryMap';
 import CanvassingTurfPanel from '@/components/map/CanvassingTurfPanel';
 import { BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, Legend, ResponsiveContainer, PieChart, Pie, Cell } from 'recharts';
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { RefreshCw, Calendar } from 'lucide-react';
 
 export default function CanvassingDashboard() {
   const { campaign } = useCampaign();
   const [selectedTurf, setSelectedTurf] = useState(null);
+  const [selectedTurfId, setSelectedTurfId] = useState(null);
 
   // Fetch all relevant data
   const { data: canvassingLogs = [], isLoading: logsLoading, refetch: refetchLogs } = useQuery({
@@ -45,15 +47,34 @@ export default function CanvassingDashboard() {
     },
   });
 
+  const turfOptions = useMemo(() =>
+    turfs
+      .sort((a, b) => (a.parent_turf_id || '') > (b.parent_turf_id || '') ? 1 : -1)
+      .map(t => ({
+        id: t.id,
+        label: t.part_label ? `${t.name} — Part ${t.part_label}` : t.name,
+      })),
+    [turfs]
+  );
+
+  // Filter data by turf if selected
+  const filteredContacts = selectedTurfId
+    ? contacts.filter(c => c.tags?.includes(turfs.find(t => t.id === selectedTurfId)?.name))
+    : contacts;
+
+  const filteredLogs = selectedTurfId
+    ? canvassingLogs.filter(log => log.turf_id === selectedTurfId)
+    : canvassingLogs;
+
   // Aggregate stats
   const stats = useMemo(() => {
-    if (!canvassingLogs.length && !interactions.length) {
+    if (!filteredLogs.length && !interactions.length) {
       return {
         totalDoors: 0,
         sessionCount: 0,
         volunteersCount: 0,
         contactsCanvassed: 0,
-        totalContacts: contacts.length,
+        totalContacts: filteredContacts.length,
         dailyGoal: 100,
         positiveResponses: 0,
         negativeResponses: 0,
@@ -68,13 +89,13 @@ export default function CanvassingDashboard() {
     }
 
     // From CanvassingLog
-    const totalDoors = canvassingLogs.reduce((sum, log) => sum + (log.doors_knocked || 0), 0);
-    const sessionsCount = canvassingLogs.length;
-    const volunteersCount = new Set(canvassingLogs.map(l => l.volunteer_email)).size;
-    const positiveResponses = canvassingLogs.reduce((sum, log) => sum + (log.positive_responses || 0), 0);
-    const negativeResponses = canvassingLogs.reduce((sum, log) => sum + (log.negative_responses || 0), 0);
-    const noAnswers = canvassingLogs.reduce((sum, log) => sum + (log.no_answers || 0), 0);
-    const undecidedCount = canvassingLogs.reduce((sum, log) => sum + (log.undecided_count || 0), 0);
+    const totalDoors = filteredLogs.reduce((sum, log) => sum + (log.doors_knocked || 0), 0);
+    const sessionsCount = filteredLogs.length;
+    const volunteersCount = new Set(filteredLogs.map(l => l.volunteer_email)).size;
+    const positiveResponses = filteredLogs.reduce((sum, log) => sum + (log.positive_responses || 0), 0);
+    const negativeResponses = filteredLogs.reduce((sum, log) => sum + (log.negative_responses || 0), 0);
+    const noAnswers = filteredLogs.reduce((sum, log) => sum + (log.no_answers || 0), 0);
+    const undecidedCount = filteredLogs.reduce((sum, log) => sum + (log.undecided_count || 0), 0);
 
     // From Contact entity
     const canvassingMap = new Set();
@@ -86,7 +107,7 @@ export default function CanvassingDashboard() {
       unknown: 0,
     };
 
-    contacts.forEach(c => {
+    filteredContacts.forEach(c => {
       if (c.canvassed) {
         canvassingMap.add(c.id);
       }
@@ -104,7 +125,7 @@ export default function CanvassingDashboard() {
       sessionsCount,
       volunteersCount,
       contactsCanvassed: canvassingMap.size,
-      totalContacts: contacts.length,
+      totalContacts: filteredContacts.length,
       dailyGoal,
       positiveResponses,
       negativeResponses,
@@ -112,13 +133,13 @@ export default function CanvassingDashboard() {
       undecidedCount,
       ...supportLevels,
     };
-  }, [canvassingLogs, contacts, tasks]);
+  }, [filteredLogs, filteredContacts, tasks]);
 
   // Volunteer progress
   const volunteerStats = useMemo(() => {
     const map = {};
 
-    canvassingLogs.forEach(log => {
+    filteredLogs.forEach(log => {
       const email = log.volunteer_email;
       if (!map[email]) {
         map[email] = {
@@ -153,7 +174,7 @@ export default function CanvassingDashboard() {
     });
 
     return Object.values(map);
-  }, [canvassingLogs, stats.dailyGoal]);
+  }, [filteredLogs, stats.dailyGoal]);
 
   // Support breakdown for pie chart
   const supportChartData = useMemo(() => {
@@ -179,7 +200,7 @@ export default function CanvassingDashboard() {
       trendMap[date] = { date: new Date(date).toLocaleDateString('en-GB', { weekday: 'short' }), doors: 0 };
     });
 
-    canvassingLogs.forEach(log => {
+    filteredLogs.forEach(log => {
       const date = log.session_date;
       if (trendMap[date]) {
         trendMap[date].doors += log.doors_knocked || 0;
@@ -187,7 +208,7 @@ export default function CanvassingDashboard() {
     });
 
     return Object.values(trendMap);
-  }, [canvassingLogs]);
+  }, [filteredLogs]);
 
   const isLoading = logsLoading || contactsLoading || interactionsLoading;
 
@@ -195,22 +216,41 @@ export default function CanvassingDashboard() {
     <div className="min-h-screen bg-background p-6">
       <div className="max-w-7xl mx-auto space-y-6">
         {/* Header */}
-        <div className="flex items-center justify-between">
-          <div>
-            <h1 className="font-heading text-3xl font-bold">Canvassing Dashboard</h1>
-            <p className="text-sm text-muted-foreground mt-1">Real-time campaign progress and volunteer performance</p>
-          </div>
-          <Button 
-            variant="outline" 
-            size="sm" 
-            className="gap-2"
-            onClick={() => refetchLogs()}
-            disabled={isLoading}
-          >
-            <RefreshCw className={`w-4 h-4 ${isLoading ? 'animate-spin' : ''}`} />
-            Refresh
-          </Button>
-        </div>
+         <div className="flex items-center justify-between">
+           <div>
+             <h1 className="font-heading text-3xl font-bold">Canvassing Dashboard</h1>
+             <p className="text-sm text-muted-foreground mt-1">Real-time campaign progress and volunteer performance</p>
+           </div>
+           <div className="flex items-center gap-3">
+             {turfOptions.length > 0 && (
+               <div className="w-72">
+                 <Select value={selectedTurfId || ''} onValueChange={(v) => { setSelectedTurfId(v || null); setSelectedTurf(null); }}>
+                   <SelectTrigger className="h-9">
+                     <SelectValue placeholder="All zones" />
+                   </SelectTrigger>
+                   <SelectContent>
+                     <SelectItem value={null}>All zones</SelectItem>
+                     {turfOptions.map(t => (
+                       <SelectItem key={t.id} value={t.id}>
+                         {t.label}
+                       </SelectItem>
+                     ))}
+                   </SelectContent>
+                 </Select>
+               </div>
+             )}
+             <Button 
+               variant="outline" 
+               size="sm" 
+               className="gap-2"
+               onClick={() => refetchLogs()}
+               disabled={isLoading}
+             >
+               <RefreshCw className={`w-4 h-4 ${isLoading ? 'animate-spin' : ''}`} />
+               Refresh
+             </Button>
+           </div>
+         </div>
 
         {/* Main stats cards */}
         <CanvassingStatsCards stats={stats} />
@@ -224,24 +264,24 @@ export default function CanvassingDashboard() {
               </CardHeader>
               <CardContent>
                 <div className="h-96 rounded-lg overflow-hidden">
-                  <TurfBoundaryMap 
-                    turfs={turfs}
-                    contacts={contacts}
-                    onTurfClick={setSelectedTurf}
-                    highlightAssigned={true}
-                  />
-                </div>
+                        <TurfBoundaryMap 
+                          turfs={turfs}
+                          contacts={filteredContacts}
+                          onTurfClick={setSelectedTurf}
+                          highlightAssigned={true}
+                        />
+                      </div>
               </CardContent>
             </Card>
             
             {/* Turf detail panel */}
             {selectedTurf && (
               <CanvassingTurfPanel 
-                turf={selectedTurf}
-                contacts={contacts}
-                logs={canvassingLogs}
-                onClose={() => setSelectedTurf(null)}
-              />
+                  turf={selectedTurf}
+                  contacts={filteredContacts}
+                  logs={filteredLogs}
+                  onClose={() => setSelectedTurf(null)}
+                />
             )}
           </div>
         )}

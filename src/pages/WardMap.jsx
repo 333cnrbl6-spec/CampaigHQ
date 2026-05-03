@@ -1,6 +1,7 @@
-import React, { useState } from 'react';
+import React, { useState, useMemo } from 'react';
 import { MapContainer, TileLayer, Marker, Popup, CircleMarker, Polyline, useMap, LayerGroup, ZoomControl } from 'react-leaflet';
 import { MapPin } from 'lucide-react';
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import 'leaflet/dist/leaflet.css';
 import L from 'leaflet';
 import { useQuery } from '@tanstack/react-query';
@@ -76,6 +77,7 @@ export default function WardMap() {
   const { campaign } = useCampaign();
   const campaignId = campaign?.id;
   const [route, setRoute] = useState([]);
+  const [selectedTurfId, setSelectedTurfId] = useState(null);
 
   const { data: contacts = [] } = useSecureData(
     'getContactDetails',
@@ -83,7 +85,29 @@ export default function WardMap() {
     { staleTime: 120000, refetchInterval: 120000, enabled: !!campaignId }
   );
 
-  const aggregated = aggregateByPostcode(contacts);
+  const { data: turfs = [] } = useQuery({
+    queryKey: ['turfs-wardmap', campaignId],
+    queryFn: () => base44.entities.Turf.filter({ campaign_id: campaignId }, 'name'),
+    enabled: !!campaignId,
+    staleTime: 120000,
+  });
+
+  const turfOptions = useMemo(() =>
+    turfs
+      .sort((a, b) => (a.parent_turf_id || '') > (b.parent_turf_id || '') ? 1 : -1)
+      .map(t => ({
+        id: t.id,
+        label: t.part_label ? `${t.name} — Part ${t.part_label}` : t.name,
+      })),
+    [turfs]
+  );
+
+  const selectedTurf = selectedTurfId ? turfs.find(t => t.id === selectedTurfId) : null;
+  const filteredContacts = selectedTurfId 
+    ? contacts.filter(c => c.tags?.includes(selectedTurf?.name))
+    : contacts;
+
+  const aggregated = aggregateByPostcode(filteredContacts);
   const routeCoords = route.map(s => s.coords);
 
   return (
@@ -96,6 +120,26 @@ export default function WardMap() {
       <div className="flex flex-col lg:flex-row gap-4">
         {/* Sidebar */}
         <div className="w-full lg:w-72 flex-shrink-0 space-y-4">
+          {/* Turf selector */}
+          {turfOptions.length > 0 && (
+            <div className="bg-card rounded-xl border border-border/50 p-4 space-y-3">
+              <label className="text-xs font-semibold text-muted-foreground">Filter by Turf Zone</label>
+              <Select value={selectedTurfId || ''} onValueChange={(v) => { setSelectedTurfId(v || null); setRoute([]); }}>
+                <SelectTrigger className="w-full">
+                  <SelectValue placeholder="All zones" />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value={null}>All zones</SelectItem>
+                  {turfOptions.map(t => (
+                    <SelectItem key={t.id} value={t.id}>
+                      {t.label}
+                    </SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
+            </div>
+          )}
+
           {/* Legend */}
           <div className="bg-card rounded-xl border border-border/50 p-4 space-y-2">
             <p className="text-sm font-semibold">Coverage Legend</p>
@@ -114,7 +158,7 @@ export default function WardMap() {
 
           {/* Route Optimizer */}
           <RouteOptimizer
-            contacts={contacts}
+            contacts={filteredContacts}
             postcodeCoords={POSTCODE_COORDS}
             onRouteChange={setRoute}
           />
