@@ -5,8 +5,8 @@ module.exports = {
   theme: {
   	extend: {
   		fontFamily: {
-  			heading: ['var(--font-heading)'],
-  			body: ['var(--font-body)'],
+  			heading: ['var(--font-heading)', 'sans-serif'],
+  			body: ['var(--font-body)', 'sans-serif'],
   		},
   		borderRadius: {
   			lg: 'var(--radius)',
