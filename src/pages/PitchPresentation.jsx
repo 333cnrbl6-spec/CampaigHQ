@@ -3,8 +3,9 @@ import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { BarChart3, Users, MapPin, TrendingUp, Shield, Zap, DollarSign, FileText } from 'lucide-react';
+import OwnerOnly from '@/components/auth/OwnerOnly';
 
-export default function PitchPresentation() {
+function PitchPresentationInner() {
   const [selectedPlan, setSelectedPlan] = useState('scale');
 
   const pricingPlans = [
@@ -426,4 +427,8 @@ export default function PitchPresentation() {
       </section>
     </div>
   );
+}
+
+export default function PitchPresentation() {
+  return <OwnerOnly><PitchPresentationInner /></OwnerOnly>;
 }

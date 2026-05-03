@@ -6,8 +6,9 @@ import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
 import { AlertCircle, TrendingUp, Users, Clock, Mail, Flag } from 'lucide-react';
 import { useState } from 'react';
+import OwnerOnly from '@/components/auth/OwnerOnly';
 
-export default function CustomerSuccessDashboard() {
+function CustomerSuccessDashboardInner() {
   const { user } = useAuth();
   const [selectedCustomer, setSelectedCustomer] = useState(null);
 
@@ -249,4 +250,8 @@ export default function CustomerSuccessDashboard() {
       </div>
     </div>
   );
+}
+
+export default function CustomerSuccessDashboard() {
+  return <OwnerOnly><CustomerSuccessDashboardInner /></OwnerOnly>;
 }

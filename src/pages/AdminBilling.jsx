@@ -4,8 +4,9 @@ import { useAuth } from '@/lib/AuthContext';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
 import { AlertCircle, TrendingUp, Users, DollarSign } from 'lucide-react';
+import OwnerOnly from '@/components/auth/OwnerOnly';
 
-export default function AdminBilling() {
+function AdminBillingInner() {
   const { user } = useAuth();
 
   const { data: allSubscriptions = [] } = useQuery({
@@ -208,4 +209,8 @@ export default function AdminBilling() {
       </div>
     </div>
   );
+}
+
+export default function AdminBilling() {
+  return <OwnerOnly><AdminBillingInner /></OwnerOnly>;
 }

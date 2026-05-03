@@ -2,8 +2,9 @@ import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
 import { Download, TrendingUp, Users, Target, BarChart3 } from 'lucide-react';
+import OwnerOnly from '@/components/auth/OwnerOnly';
 
-export default function CaseStudies() {
+function CaseStudiesInner() {
   const cases = [
     {
       title: 'Tyldesley Green Party Victory',
@@ -214,4 +215,8 @@ export default function CaseStudies() {
       </div>
     </div>
   );
+}
+
+export default function CaseStudies() {
+  return <OwnerOnly><CaseStudiesInner /></OwnerOnly>;
 }

@@ -1,6 +1,7 @@
 import { useQuery } from '@tanstack/react-query';
 import { base44 } from '@/api/base44Client';
 import { useAuth } from '@/lib/AuthContext';
+import OwnerOnly from '@/components/auth/OwnerOnly';
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
@@ -21,7 +22,7 @@ import GOTVModule from '@/components/national/GOTVModule';
 import PostElectionComplianceModule from '@/components/national/PostElectionComplianceModule';
 import ResultsVictoryPage from '@/components/national/ResultsVictoryPage';
 
-export default function NationalDashboard() {
+function NationalDashboardInner() {
   const { user } = useAuth();
   const [activeTab, setActiveTab] = useState('overview');
 
@@ -239,4 +240,8 @@ export default function NationalDashboard() {
       </div>
     </div>
   );
+}
+
+export default function NationalDashboard() {
+  return <OwnerOnly><NationalDashboardInner /></OwnerOnly>;
 }

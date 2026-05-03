@@ -2,6 +2,7 @@ import { useState } from 'react';
 import { Megaphone, CheckCircle, ArrowRight, Users, MapPin, BarChart3, Shield, Globe, Zap, ChevronDown } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { base44 } from '@/api/base44Client';
+import OwnerOnly from '@/components/auth/OwnerOnly';
 
 const PARTIES = [
   { value: 'green', label: 'Green Party', color: '#00612B' },
@@ -50,7 +51,7 @@ const FEATURES = [
   { icon: Zap, title: 'Outreach Automation', desc: 'Automated email/SMS sequences, voter targeting, and post-election follow-up tools.' },
 ];
 
-export default function RequestDemo() {
+function RequestDemoInner() {
   const [submitted, setSubmitted] = useState(false);
   const [loading, setLoading] = useState(false);
   const [form, setForm] = useState({
@@ -316,4 +317,8 @@ ${form.message}
       </footer>
     </div>
   );
+}
+
+export default function RequestDemo() {
+  return <OwnerOnly><RequestDemoInner /></OwnerOnly>;
 }

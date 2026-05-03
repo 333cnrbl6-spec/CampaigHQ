@@ -3,8 +3,9 @@ import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
 import { Check, X, Calculator, ArrowRight } from 'lucide-react';
+import OwnerOnly from '@/components/auth/OwnerOnly';
 
-export default function Pricing() {
+function PricingInner() {
   const [billingCycle, setBillingCycle] = useState('annual');
 
   const plans = [
@@ -290,4 +291,8 @@ export default function Pricing() {
       </div>
     </div>
   );
+}
+
+export default function Pricing() {
+  return <OwnerOnly><PricingInner /></OwnerOnly>;
 }
