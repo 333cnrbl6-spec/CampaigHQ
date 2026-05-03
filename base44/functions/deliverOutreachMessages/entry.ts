@@ -30,12 +30,14 @@ Deno.serve(async (req) => {
 
     let sent = 0;
     let failed = 0;
+    const delay = (ms) => new Promise(r => setTimeout(r, ms));
 
-    for (const log of dueMessages) {
+    for (let i = 0; i < dueMessages.length; i++) {
+      const log = dueMessages[i];
       try {
         // Send via email or SMS
         if (log.channel === 'email' && log.contact_email) {
-          await base44.integrations.Core.SendEmail({
+          await base44.asServiceRole.integrations.Core.SendEmail({
             to: log.contact_email,
             subject: log.subject || 'Important Message',
             body: log.body,
@@ -56,11 +58,21 @@ Deno.serve(async (req) => {
         sent++;
       } catch (error) {
         // Mark as failed
-        await base44.asServiceRole.entities.OutreachLog.update(log.id, {
-          status: 'failed',
-          error: error.message,
-        });
+        console.error(`Failed to deliver message ${log.id}:`, error.message);
+        try {
+          await base44.asServiceRole.entities.OutreachLog.update(log.id, {
+            status: 'failed',
+            error: error.message,
+          });
+        } catch (updateErr) {
+          console.error(`Failed to update log ${log.id}:`, updateErr.message);
+        }
         failed++;
+      }
+
+      // Rate limit: pause every 5 messages
+      if ((i + 1) % 5 === 0) {
+        await delay(300);
       }
     }
 

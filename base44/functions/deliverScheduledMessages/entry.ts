@@ -27,8 +27,11 @@ Deno.serve(async (req) => {
 
     let delivered = 0;
     let failed = 0;
+    let skipped = 0;
+    const delay = (ms) => new Promise(r => setTimeout(r, ms));
 
-    for (const log of dueLogs) {
+    for (let i = 0; i < dueLogs.length; i++) {
+      const log = dueLogs[i];
       try {
         if (log.channel === 'email' && log.contact_email) {
           // Send email via Base44 integration
@@ -52,17 +55,28 @@ Deno.serve(async (req) => {
             status: 'skipped',
             error: 'SMS delivery requires Twilio integration',
           });
+          skipped++;
         }
       } catch (error) {
-        await base44.asServiceRole.entities.OutreachLog.update(log.id, {
-          status: 'failed',
-          error: error.message,
-        });
+        console.error(`Failed to deliver message ${log.id}:`, error.message);
+        try {
+          await base44.asServiceRole.entities.OutreachLog.update(log.id, {
+            status: 'failed',
+            error: error.message,
+          });
+        } catch (updateErr) {
+          console.error(`Failed to update log ${log.id}:`, updateErr.message);
+        }
         failed++;
+      }
+
+      // Rate limit: pause every 5 messages
+      if ((i + 1) % 5 === 0) {
+        await delay(300);
       }
     }
 
-    return Response.json({ delivered, failed, total: dueLogs.length });
+    return Response.json({ delivered, failed, skipped, total: dueLogs.length });
   } catch (error) {
     return Response.json({ error: error.message }, { status: 500 });
   }

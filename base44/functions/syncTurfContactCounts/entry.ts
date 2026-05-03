@@ -32,12 +32,23 @@ Deno.serve(async (req) => {
 
     // Update turfs with accurate contact counts
     let updated = 0;
-    for (const turf of turfs) {
-      const newCount = turfCounts[turf.name] || 0;
-      if (turf.contact_count !== newCount) {
-        await base44.entities.Turf.update(turf.id, { contact_count: newCount });
-        updated++;
-      }
+    const delay = (ms) => new Promise(r => setTimeout(r, ms));
+
+    for (let i = 0; i < turfs.length; i++) {
+     const turf = turfs[i];
+     const newCount = turfCounts[turf.name] || 0;
+     if (turf.contact_count !== newCount) {
+       try {
+         await base44.asServiceRole.entities.Turf.update(turf.id, { contact_count: newCount });
+         updated++;
+       } catch (err) {
+         console.error(`Failed to update turf ${turf.id}:`, err.message);
+       }
+     }
+     // Rate limit: pause every 3 updates
+     if ((i + 1) % 3 === 0) {
+       await delay(200);
+     }
     }
 
     return Response.json({

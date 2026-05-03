@@ -36,24 +36,37 @@ Deno.serve(async (req) => {
     }
 
     const results = { sent: 0, failed: 0, skipped: allContacts.length - contactsWithEmail.length };
+    const delay = (ms) => new Promise(r => setTimeout(r, ms));
 
-    for (const contact of contactsWithEmail) {
-      const personalBody = body
-        .replace(/\{\{name\}\}/g, contact.name || 'Resident')
-        .replace(/\{\{postcode\}\}/g, contact.postcode || '')
-        .replace(/\{\{address\}\}/g, contact.address || '');
+    for (let i = 0; i < contactsWithEmail.length; i++) {
+      const contact = contactsWithEmail[i];
+      
+      try {
+        const personalBody = body
+          .replace(/\{\{name\}\}/g, contact.name || 'Resident')
+          .replace(/\{\{postcode\}\}/g, contact.postcode || '')
+          .replace(/\{\{address\}\}/g, contact.address || '');
 
-      const personalSubject = subject
-        .replace(/\{\{name\}\}/g, contact.name || 'Resident');
+        const personalSubject = subject
+          .replace(/\{\{name\}\}/g, contact.name || 'Resident');
 
-      await base44.asServiceRole.integrations.Core.SendEmail({
-        to: contact.email,
-        subject: personalSubject,
-        body: personalBody,
-        from_name: 'Paul Binns — Green Party',
-      });
+        await base44.asServiceRole.integrations.Core.SendEmail({
+          to: contact.email,
+          subject: personalSubject,
+          body: personalBody,
+          from_name: 'Paul Binns — Green Party',
+        });
 
-      results.sent++;
+        results.sent++;
+      } catch (err) {
+        console.error(`Failed to send email to ${contact.email}:`, err.message);
+        results.failed++;
+      }
+
+      // Rate limit: pause every 5 emails
+      if ((i + 1) % 5 === 0) {
+        await delay(300);
+      }
     }
 
     return Response.json({ success: true, results });

@@ -184,10 +184,21 @@ Deno.serve(async (req) => {
 
     // Bulk create in batches of 100 with campaign_id injected
     let created = 0;
+    const delay = (ms) => new Promise(r => setTimeout(r, ms));
+
     for (let i = 0; i < contacts.length; i += 100) {
-      const batch = contacts.slice(i, i + 100).map(c => ({ ...c, campaign_id }));
-      await base44.entities.Contact.bulkCreate(batch);
-      created += batch.length;
+     const batch = contacts.slice(i, i + 100).map(c => ({ ...c, campaign_id }));
+     try {
+       const result = await base44.asServiceRole.entities.Contact.bulkCreate(batch);
+       created += (result?.length || batch.length);
+     } catch (err) {
+       console.error(`Batch create failed for contacts ${i}-${i + batch.length}:`, err.message);
+       throw err;
+     }
+     // Pause between batches
+     if (i + 100 < contacts.length) {
+       await delay(500);
+     }
     }
 
     return Response.json({
