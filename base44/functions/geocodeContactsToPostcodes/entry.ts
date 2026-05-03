@@ -86,23 +86,30 @@ Deno.serve(async (req) => {
       }
     }
 
-    // Update contacts with coordinates and postcode
+    // Update contacts with coordinates and postcode with error handling
     for (let i = 0; i < contacts.length; i++) {
       const contact = contacts[i];
       const pc = contactPostcodes[i];
       const coords = pc ? postcodeMap[pc] : null;
 
-      if (coords) {
-        await base44.asServiceRole.entities.Contact.update(contact.id, {
-          latitude: coords.latitude,
-          longitude: coords.longitude,
-          postcode: coords.postcode || contact.postcode,
-        });
-        results.updated++;
-        results.updated_ids.push(contact.id);
-      } else {
+      try {
+        if (coords) {
+          await base44.asServiceRole.entities.Contact.update(contact.id, {
+            latitude: coords.latitude,
+            longitude: coords.longitude,
+            postcode: coords.postcode || contact.postcode,
+          });
+          results.updated++;
+          results.updated_ids.push(contact.id);
+        } else {
+          await base44.asServiceRole.entities.Contact.update(contact.id, { latitude: 0, longitude: 0 });
+          results.failed++;
+          results.errors.push({ id: contact.id, reason: pc ? 'Postcode not found in postcodes.io' : 'No postcode available' });
+        }
+      } catch (err) {
+        console.error(`Failed to update contact ${contact.id}:`, err.message);
         results.failed++;
-        results.errors.push({ id: contact.id, reason: pc ? 'Postcode not found in postcodes.io' : 'No postcode available' });
+        results.errors.push({ id: contact.id, reason: err.message });
       }
 
       if ((i + 1) % 3 === 0) {

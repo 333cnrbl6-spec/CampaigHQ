@@ -47,8 +47,11 @@ Deno.serve(async (req) => {
       });
     }
     
-    for (const contact of contacts) {
-      // Extract electoral area from postcode using postcodes.io
+    let lookupErrors = 0;
+    const delay = (ms) => new Promise(r => setTimeout(r, ms));
+
+    for (let idx = 0; idx < contacts.length; idx++) {
+      const contact = contacts[idx];
       let electoralArea = null;
       
       if (contact.postcode) {
@@ -59,20 +62,20 @@ Deno.serve(async (req) => {
           if (response.ok) {
             const data = await response.json();
             // Extract administrative ward or county code
-            // postcodes.io returns ward, district, region, etc. Use first available
             const ward = data.result?.admin_ward || data.result?.admin_district || '';
             
             if (ward) {
-              // Try simple numeric extraction: if ward contains numbers, use those
-              // Or match against known TYL codes if available
               const numMatch = ward.match(/(\d+)/);
               if (numMatch) {
                 electoralArea = 'TYL' + numMatch[1];
               }
             }
+          } else if (response.status === 429) {
+            // Rate limited — back off exponentially
+            await delay(1000);
           }
         } catch (err) {
-          // Silently skip if postcodes.io fails
+          lookupErrors++;
         }
       }
 
@@ -89,19 +92,35 @@ Deno.serve(async (req) => {
           });
         }
       }
+
+      // Rate limit postcodes.io lookups: pause every 5 contacts
+      if ((idx + 1) % 5 === 0) {
+        await delay(300);
+      }
     }
 
-    // Batch update all contacts
+    // Batch update all contacts with error handling
     let updated = 0;
-    for (const update of updates) {
-      await base44.entities.Contact.update(update.id, { tags: update.tags });
-      updated++;
+    for (let i = 0; i < updates.length; i++) {
+      const update = updates[i];
+      try {
+        await base44.asServiceRole.entities.Contact.update(update.id, { tags: update.tags });
+        updated++;
+      } catch (err) {
+        console.error(`Failed to update contact ${update.id}:`, err.message);
+        lookupErrors++;
+      }
+      // Pause every 3 updates to stay within rate limits
+      if ((i + 1) % 3 === 0) {
+        await delay(200);
+      }
     }
 
     return Response.json({
       success: true,
       total_contacts: contacts.length,
       updated: updated,
+      lookup_errors: lookupErrors,
       turf_mappings: turfMap,
       message: `Successfully assigned turf tags to ${updated} contacts`
     });

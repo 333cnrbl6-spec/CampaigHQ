@@ -77,68 +77,86 @@ Deno.serve(async (req) => {
       return !!(c.postcode?.trim() || c.address?.trim());
     });
 
-    // Process up to 100 per call using the bulk postcodes.io endpoint
+    // Process all contacts in batches of 100
     const BATCH = 100;
-    const toProcess = needsGeocoding.slice(0, BATCH);
-    const totalRemaining = needsGeocoding.length;
-
-    console.log(`Processing ${toProcess.length} of ${totalRemaining} remaining contacts...`);
-
+    const totalNeeded = needsGeocoding.length;
     const results = {
-      total_remaining_before: totalRemaining,
-      processed: toProcess.length,
+      total_needed: totalNeeded,
+      processed: 0,
       succeeded: 0,
       failed: 0,
-      more_remaining: totalRemaining > BATCH,
     };
 
-    if (toProcess.length === 0) {
+    if (totalNeeded === 0) {
       return Response.json({ success: true, message: 'All done — nothing to geocode.', results });
     }
 
-    // Step 1: collect unique postcodes (normalised), including those extractable from address
-    const contactPostcodes = toProcess.map(c => {
-      if (c.postcode?.trim()) return c.postcode.replace(/\s+/g, '').toUpperCase();
-      const match = (c.address || '').match(/\b([A-Z]{1,2}\d{1,2}[A-Z]?\s*\d[A-Z]{2})\b/i);
-      return match ? match[1].replace(/\s+/g, '').toUpperCase() : null;
-    });
+    console.log(`Geocoding ${totalNeeded} contacts in batches of ${BATCH}...`);
 
-    const uniquePostcodes = [...new Set(contactPostcodes.filter(Boolean))];
+    // Process all contacts in batches
+    for (let batchStart = 0; batchStart < totalNeeded; batchStart += BATCH) {
+      const batchEnd = Math.min(batchStart + BATCH, totalNeeded);
+      const toProcess = needsGeocoding.slice(batchStart, batchEnd);
 
-    // Step 2: bulk lookup (max 100 per call — already within limit)
-    const postcodeMap = uniquePostcodes.length > 0 ? await bulkGeocodePostcodes(uniquePostcodes) : {};
+      console.log(`Processing batch: ${batchStart + 1}–${batchEnd} of ${totalNeeded}...`);
 
-    // Step 3: update contacts one at a time to stay within API rate limits
-    for (let i = 0; i < toProcess.length; i++) {
-      const contact = toProcess[i];
-      const pc = contactPostcodes[i];
-      let coords = pc ? postcodeMap[pc] : null;
-      
-      // Fallback to Google Geocoding if postcodes.io failed
-      if (!coords && contact.address?.trim()) {
-        coords = await geocodeAddressGoogle(contact.address);
+      // Step 1: collect unique postcodes (normalised)
+      const contactPostcodes = toProcess.map(c => {
+        if (c.postcode?.trim()) return c.postcode.replace(/\s+/g, '').toUpperCase();
+        const match = (c.address || '').match(/\b([A-Z]{1,2}\d{1,2}[A-Z]?\s*\d[A-Z]{2})\b/i);
+        return match ? match[1].replace(/\s+/g, '').toUpperCase() : null;
+      });
+
+      const uniquePostcodes = [...new Set(contactPostcodes.filter(Boolean))];
+
+      // Step 2: bulk lookup postcodes
+      const postcodeMap = uniquePostcodes.length > 0 ? await bulkGeocodePostcodes(uniquePostcodes) : {};
+
+      // Step 3: update contacts one at a time with rate limiting
+      for (let i = 0; i < toProcess.length; i++) {
+        const contact = toProcess[i];
+        const pc = contactPostcodes[i];
+        let coords = pc ? postcodeMap[pc] : null;
+        
+        // Fallback to Google Geocoding if postcodes.io failed
+        if (!coords && contact.address?.trim()) {
+          coords = await geocodeAddressGoogle(contact.address);
+        }
+        
+        try {
+          if (coords) {
+            await base44.asServiceRole.entities.Contact.update(contact.id, {
+              latitude: coords.latitude,
+              longitude: coords.longitude,
+              postcode: coords.postcode || contact.postcode,
+            });
+            results.succeeded += 1;
+          } else {
+            await base44.asServiceRole.entities.Contact.update(contact.id, { latitude: 0, longitude: 0 });
+            results.failed += 1;
+          }
+        } catch (err) {
+          console.error(`Failed to update contact ${contact.id}:`, err.message);
+          results.failed += 1;
+        }
+
+        results.processed += 1;
+
+        // Small pause every 3 writes to stay within rate limits
+        if ((i + 1) % 3 === 0) {
+          await new Promise(resolve => setTimeout(resolve, 200));
+        }
       }
-      
-      if (coords) {
-        await base44.asServiceRole.entities.Contact.update(contact.id, {
-          latitude: coords.latitude,
-          longitude: coords.longitude,
-          postcode: coords.postcode || contact.postcode,
-        });
-        results.succeeded += 1;
-      } else {
-        await base44.asServiceRole.entities.Contact.update(contact.id, { latitude: 0, longitude: 0 });
-        results.failed += 1;
-      }
-      // Small pause every 3 writes to stay within rate limits
-      if ((i + 1) % 3 === 0) {
-        await new Promise(resolve => setTimeout(resolve, 200));
+
+      // Pause between batches
+      if (batchEnd < totalNeeded) {
+        await new Promise(resolve => setTimeout(resolve, 500));
       }
     }
 
     return Response.json({
       success: true,
-      message: `Geocoded ${results.succeeded} contacts. ${results.more_remaining ? `${totalRemaining - toProcess.length} still remaining.` : 'All done!'}`,
+      message: `Geocoded ${results.succeeded} contacts successfully.`,
       results,
     });
   } catch (error) {
