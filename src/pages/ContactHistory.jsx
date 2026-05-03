@@ -11,7 +11,6 @@ import { Textarea } from '@/components/ui/textarea';
 import { Phone, Mail, MapPin, MessageSquare, Plus, Trash2 } from 'lucide-react';
 import { format } from 'date-fns';
 import { useCampaign } from '@/lib/CampaignContext';
-import useSecureData from '@/hooks/useSecureData';
 import DataFetchError from '@/components/DataFetchError';
 
 const INTERACTION_TYPES = {
@@ -38,23 +37,26 @@ export default function ContactHistory() {
 
   const queryClient = useQueryClient();
 
-  // Fetch RLS-protected contacts and interactions
-  const { data: contacts = [], error: contactError, refetch: refetchContacts } = useSecureData(
-    'getContactDetails',
-    { campaign_id: campaignId },
-    { staleTime: 120000, refetchInterval: 120000 }
-  );
+  // Fetch contacts directly via SDK
+  const { data: contacts = [], error: contactError, refetch: refetchContacts } = useQuery({
+    queryKey: ['contacts', campaignId],
+    queryFn: () => base44.entities.Contact.filter({ campaign_id: campaignId }, 'name', 500),
+    enabled: !!campaignId,
+    staleTime: 120000,
+  });
 
-  const { data: interactions = [], error: interactionError, refetch: refetchInteractions } = useSecureData(
-    'getContactInteractions',
-    { campaign_id: campaignId },
-    { staleTime: 60000, refetchInterval: 60000 }
-  );
+  // Fetch interactions only when a contact is selected
+  const { data: interactions = [], error: interactionError, refetch: refetchInteractions } = useQuery({
+    queryKey: ['interactions', selectedContact?.id],
+    queryFn: () => base44.entities.ContactInteraction.filter({ contact_id: selectedContact.id }, '-date'),
+    enabled: !!selectedContact?.id,
+    staleTime: 60000,
+  });
 
   const createInteractionMutation = useMutation({
     mutationFn: (data) => base44.entities.ContactInteraction.create(data),
     onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ['interactions'] });
+      queryClient.invalidateQueries({ queryKey: ['interactions', selectedContact?.id] });
       setFormData({ type: 'door_knock', outcome: 'neutral' });
       setShowNewInteraction(false);
     },
@@ -63,13 +65,11 @@ export default function ContactHistory() {
   const deleteInteractionMutation = useMutation({
     mutationFn: (id) => base44.entities.ContactInteraction.delete(id),
     onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ['interactions'] });
+      queryClient.invalidateQueries({ queryKey: ['interactions', selectedContact?.id] });
     },
   });
 
-  const contactInteractions = selectedContact
-    ? interactions.filter(i => i.contact_id === selectedContact.id).sort((a, b) => new Date(b.date) - new Date(a.date))
-    : [];
+  const contactInteractions = interactions;
 
   const handleAddInteraction = () => {
     if (selectedContact && formData.type) {
