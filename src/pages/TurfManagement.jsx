@@ -1,8 +1,7 @@
 import { useEffect, useRef, useState } from 'react';
-import { useMutation, useQueryClient } from '@tanstack/react-query';
+import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import { base44 } from '@/api/base44Client';
 import { useCampaign } from '@/lib/CampaignContext';
-import useSecureData from '@/hooks/useSecureData';
 import DataFetchError from '@/components/DataFetchError';
 import { MapContainer, TileLayer, useMap, Polyline, CircleMarker, Tooltip } from 'react-leaflet';
 import L from 'leaflet';
@@ -194,18 +193,19 @@ export default function TurfManagement() {
   const [showUnassignedPanel, setShowUnassignedPanel] = useState(false);
   const [showGeocodePanel, setShowGeocodePanel] = useState(false);
 
-  // Fetch RLS-protected turfs and contacts
-  const { data: turfs = [], error: turfError, refetch: refetchTurfs } = useSecureData(
-    'getAssignedTurfs',
-    campaignId ? {} : null,
-    { staleTime: 120000, refetchInterval: 120000, enabled: !!campaignId }
-  );
+  const { data: turfs = [], error: turfError, refetch: refetchTurfs } = useQuery({
+    queryKey: ['turfs', campaignId],
+    queryFn: () => base44.entities.Turf.filter({ campaign_id: campaignId }, 'name'),
+    enabled: !!campaignId,
+    staleTime: 120000,
+  });
 
-  const { data: contacts = [], error: contactError, refetch: refetchContacts } = useSecureData(
-    'getContactsForTurf',
-    campaignId ? {} : null,
-    { staleTime: 180000, refetchInterval: 180000, enabled: !!campaignId }
-  );
+  const { data: contacts = [], error: contactError, refetch: refetchContacts } = useQuery({
+    queryKey: ['contacts-turf', campaignId],
+    queryFn: () => base44.entities.Contact.filter({ campaign_id: campaignId }, 'name', 500),
+    enabled: !!campaignId,
+    staleTime: 180000,
+  });
 
   const createTurf = useMutation({
     mutationFn: (data) => base44.entities.Turf.create({ ...data, campaign_id: campaignId }),
