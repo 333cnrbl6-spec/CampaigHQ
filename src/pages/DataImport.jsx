@@ -3,7 +3,8 @@ import { base44 } from '@/api/base44Client';
 import { useQueryClient, useQuery } from '@tanstack/react-query';
 import { useCampaign } from '@/lib/CampaignContext';
 import { useNavigate } from 'react-router-dom';
-import { Loader2, AlertTriangle, Repeat2, FileText, ArrowRight, CheckCircle2, Users } from 'lucide-react';
+import { AlertTriangle, Repeat2, FileText, ArrowRight, CheckCircle2, Users } from 'lucide-react';
+import ProcessingFeedback from '@/components/ui/ProcessingFeedback';
 import { Button } from '@/components/ui/button';
 import SmartDropZone from '@/components/import/SmartDropZone';
 import ImportProgress from '@/components/import/ImportProgress';
@@ -586,39 +587,29 @@ ${preExtractedText ? `Data sample:\n${preExtractedText}` : ''}`;
 
           {/* Loading panel — always visible when processing */}
           {loading && (
-            <div className="bg-primary/5 border border-primary/20 rounded-xl p-5 space-y-3">
-              <div className="flex items-center gap-3">
-                <Loader2 className="w-5 h-5 animate-spin text-primary flex-shrink-0" />
-                <div className="flex-1 min-w-0">
-                  <p className="text-sm font-semibold text-primary">{loadingStep?.label || 'Working…'}</p>
-                  <p className="text-xs text-muted-foreground mt-0.5">{loadingStep?.detail || 'Please wait.'}</p>
-                </div>
-                {loadingStep?.total > 1 && (
-                  <span className="text-xs font-medium text-muted-foreground flex-shrink-0">
-                    Step {loadingStep.step}/{loadingStep.total}
-                  </span>
-                )}
-              </div>
-              {loadingStep?.total > 1 && (
-                <div className="w-full bg-primary/10 rounded-full h-1.5">
-                  <div
-                    className="bg-primary h-1.5 rounded-full transition-all duration-500"
-                    style={{ width: `${(loadingStep.step / loadingStep.total) * 100}%` }}
-                  />
-                </div>
-              )}
-              {currentStage === 2 && (
-                <div className="text-xs text-muted-foreground bg-white/60 rounded-lg px-3 py-2 border border-primary/10">
-                  <strong>What's happening:</strong> AI is reading the extracted content to identify columns, data types, and which database table best matches your data. Stage 3 will appear automatically when done.
-                </div>
-              )}
-              {currentStage === 4 && (
-                <div className="text-xs text-muted-foreground bg-white/60 rounded-lg px-3 py-2 border border-primary/10">
-                  <strong>What's happening:</strong> AI is extracting every row and validating against the schema. Files with 1000+ records can take 60–90 seconds.
-                </div>
-              )}
-              <p className="text-xs text-muted-foreground italic">AI is processing your file — this may take up to a minute for large files.</p>
-            </div>
+            <ProcessingFeedback
+              label={loadingStep?.label || 'Working…'}
+              detail={loadingStep?.detail || 'Please wait.'}
+              step={loadingStep?.step}
+              totalSteps={loadingStep?.total}
+              tips={
+                currentStage === 2 ? [
+                  'AI is reading your extracted content to identify every column and data type.',
+                  'It\'s working out which database table (Contacts, Tasks, etc.) best matches your data.',
+                  'This usually finishes in 20–40 seconds. Stage 3 will appear automatically.',
+                  'Large files with many columns may take a little longer — still running!',
+                ] : currentStage === 4 ? [
+                  'AI is mapping every row to the correct database fields.',
+                  'Each record is being validated against the schema before saving.',
+                  'Files with 1000+ rows can take 60–90 seconds — hang tight.',
+                  'Once done, you\'ll see a validation summary before anything is saved.',
+                ] : currentStage === 1 ? [
+                  'Your file is being securely uploaded to temporary storage.',
+                  'For spreadsheets, each sheet will be read and combined.',
+                  'No data is saved to the database yet — this is just extraction.',
+                ] : []
+              }
+            />
           )}
         </div>
       </div>
