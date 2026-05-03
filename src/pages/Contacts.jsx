@@ -8,6 +8,7 @@ import ErrorBoundary from '@/components/ErrorBoundary';
 import { base44 } from '@/api/base44Client';
 import { Button } from '@/components/ui/button';
 import { Plus, Tag, GitMerge, Loader2, Navigation, Zap, Merge, MapPin } from 'lucide-react';
+import ProcessingFeedback from '@/components/ui/ProcessingFeedback';
 import { AnimatePresence, motion } from 'framer-motion';
 import { useNavigate } from 'react-router-dom';
 import ContactForm from '../components/contacts/ContactForm';
@@ -372,10 +373,16 @@ export default function Contacts() {
       </div>
 
       {deduping && (
-        <div className="mb-4 bg-primary/5 border border-primary/20 rounded-lg px-4 py-3 flex items-center gap-3">
-          <Loader2 className="w-4 h-4 animate-spin text-primary flex-shrink-0" />
-          <p className="text-sm text-primary font-medium">Deduplicating contacts on the server — you can navigate away freely.</p>
-        </div>
+        <ProcessingFeedback
+          className="mb-4"
+          label="Deduplicating contacts…"
+          detail="Scanning for duplicate addresses and merging records. You can navigate away freely."
+          tips={[
+            'Duplicate addresses are merged, combining all their tags.',
+            'This usually finishes in 10–30 seconds depending on contact volume.',
+            'No data is lost — the best record is kept and others are merged into it.',
+          ]}
+        />
       )}
 
       {dedupeResult && !deduping && (
@@ -388,10 +395,17 @@ export default function Contacts() {
        )}
 
        {geocoding && (
-         <div className="mb-4 bg-primary/5 border border-primary/20 rounded-lg px-4 py-3 flex items-center gap-3">
-           <Loader2 className="w-4 h-4 animate-spin text-primary flex-shrink-0" />
-           <p className="text-sm text-primary font-medium">Geocoding contacts (postcodes.io + Nominatim fallback) — you can navigate away freely.</p>
-         </div>
+         <ProcessingFeedback
+           className="mb-4"
+           label="Geocoding contacts…"
+           detail="Looking up GPS coordinates for each postcode via postcodes.io. You can navigate away freely."
+           tips={[
+             'Each UK postcode is resolved to a lat/lng pair for map display and routing.',
+             'If a full postcode fails, the outward code (e.g. M29) is tried as a fallback.',
+             'Contacts without any postcode will be skipped and flagged in the results.',
+             'This can take 1–3 minutes for large contact lists — hang tight!',
+           ]}
+         />
        )}
 
        {geocodeResult && !geocoding && (
@@ -404,10 +418,16 @@ export default function Contacts() {
         )}
 
         {assigning && (
-          <div className="mb-4 bg-primary/5 border border-primary/20 rounded-lg px-4 py-3 flex items-center gap-3">
-            <Loader2 className="w-4 h-4 animate-spin text-primary flex-shrink-0" />
-            <p className="text-sm text-primary font-medium">Extracting electoral zones from postcodes — you can navigate away freely.</p>
-          </div>
+          <ProcessingFeedback
+            className="mb-4"
+            label="Assigning turf zones…"
+            detail="Extracting electoral area codes from postcodes and tagging contacts. You can navigate away freely."
+            tips={[
+              'Postcode districts are matched to Tyldesley ward boundary zones.',
+              'Each contact gets a zone tag (e.g. TYL5) that powers the Route Optimizer.',
+              'Contacts already tagged will have their zone updated if it has changed.',
+            ]}
+          />
         )}
 
         {assignResult && !assigning && (
@@ -420,10 +440,16 @@ export default function Contacts() {
         )}
 
         {reprocessing && (
-          <div className="mb-4 bg-primary/5 border border-primary/20 rounded-lg px-4 py-3 flex items-center gap-3">
-            <Loader2 className="w-4 h-4 animate-spin text-primary flex-shrink-0" />
-            <p className="text-sm text-primary font-medium">Re-analyzing import files — you can navigate away freely.</p>
-          </div>
+          <ProcessingFeedback
+            className="mb-4"
+            label="Recovering zone data from imports…"
+            detail="Re-analyzing recent import files to extract turf tags. You can navigate away freely."
+            tips={[
+              'This reads the original import file names to identify zone codes (e.g. TYL5, TYL6).',
+              'Zone tags are applied to contacts whose data came from those files.',
+              'Useful after a bulk import that missed the zone assignment step.',
+            ]}
+          />
         )}
 
         {reprocessResult && !reprocessing && (

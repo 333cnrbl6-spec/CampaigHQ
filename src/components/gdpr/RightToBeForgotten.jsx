@@ -2,6 +2,7 @@ import React, { useState } from 'react';
 import { base44 } from '@/api/base44Client';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { Trash2, Search, AlertTriangle, CheckCircle2, Loader2 } from 'lucide-react';
+import ProcessingFeedback from '@/components/ui/ProcessingFeedback';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Badge } from '@/components/ui/badge';
@@ -172,6 +173,18 @@ export default function RightToBeForgotten() {
               </Button>
             </div>
           </div>
+
+          {deleting && (
+            <ProcessingFeedback
+              label="Permanently deleting records…"
+              detail={`Removing ${selectedIds.size} contact record${selectedIds.size !== 1 ? 's' : ''} and updating the GDPR audit log.`}
+              tips={[
+                'Each record is being permanently removed from the database.',
+                'Associated GDPR request logs are being updated to "completed".',
+                'This action cannot be undone — deletion is permanent.',
+              ]}
+            />
+          )}
 
           <div className="bg-amber-50 border border-amber-200 rounded-lg px-4 py-2.5 flex items-start gap-2">
             <AlertTriangle className="w-4 h-4 text-amber-600 flex-shrink-0 mt-0.5" />

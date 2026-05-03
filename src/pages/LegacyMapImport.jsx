@@ -5,6 +5,7 @@ import { useQueryClient } from '@tanstack/react-query';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
 import { Upload, FileText, CheckCircle2, AlertCircle, Loader2, X, MapPin, Home, Layers, Wand2 } from 'lucide-react';
+import ProcessingFeedback from '@/components/ui/ProcessingFeedback';
 
 function FileDropZone({ onFile }) {
   const [dragging, setDragging] = useState(false);
@@ -210,6 +211,28 @@ export default function LegacyMapImport() {
                         <Badge variant="outline" className="text-[10px]">{st.label}</Badge>
                       </div>
 
+                      {(item.status === 'uploading' || item.status === 'processing' || item.status === 'geo_matching') && (
+                          <ProcessingFeedback
+                            className="mt-2"
+                            label={
+                              item.status === 'uploading' ? 'Reading DOCX file…' :
+                              item.status === 'processing' ? 'Importing streets and creating turf record…' :
+                              'AI boundary matching…'
+                            }
+                            detail={
+                              item.status === 'uploading' ? 'Extracting text content from the Word document.' :
+                              item.status === 'processing' ? 'Parsing street names, household counts and saving to database.' :
+                              'AI is extracting the map image and generating a GeoJSON boundary for this turf.'
+                            }
+                            tips={
+                              item.status === 'geo_matching' ? [
+                                'The AI reads the embedded map image from the DOCX file.',
+                                'It generates a polygon boundary you can see on the Turf Management map.',
+                                'This step is best-effort — if it fails, you can draw the boundary manually.',
+                              ] : []
+                            }
+                          />
+                        )}
                       {item.result && (
                         <div className="mt-2 grid grid-cols-1 sm:grid-cols-3 gap-2">
                           <div className="flex items-center gap-1.5 text-xs text-muted-foreground">

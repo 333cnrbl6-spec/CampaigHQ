@@ -5,6 +5,7 @@ import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Download, FileText, Database, Loader2, CheckCircle2, AlertCircle } from 'lucide-react';
+import ProcessingFeedback from '@/components/ui/ProcessingFeedback';
 
 export default function DataExport() {
   const { campaign } = useCampaign();
@@ -151,6 +152,18 @@ export default function DataExport() {
               </>
             )}
           </Button>
+
+          {exporting && (
+            <ProcessingFeedback
+              label="Preparing your export…"
+              detail={`Fetching all ${entities.find(e => e.value === entityType)?.label} records and converting to ${format.toUpperCase()}.`}
+              tips={[
+                'All records for this campaign are being fetched from the database.',
+                'Large exports (1000+ records) may take 10–20 seconds.',
+                'Your download will start automatically when ready.',
+              ]}
+            />
+          )}
 
           {lastExport && (
             <div className="flex items-center gap-2 p-3 bg-green-50 border border-green-200 rounded-lg text-sm text-green-700">

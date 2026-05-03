@@ -12,6 +12,7 @@ import {
   Search, XCircle, RotateCcw, Map, Footprints, Printer, ClipboardList, Info, FileText, RefreshCw, FileText as FilePdf,
   Zap
 } from 'lucide-react';
+import ProcessingFeedback from '@/components/ui/ProcessingFeedback';
 import CanvassingRouteMap from '@/components/map/CanvassingRouteMap';
 import ContactsZoneMap from '@/components/map/ContactsZoneMap';
 import TurfBoundaryMap from '@/components/map/TurfBoundaryMap';
@@ -490,7 +491,7 @@ export default function RouteOptimizer() {
               {geocoding ? (
                 <>
                   <Loader2 className="w-4 h-4 animate-spin" />
-                  Looking up postcodes {geocodeProgress.done}/{geocodeProgress.total}…
+                  {geocodeProgress.done}/{geocodeProgress.total} postcodes…
                 </>
               ) : (
                 <>
@@ -499,19 +500,6 @@ export default function RouteOptimizer() {
                 </>
               )}
             </Button>
-            {geocoding && geocodeProgress.total > 0 && (
-              <div className="mt-2">
-                <div className="w-full bg-primary/10 rounded-full h-1.5 overflow-hidden">
-                  <div
-                    className="bg-primary h-1.5 rounded-full transition-all duration-300"
-                    style={{ width: `${(geocodeProgress.done / geocodeProgress.total) * 100}%` }}
-                  />
-                </div>
-                <p className="text-xs text-muted-foreground mt-1 text-center">
-                  Looking up {geocodeProgress.total} unique postcodes…
-                </p>
-              </div>
-            )}
             {noPostcodeCount > 0 && (
               <p className="text-xs text-amber-600 mt-2 flex items-center gap-1">
                 <XCircle className="w-3 h-3" /> {noPostcodeCount} contact{noPostcodeCount > 1 ? 's' : ''} skipped (no postcode)
@@ -540,10 +528,20 @@ export default function RouteOptimizer() {
           {route ? (
             <CanvassingRouteMap route={route} />
           ) : geocoding ? (
-            <div className="flex flex-col items-center justify-center h-full gap-4 text-muted-foreground">
-              <Loader2 className="w-10 h-10 animate-spin text-primary" />
-              <p className="font-medium">Looking up postcodes…</p>
-              <p className="text-sm">{geocodeProgress.done} of {geocodeProgress.total} unique postcodes resolved</p>
+            <div className="flex flex-col items-center justify-center h-full p-8">
+              <ProcessingFeedback
+                className="max-w-md w-full"
+                label="Building optimised route…"
+                detail={`${geocodeProgress.done} of ${geocodeProgress.total} unique postcodes resolved`}
+                step={geocodeProgress.done}
+                totalSteps={geocodeProgress.total || 1}
+                tips={[
+                  'Each unique postcode is looked up via postcodes.io (free UK API, no key needed).',
+                  'Postcodes are then sorted using a nearest-neighbour algorithm to minimise walking distance.',
+                  'Within each postcode, house numbers are sorted for natural street-by-street walking order.',
+                  'Contacts with no postcode will appear at the end of the route.',
+                ]}
+              />
             </div>
           ) : !showTurfBoundaries && filteredContacts.length > 0 ? (
             <ContactsZoneMap contacts={filteredContacts} selectedIds={selectedIds} />
