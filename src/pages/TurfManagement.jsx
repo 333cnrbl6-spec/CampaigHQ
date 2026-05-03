@@ -14,8 +14,10 @@ import BulkAssignDialog from '../components/turf/BulkAssignDialog';
 import TurfBoundaryMap from '../components/map/TurfBoundaryMap';
 import UnassignedStreetsOverlay from '../components/map/UnassignedStreetsOverlay';
 import { Button } from '@/components/ui/button';
-import { Pencil, Trash2, Layers, Route, Wand2, Map, Eye, EyeOff, Database } from 'lucide-react';
+import { Pencil, Trash2, Layers, Route, Wand2, Map, Eye, EyeOff, Database, Flame } from 'lucide-react';
 import GeocodePanel from '../components/turf/GeocodePanel';
+import LeafletDistributionHeatmap from '../components/turf/LeafletDistributionHeatmap';
+import WalkingPathOptimizer from '../components/turf/WalkingPathOptimizer';
 
 // Fix leaflet default marker icons
 delete L.Icon.Default.prototype._getIconUrl;
@@ -192,6 +194,8 @@ export default function TurfManagement() {
   const [showBoundaryMap, setShowBoundaryMap] = useState(false);
   const [showUnassignedPanel, setShowUnassignedPanel] = useState(false);
   const [showGeocodePanel, setShowGeocodePanel] = useState(false);
+  const [showHeatmap, setShowHeatmap] = useState(false);
+  const [showPathOptimizer, setShowPathOptimizer] = useState(false);
 
   const { data: turfs = [], error: turfError, refetch: refetchTurfs } = useQuery({
     queryKey: ['turfs', campaignId],
@@ -359,9 +363,18 @@ export default function TurfManagement() {
             <>
               <Button
                 size="sm"
+                variant={showHeatmap ? 'default' : 'outline'}
+                className="gap-2"
+                onClick={() => setShowHeatmap(h => !h)}
+              >
+                <Flame className="w-4 h-4" />
+                {showHeatmap ? 'Hide Heatmap' : 'Heatmap'}
+              </Button>
+              <Button
+                size="sm"
                 variant={showRoute ? 'default' : 'outline'}
                 className="gap-2"
-                onClick={() => { setShowRoute(s => !s); setRouteCoords([]); }}
+                onClick={() => { setShowRoute(s => !s); setRouteCoords([]); setShowPathOptimizer(false); }}
               >
                 <Route className="w-4 h-4" />
                 {showRoute ? 'Hide Route' : 'Walking Route'}
@@ -423,7 +436,15 @@ export default function TurfManagement() {
             url="https://{s}.basemaps.cartocdn.com/light_all/{z}/{x}/{y}{r}.png"
           />
           <DrawControl onCreated={handleShapeCreated} drawing={drawing} setDrawing={setDrawing} />
-          <TurfLayers turfs={turfs} selectedId={selectedId} onSelect={(id) => { setSelectedId(id); setShowRoute(false); setRouteCoords([]); }} />
+          <TurfLayers turfs={turfs} selectedId={selectedId} onSelect={(id) => { setSelectedId(id); setShowRoute(false); setRouteCoords([]); setShowHeatmap(false); }} />
+          {showHeatmap && selectedId && (
+            <LeafletDistributionHeatmap 
+              contacts={contacts} 
+              turfs={turfs} 
+              selectedTurfId={selectedId}
+              visible={showHeatmap}
+            />
+          )}
           {/* Walking route overlay */}
           {routeCoords.length > 1 && (
             <>
@@ -444,11 +465,23 @@ export default function TurfManagement() {
 
         {/* Route panel */}
         {showRoute && selectedId && (
-          <TurfRoutePanel
-            turf={turfs.find(t => t.id === selectedId)}
-            onRouteReady={setRouteCoords}
-            onClose={() => { setShowRoute(false); setRouteCoords([]); }}
-          />
+          <div className="absolute bottom-4 right-4 z-[1000] flex flex-col gap-3">
+            <TurfRoutePanel
+              turf={turfs.find(t => t.id === selectedId)}
+              onRouteReady={(coords) => {
+                setRouteCoords(coords);
+                setShowPathOptimizer(true);
+              }}
+              onClose={() => { setShowRoute(false); setRouteCoords([]); setShowPathOptimizer(false); }}
+            />
+            {showPathOptimizer && routeCoords.length > 0 && (
+              <WalkingPathOptimizer
+                turf={turfs.find(t => t.id === selectedId)}
+                contacts={contacts.filter(c => c.latitude && c.longitude)}
+                onPathReady={() => {}}
+              />
+            )}
+          </div>
         )}
 
         {/* Boundary Map Modal */}
