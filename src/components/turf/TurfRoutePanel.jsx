@@ -4,6 +4,7 @@ import { base44 } from '@/api/base44Client';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
 import { Route, Navigation, X, MapPin, ChevronDown, ChevronUp, FileText, Zap } from 'lucide-react';
+import { generateGoogleMapsUrls, openGoogleMapsUrls } from '@/lib/googleMapsUtils';
 import WalkSheetPrint from '@/components/canvassing/WalkSheetPrint';
 
 // Point-in-polygon test (ray casting) — coords are [lng, lat]
@@ -147,20 +148,9 @@ export default function TurfRoutePanel({ turf, onRouteReady, onClose }) {
 
   const openGoogleMaps = () => {
     if (route.length === 0) return;
-    const waypoints = route.map(p => `${p.coords[1]},${p.coords[0]}`);
-    // Google Maps API supports up to 25 waypoints (including origin/destination)
-    // If we have more stops, include as many as possible starting from the beginning
-    const maxStops = 25;
-    let urlWaypoints = waypoints;
-    if (waypoints.length > maxStops) {
-      // Include first and last, plus as many middle waypoints as possible
-      urlWaypoints = [waypoints[0], ...waypoints.slice(1, maxStops - 1), waypoints[waypoints.length - 1]];
-    }
-    const origin = urlWaypoints[0];
-    const destination = urlWaypoints[urlWaypoints.length - 1];
-    const middle = urlWaypoints.length > 2 ? urlWaypoints.slice(1, -1).join('|') : '';
-    const url = `https://www.google.com/maps/dir/?api=1&origin=${origin}&destination=${destination}${middle ? `&waypoints=${middle}` : ''}&travelmode=walking`;
-    window.open(url, '_blank');
+    const stops = route.map(p => [p.coords[1], p.coords[0]]); // [lat, lon]
+    const urls = generateGoogleMapsUrls(stops, 'walking');
+    openGoogleMapsUrls(urls);
   };
 
   // How many contacts have real coords (exclude latitude=0 sentinel) vs total with addresses

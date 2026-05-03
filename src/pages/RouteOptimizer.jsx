@@ -2,6 +2,7 @@ import React, { useState, useMemo, useCallback } from 'react';
 import { base44 } from '@/api/base44Client';
 import { useQuery } from '@tanstack/react-query';
 import { useCampaign } from '@/lib/CampaignContext';
+import { generateGoogleMapsUrls, openGoogleMapsUrls } from '@/lib/googleMapsUtils';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Badge } from '@/components/ui/badge';
@@ -562,12 +563,26 @@ export default function RouteOptimizer() {
             <div className="absolute top-4 right-4 w-72 bg-background/95 backdrop-blur-sm border border-border rounded-xl shadow-lg max-h-[calc(100vh-8rem)] flex flex-col">
               <div className="px-4 py-3 border-b border-border flex items-center justify-between">
                 <h3 className="font-semibold text-sm">Visit Order</h3>
-                <span className="text-xs text-muted-foreground">{route.length} stops · {totalDist.toFixed(1)} km</span>
+                <span className="text-xs text-muted-foreground">{route.length} stops {route.length > 25 ? `(${Math.ceil(route.length / 24)} routes)` : ''} · {totalDist.toFixed(1)} km</span>
               </div>
 
               {/* Integration actions */}
               <div className="px-3 py-2.5 border-b border-border space-y-1.5">
                 <p className="text-[10px] font-semibold text-muted-foreground uppercase tracking-wide mb-1.5">Use this route in…</p>
+                <button
+                  onClick={() => {
+                    const stops = route.map(s => [s.coords[1], s.coords[0]]); // [lat, lon]
+                    const urls = generateGoogleMapsUrls(stops, 'walking');
+                    openGoogleMapsUrls(urls);
+                  }}
+                  className="w-full flex items-center gap-2.5 px-3 py-2 rounded-lg border border-border hover:bg-primary/5 hover:border-primary/30 transition-colors text-left"
+                >
+                  <Navigation className="w-4 h-4 text-primary flex-shrink-0" />
+                  <div className="min-w-0">
+                    <p className="text-xs font-semibold">Google Maps {route.length > 25 ? `(${Math.ceil(route.length / 24)} routes)` : ''}</p>
+                    <p className="text-[10px] text-muted-foreground">Full route with all stops</p>
+                  </div>
+                </button>
                 <button
                   onClick={() => {
                     const ids = route.map(s => s.contact.id).join(',');
@@ -578,7 +593,7 @@ export default function RouteOptimizer() {
                   <Navigation className="w-4 h-4 text-primary flex-shrink-0" />
                   <div className="min-w-0">
                     <p className="text-xs font-semibold">Turn-by-Turn Navigation</p>
-                    <p className="text-[10px] text-muted-foreground">Route guidance with live map</p>
+                    <p className="text-[10px] text-muted-foreground">In-app route guidance</p>
                   </div>
                 </button>
                 <button
