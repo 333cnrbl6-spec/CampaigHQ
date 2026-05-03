@@ -2,7 +2,6 @@ import React, { useState, useMemo, useCallback } from 'react';
 import { base44 } from '@/api/base44Client';
 import { useQuery } from '@tanstack/react-query';
 import { useCampaign } from '@/lib/CampaignContext';
-import useSecureData from '@/hooks/useSecureData';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Badge } from '@/components/ui/badge';
@@ -209,17 +208,19 @@ export default function RouteOptimizer() {
   const [showTurfBoundaries, setShowTurfBoundaries] = useState(false);
   const [showBatchAssignment, setShowBatchAssignment] = useState(false);
 
-  const { data: contacts = [], isLoading, refetch: refetchContacts } = useSecureData(
-    'getContactDetails',
-    campaignId ? {} : null,
-    { staleTime: 120000, refetchInterval: 120000, enabled: !!campaignId }
-  );
+  const { data: contacts = [], isLoading, refetch: refetchContacts } = useQuery({
+    queryKey: ['contacts-route', campaignId],
+    queryFn: () => base44.entities.Contact.filter({ campaign_id: campaignId }, '-created_date', 5000),
+    enabled: !!campaignId,
+    staleTime: 120000,
+  });
 
-  const { data: turfs = [] } = useSecureData(
-    'getAssignedTurfs',
-    campaignId ? {} : null,
-    { staleTime: 120000, refetchInterval: 120000, enabled: !!campaignId }
-  );
+  const { data: turfs = [] } = useQuery({
+    queryKey: ['turfs-route', campaignId],
+    queryFn: () => base44.entities.Turf.filter({ campaign_id: campaignId }, 'name'),
+    enabled: !!campaignId,
+    staleTime: 120000,
+  });
 
   const allTurfs = useMemo(() =>
     turfs.map(t => t.name).filter(Boolean).sort(),
