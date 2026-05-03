@@ -27,10 +27,10 @@ export default function Dashboard() {
   
   // For national demo/sales pitch account, redirect to national dashboard
   useEffect(() => {
-    if (user?.email === '333cnrbl6@gmail.com') {
+    if (user?.role === 'admin' && user?.email?.includes('national')) {
       navigate('/national');
     }
-  }, [user?.email, navigate]);
+  }, [user?.role, user?.email, navigate]);
   
   // Defensive: campaign might not have loaded yet
   const campaignId = campaign?.id;

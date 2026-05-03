@@ -420,7 +420,7 @@ export default function PitchPresentation() {
             </Button>
           </div>
           <p className="text-sm text-sidebar-foreground/60">
-            Questions? Email: hello@campaignmanager.local
+            Questions? Email: hello@campaignhq.co.uk
           </p>
         </div>
       </section>

@@ -103,7 +103,7 @@ export default function NationalDashboard() {
               { id: 'conversion', label: '🔥 Post-Election', icon: Flame },
               { id: 'live-gotv', label: '📡 Live GOTV', icon: Radio },
               { id: 'gotv-module', label: '🗳️ Election Day', icon: Vote },
-              { id: 'compliance', label: '🔐 Post-Election Compliance', icon: Lock },
+              { id: 'post-compliance', label: '🔐 Post-Election Compliance', icon: Lock },
               { id: 'results', label: '🏆 Results & Victory', icon: Trophy },
             ].map(tab => (
               <button
@@ -221,7 +221,7 @@ export default function NationalDashboard() {
         {activeTab === 'conversion' && <PostElectionConverter />}
         {activeTab === 'live-gotv' && <GOTVLiveMap />}
         {activeTab === 'gotv-module' && <GOTVModule />}
-        {activeTab === 'compliance' && <PostElectionComplianceModule />}
+        {activeTab === 'post-compliance' && <PostElectionComplianceModule />}
         {activeTab === 'results' && <ResultsVictoryPage />}
 
         {/* Export all data */}

@@ -1,5 +1,4 @@
 import { useState } from 'react';
-import { Link } from 'react-router-dom';
 import { base44 } from '@/api/base44Client';
 
 const DEMO_NEWS = [
@@ -68,9 +67,6 @@ const DemoWatermark = () => (
 );
 
 export default function GreenPartyDemo() {
-  const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
-  const [loginOpen, setLoginOpen] = useState(false);
-
   const handleLogin = () => {
     base44.auth.redirectToLogin('/dashboard');
   };
@@ -80,7 +76,7 @@ export default function GreenPartyDemo() {
       <DemoBanner />
 
       {/* Top nav — matches Green Party exactly */}
-      <nav className="fixed top-6 left-0 right-0 z-50" style={{ backgroundColor: '#00612B' }}>
+      <nav className="fixed top-5 left-0 right-0 z-50" style={{ backgroundColor: '#00612B' }}>
         <div className="max-w-7xl mx-auto px-4 flex items-center justify-between h-14">
           {/* Logo area */}
           <div className="flex items-center gap-2">
@@ -115,12 +111,14 @@ export default function GreenPartyDemo() {
               Log in
             </button>
             <button
+              onClick={handleLogin}
               className="px-4 py-1.5 text-sm font-semibold rounded text-green-900"
               style={{ backgroundColor: '#A8C423' }}
             >
               Join
             </button>
             <button
+              onClick={handleLogin}
               className="px-4 py-1.5 text-sm font-semibold rounded text-white"
               style={{ backgroundColor: '#005525' }}
             >
@@ -131,7 +129,7 @@ export default function GreenPartyDemo() {
       </nav>
 
       {/* Hero */}
-      <div className="relative mt-20 overflow-hidden" style={{ minHeight: '520px' }}>
+      <div className="relative mt-[calc(1.25rem+3.5rem)] overflow-hidden" style={{ minHeight: '520px' }}>
         <img
           src="https://images.unsplash.com/photo-1521791055366-0d553872952f?w=1400&q=80"
           alt="Green Party campaigners"
@@ -394,7 +392,7 @@ export default function GreenPartyDemo() {
         </div>
         <div className="max-w-6xl mx-auto mt-8 pt-6 border-t border-green-800 flex flex-wrap items-center justify-between gap-4">
           <p className="text-green-400 text-xs">
-            © 2026 Green Party of England and Wales. Registered at PO Box 78066, London SE16 9GQ.
+            © 2026 Campaign HQ — Demo platform. Not affiliated with the Green Party of England and Wales.
           </p>
           <div className="bg-amber-400 text-amber-900 text-xs font-bold px-3 py-1 rounded">
             ⚠ DEMO — All stories and images are fictional for demonstration purposes only
