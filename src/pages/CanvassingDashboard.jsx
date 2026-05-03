@@ -2,6 +2,7 @@ import React, { useMemo, useState } from 'react';
 import { base44 } from '@/api/base44Client';
 import { useQuery } from '@tanstack/react-query';
 import { useCampaign } from '@/lib/CampaignContext';
+import { useTurfSelection } from '@/lib/TurfSelectionContext';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import CanvassingStatsCards from '@/components/dashboard/CanvassingStatsCards';
@@ -14,8 +15,8 @@ import { RefreshCw, Calendar } from 'lucide-react';
 
 export default function CanvassingDashboard() {
   const { campaign } = useCampaign();
+  const { selectedTurfId, setSelectedTurfId } = useTurfSelection();
   const [selectedTurf, setSelectedTurf] = useState(null);
-  const [selectedTurfId, setSelectedTurfId] = useState(null);
 
   // Fetch all relevant data
   const { data: canvassingLogs = [], isLoading: logsLoading, refetch: refetchLogs } = useQuery({

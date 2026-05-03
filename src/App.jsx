@@ -5,6 +5,7 @@ import { BrowserRouter as Router, Route, Routes, Navigate } from 'react-router-d
 import PageNotFound from './lib/PageNotFound';
 import { AuthProvider, useAuth } from '@/lib/AuthContext';
 import { CampaignProvider, useCampaign } from '@/lib/CampaignContext';
+import { TurfSelectionProvider } from '@/lib/TurfSelectionContext';
 import { PermissionProvider } from '@/lib/PermissionContext';
 import CampaignSetup from './pages/CampaignSetup';
 import { useHardRefreshListener } from '@/hooks/useHardRefreshListener';
@@ -237,6 +238,7 @@ function App() {
       <QueryClientProvider client={queryClientInstance}>
         <PermissionProvider>
           <Router>
+            <TurfSelectionProvider>
             <CampaignProvider>
             <Routes>
               {/* Public routes — redirect to dashboard if authenticated */}
@@ -257,12 +259,13 @@ function App() {
               <Route path="/*" element={<AuthenticatedApp />} />
             </Routes>
           </CampaignProvider>
+          </TurfSelectionProvider>
           </Router>
           <Toaster />
-        </PermissionProvider>
-      </QueryClientProvider>
-    </AuthProvider>
-  )
+          </PermissionProvider>
+          </QueryClientProvider>
+          </AuthProvider>
+          )
 }
 
 export default App

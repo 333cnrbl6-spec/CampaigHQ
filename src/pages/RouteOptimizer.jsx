@@ -2,6 +2,7 @@ import React, { useState, useMemo, useCallback } from 'react';
 import { base44 } from '@/api/base44Client';
 import { useQuery } from '@tanstack/react-query';
 import { useCampaign } from '@/lib/CampaignContext';
+import { useTurfSelection } from '@/lib/TurfSelectionContext';
 import { generateGoogleMapsUrls, openGoogleMapsUrls } from '@/lib/googleMapsUtils';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
@@ -194,10 +195,7 @@ export default function RouteOptimizer() {
   const navigate = useNavigate();
   const { campaign } = useCampaign();
   const campaignId = campaign?.id;
-  const urlParams = new URLSearchParams(window.location.search);
-  const initialTurf = urlParams.get('turf') || 'all';
-
-  const [selectedTurfId, setSelectedTurfId] = useState(initialTurf === 'all' ? null : initialTurf);
+  const { selectedTurfId, setSelectedTurfId } = useTurfSelection();
   const [search, setSearch] = useState('');
   const [selectedIds, setSelectedIds] = useState(new Set());
   const [geocoding, setGeocoding] = useState(false);

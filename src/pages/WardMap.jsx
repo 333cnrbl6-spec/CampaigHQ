@@ -7,6 +7,7 @@ import L from 'leaflet';
 import { useQuery } from '@tanstack/react-query';
 import { base44 } from '@/api/base44Client';
 import { useCampaign } from '@/lib/CampaignContext';
+import { useTurfSelection } from '@/lib/TurfSelectionContext';
 import useSecureData from '@/hooks/useSecureData';
 import RouteOptimizer from '../components/map/RouteOptimizer';
 
@@ -76,8 +77,8 @@ function NumberedMarker({ position, number }) {
 export default function WardMap() {
   const { campaign } = useCampaign();
   const campaignId = campaign?.id;
+  const { selectedTurfId, setSelectedTurfId } = useTurfSelection();
   const [route, setRoute] = useState([]);
-  const [selectedTurfId, setSelectedTurfId] = useState(null);
 
   const { data: contacts = [] } = useSecureData(
     'getContactDetails',
