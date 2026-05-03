@@ -1,17 +1,20 @@
 import React, { useState } from 'react';
-import { useQuery } from '@tanstack/react-query';
+import { useQuery, useMutation } from '@tanstack/react-query';
 import { base44 } from '@/api/base44Client';
 import { useCampaign } from '@/lib/CampaignContext';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
 import { PieChart, Pie, Cell, ResponsiveContainer, BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, Legend, LineChart, Line } from 'recharts';
-import { Download, FileText } from 'lucide-react';
+import { Download, FileText, Loader2 } from 'lucide-react';
 import html2canvas from 'html2canvas';
 import jsPDF from 'jspdf';
+import { ExecutiveSummaryTemplate, CanvassingProgressTemplate, VolunteerActivityTemplate, InteractionBreakdownTemplate } from '@/components/reports/ReportTemplates';
 
 export default function Reports() {
   const { campaign } = useCampaign();
+  const [reportType, setReportType] = useState('full');
+  const [generatingPDF, setGeneratingPDF] = useState(false);
 
   const { data: contacts = [] } = useQuery({
     queryKey: ['contacts', campaign?.id],
@@ -26,6 +29,16 @@ export default function Reports() {
   const { data: events = [] } = useQuery({
     queryKey: ['events', campaign?.id],
     queryFn: () => base44.entities.CampaignEvent.filter({ campaign_id: campaign?.id }),
+  });
+
+  const generateReport = useMutation({
+    mutationFn: async () => {
+      const res = await base44.functions.invoke('generateCampaignReport', {
+        campaign_id: campaign?.id,
+        report_type: reportType,
+      });
+      return res.data;
+    },
   });
 
   // Canvassing Stats
@@ -70,28 +83,110 @@ export default function Reports() {
   const upcomingEvents = events.filter(e => e.status === 'upcoming').length;
 
   const handleExportPDF = async () => {
-    const element = document.getElementById('reports-content');
-    const canvas = await html2canvas(element, { scale: 2 });
-    const pdf = new jsPDF('p', 'mm', 'a4');
-    const imgData = canvas.toDataURL('image/png');
-    const imgWidth = 210;
-    const pageHeight = 295;
-    const imgHeight = (canvas.height * imgWidth) / canvas.width;
+    setGeneratingPDF(true);
+    try {
+      const element = document.getElementById('reports-content');
+      if (!element) {
+        alert('Report content not found');
+        return;
+      }
+      const canvas = await html2canvas(element, { scale: 2, useCORS: true });
+      const pdf = new jsPDF('p', 'mm', 'a4');
+      const imgData = canvas.toDataURL('image/png');
+      const imgWidth = 210;
+      const pageHeight = 295;
+      let imgHeight = (canvas.height * imgWidth) / canvas.width;
 
-    pdf.addImage(imgData, 'PNG', 0, 0, imgWidth, imgHeight);
-    pdf.save('campaign-report.pdf');
+      let heightLeft = imgHeight;
+      let position = 0;
+
+      // Add multiple pages if needed
+      while (heightLeft > 0) {
+        pdf.addImage(imgData, 'PNG', 0, position, imgWidth, imgHeight);
+        heightLeft -= pageHeight;
+        position -= pageHeight;
+        if (heightLeft > 0) pdf.addPage();
+      }
+
+      pdf.save(`${campaign?.name || 'campaign'}-report-${new Date().toISOString().split('T')[0]}.pdf`);
+    } catch (err) {
+      console.error('PDF generation error:', err);
+      alert('Failed to generate PDF: ' + err.message);
+    } finally {
+      setGeneratingPDF(false);
+    }
   };
 
   return (
     <div className="space-y-6 p-6">
       <div className="flex justify-between items-center">
         <h1 className="text-3xl font-bold font-heading text-foreground">Campaign Reports</h1>
-        <Button className="gap-2" onClick={handleExportPDF}>
-          <Download className="w-4 h-4" /> Export PDF
-        </Button>
+        <div className="flex gap-2">
+          <Button 
+            className="gap-2" 
+            onClick={handleExportPDF}
+            disabled={generatingPDF}
+          >
+            {generatingPDF ? (
+              <>
+                <Loader2 className="w-4 h-4 animate-spin" /> Generating...
+              </>
+            ) : (
+              <>
+                <Download className="w-4 h-4" /> Export PDF
+              </>
+            )}
+          </Button>
+        </div>
       </div>
 
+      {/* Report Type Selector */}
+      <Card>
+        <CardHeader>
+          <CardTitle className="text-base">Report Template</CardTitle>
+        </CardHeader>
+        <CardContent>
+          <div className="flex gap-2 flex-wrap">
+            {[
+              { value: 'full', label: 'Full Report' },
+              { value: 'executive', label: 'Executive Summary' },
+              { value: 'canvassing', label: 'Canvassing Progress' },
+              { value: 'volunteers', label: 'Volunteer Activity' },
+              { value: 'interactions', label: 'Interaction Breakdown' }
+            ].map(option => (
+              <Button
+                key={option.value}
+                variant={reportType === option.value ? 'default' : 'outline'}
+                size="sm"
+                onClick={() => setReportType(option.value)}
+              >
+                {option.label}
+              </Button>
+            ))}
+          </div>
+        </CardContent>
+      </Card>
+
       <div id="reports-content" className="space-y-6">
+        {/* Dynamic Templates */}
+        {(reportType === 'full' || reportType === 'executive') && (
+          <ExecutiveSummaryTemplate contacts={contacts} interactions={interactions} events={events} campaign={campaign} />
+        )}
+
+        {(reportType === 'full' || reportType === 'canvassing') && (
+          <CanvassingProgressTemplate contacts={contacts} />
+        )}
+
+        {(reportType === 'full' || reportType === 'volunteers') && (
+          <VolunteerActivityTemplate contacts={contacts} interactions={interactions} />
+        )}
+
+        {(reportType === 'full' || reportType === 'interactions') && (
+          <InteractionBreakdownTemplate interactions={interactions} />
+        )}
+
+        {reportType === 'full' && (
+          <>
         {/* Key Metrics */}
         <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
           <Card>
@@ -283,6 +378,8 @@ export default function Reports() {
             </div>
           </CardContent>
         </Card>
+          </>
+        )}
       </div>
     </div>
   );
