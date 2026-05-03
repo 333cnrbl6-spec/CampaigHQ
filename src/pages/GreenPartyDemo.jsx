@@ -96,10 +96,10 @@ export default function GreenPartyDemo() {
 
           {/* Nav links */}
           <div className="hidden md:flex items-center gap-6 text-white text-sm font-medium">
-            <a href="#about" className="hover:text-lime-300 transition-colors">About</a>
-            <a href="#get-involved" className="hover:text-lime-300 transition-colors">Get involved</a>
-            <a href="#members" className="hover:text-lime-300 transition-colors">Members</a>
-            <a href="#news" className="hover:text-lime-300 transition-colors">News</a>
+            <a href="#about" onClick={e => e.preventDefault()} className="hover:text-lime-300 transition-colors cursor-pointer">About</a>
+              <a href="#get-involved" onClick={e => e.preventDefault()} className="hover:text-lime-300 transition-colors cursor-pointer">Get involved</a>
+              <a href="#members" onClick={e => e.preventDefault()} className="hover:text-lime-300 transition-colors cursor-pointer">Members</a>
+              <a href="#news" onClick={e => e.preventDefault()} className="hover:text-lime-300 transition-colors cursor-pointer">News</a>
           </div>
 
           {/* CTAs */}
@@ -147,6 +147,7 @@ export default function GreenPartyDemo() {
             </p>
             <div className="flex flex-wrap gap-3">
               <button
+                onClick={handleLogin}
                 className="px-6 py-3 font-bold rounded text-green-900 text-base"
                 style={{ backgroundColor: '#A8C423' }}
               >
@@ -200,7 +201,7 @@ export default function GreenPartyDemo() {
           <h2 className="text-2xl font-black uppercase tracking-wide" style={{ color: '#00612B' }}>
             Latest News
           </h2>
-          <a href="#" className="text-sm font-semibold" style={{ color: '#00612B' }}>View all news →</a>
+          <button onClick={handleLogin} className="text-sm font-semibold bg-transparent border-0 cursor-pointer" style={{ color: '#00612B' }}>View all news →</button>
         </div>
 
         <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
@@ -233,7 +234,7 @@ export default function GreenPartyDemo() {
 
         <div className="text-center mt-10">
           <button className="px-6 py-2 border-2 font-semibold rounded hover:bg-green-800 hover:text-white transition-colors"
-            style={{ borderColor: '#00612B', color: '#00612B' }}>
+            style={{ borderColor: '#00612B', color: '#00612B' }} disabled>
             Load more
           </button>
         </div>
@@ -260,7 +261,7 @@ export default function GreenPartyDemo() {
                 <DemoWatermark />
                 <h3 className="font-black uppercase text-sm tracking-wide mb-2">{item.title}</h3>
                 <p className="text-green-100 text-sm">{item.desc}</p>
-                <a href="#" className="mt-3 inline-block text-xs font-bold underline text-lime-300">Find out more</a>
+                <button onClick={handleLogin} className="mt-3 inline-block text-xs font-bold underline text-lime-300 bg-transparent border-0 cursor-pointer hover:text-white transition-colors">Find out more</button>
               </div>
             ))}
           </div>
@@ -296,16 +297,16 @@ export default function GreenPartyDemo() {
         </p>
         <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
           {[
-            { label: 'Canvass with us', icon: '🚪', desc: 'Join a canvassing session in your area and talk to voters door-to-door.' },
-            { label: 'Deliver leaflets', icon: '📬', desc: 'Help us get our message out by delivering leaflets in your neighbourhood.' },
-            { label: 'Attend an event', icon: '📅', desc: 'Come to a local meeting, hustings, or social event near you.' },
-            { label: 'Donate', icon: '💚', desc: 'Support our campaigns financially — every pound helps us fight the big parties.' },
+            { label: 'Canvass with us', icon: '🚪', desc: 'Join a canvassing session in your area and talk to voters door-to-door.', action: () => handleLogin() },
+            { label: 'Deliver leaflets', icon: '📬', desc: 'Help us get our message out by delivering leaflets in your neighbourhood.', action: () => handleLogin() },
+            { label: 'Attend an event', icon: '📅', desc: 'Come to a local meeting, hustings, or social event near you.', action: () => handleLogin() },
+            { label: 'Donate', icon: '💚', desc: 'Support our campaigns financially — every pound helps us fight the big parties.', action: () => handleLogin() },
           ].map(item => (
-            <div key={item.label} className="border border-gray-200 rounded-lg p-5 hover:border-green-600 hover:shadow-sm transition-all">
+            <button key={item.label} onClick={item.action} className="border border-gray-200 rounded-lg p-5 hover:border-green-600 hover:shadow-sm transition-all text-left bg-white cursor-pointer">
               <div className="text-3xl mb-3">{item.icon}</div>
               <h3 className="font-bold text-gray-900 mb-1" style={{ color: '#00612B' }}>{item.label}</h3>
               <p className="text-sm text-gray-600">{item.desc}</p>
-            </div>
+            </button>
           ))}
         </div>
       </section>
@@ -346,19 +347,19 @@ export default function GreenPartyDemo() {
           <div>
             <h4 className="font-bold mb-3 uppercase text-xs tracking-wide text-lime-300">About</h4>
             <ul className="space-y-1 text-green-200">
-              <li><a href="#" className="hover:text-white">Our story</a></li>
-              <li><a href="#" className="hover:text-white">Leadership</a></li>
-              <li><a href="#" className="hover:text-white">Policies</a></li>
-              <li><a href="#" className="hover:text-white">Contact us</a></li>
+              <li><button onClick={handleLogin} className="hover:text-white bg-transparent border-0 cursor-pointer text-left">Our story</button></li>
+              <li><button onClick={handleLogin} className="hover:text-white bg-transparent border-0 cursor-pointer text-left">Leadership</button></li>
+              <li><button onClick={handleLogin} className="hover:text-white bg-transparent border-0 cursor-pointer text-left">Policies</button></li>
+              <li><button onClick={handleLogin} className="hover:text-white bg-transparent border-0 cursor-pointer text-left">Contact us</button></li>
             </ul>
           </div>
           <div>
             <h4 className="font-bold mb-3 uppercase text-xs tracking-wide text-lime-300">Get Involved</h4>
             <ul className="space-y-1 text-green-200">
-              <li><a href="#" className="hover:text-white">Join the party</a></li>
-              <li><a href="#" className="hover:text-white">Canvass with us</a></li>
-              <li><a href="#" className="hover:text-white">Find local party</a></li>
-              <li><a href="#" className="hover:text-white">Donate</a></li>
+              <li><button onClick={handleLogin} className="hover:text-white bg-transparent border-0 cursor-pointer text-left">Join the party</button></li>
+              <li><button onClick={handleLogin} className="hover:text-white bg-transparent border-0 cursor-pointer text-left">Canvass with us</button></li>
+              <li><button onClick={handleLogin} className="hover:text-white bg-transparent border-0 cursor-pointer text-left">Find local party</button></li>
+              <li><button onClick={handleLogin} className="hover:text-white bg-transparent border-0 cursor-pointer text-left">Donate</button></li>
             </ul>
           </div>
           <div>
@@ -384,9 +385,9 @@ export default function GreenPartyDemo() {
           <div>
             <h4 className="font-bold mb-3 uppercase text-xs tracking-wide text-lime-300">Legal</h4>
             <ul className="space-y-1 text-green-200">
-              <li><a href="#" className="hover:text-white">Privacy Policy</a></li>
-              <li><a href="#" className="hover:text-white">Cookie Policy</a></li>
-              <li><a href="#" className="hover:text-white">Accessibility</a></li>
+              <li><button onClick={handleLogin} className="hover:text-white bg-transparent border-0 cursor-pointer text-left">Privacy Policy</button></li>
+              <li><button onClick={handleLogin} className="hover:text-white bg-transparent border-0 cursor-pointer text-left">Cookie Policy</button></li>
+              <li><button onClick={handleLogin} className="hover:text-white bg-transparent border-0 cursor-pointer text-left">Accessibility</button></li>
             </ul>
           </div>
         </div>
