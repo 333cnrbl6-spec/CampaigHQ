@@ -19,6 +19,9 @@ import SupportAnalytics from '../components/dashboard/SupportAnalytics';
 import VolunteerGamification from '../components/dashboard/VolunteerGamification';
 import InfrastructureStatus from '../components/dashboard/InfrastructureStatus';
 import WeeklySummaryWidget from '../components/dashboard/WeeklySummaryWidget';
+import CanvassingProgressWidget from '../components/dashboard/CanvassingProgressWidget';
+import SupportTrendsWidget from '../components/dashboard/SupportTrendsWidget';
+import RecentActivityFeed from '../components/dashboard/RecentActivityFeed';
 
 export default function Dashboard() {
   const [geocodingStatus, setGecodingStatus] = useState(null);
@@ -250,8 +253,17 @@ export default function Dashboard() {
         <WeeklySummaryWidget logs={logs} contacts={contacts} />
       </div>
 
+      {/* Key Metrics: Canvassing Progress + Support Trends */}
+      <ErrorBoundary>
+        <div className="grid grid-cols-1 lg:grid-cols-2 gap-6 mb-8">
+          <CanvassingProgressWidget logs={logs} campaign={campaign} isLoading={false} />
+          <SupportTrendsWidget contacts={contacts} isLoading={false} />
+        </div>
+      </ErrorBoundary>
+
       {/* Content Grid */}
       <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
+        <RecentActivityFeed campaignId={campaignId} limit={8} />
         <UpcomingEvents events={upcomingEvents} />
         <SupportBreakdown contacts={contacts} />
         <GamifiedLeaderboard interactions={interactions} contacts={contacts} />
