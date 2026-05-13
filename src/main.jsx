@@ -10,8 +10,13 @@ initErrorTracking()
 // Register Service Worker for offline support with automatic sync
 if ('serviceWorker' in navigator) {
   window.addEventListener('load', () => {
-    navigator.serviceWorker.register('/service-worker.js', { scope: '/' })
-      .then(reg => console.log('[App] Service Worker registered for offline sync'))
+    // Unregister any stale service workers first to prevent React duplicate instance errors
+    navigator.serviceWorker.getRegistrations().then(registrations => {
+      const unregisterAll = registrations.map(reg => reg.unregister());
+      return Promise.all(unregisterAll);
+    }).then(() => {
+      return navigator.serviceWorker.register('/service-worker.js', { scope: '/' });
+    }).then(reg => console.log('[App] Service Worker registered for offline sync'))
       .catch(err => console.warn('[App] Service Worker registration failed:', err));
   });
 }
