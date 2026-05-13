@@ -9,7 +9,7 @@ import DataFetchError from '@/components/DataFetchError';
 import ErrorBoundary from '@/components/ErrorBoundary';
 import { base44 } from '@/api/base44Client';
 import { Button } from '@/components/ui/button';
-import { Plus, Tag, GitMerge, Loader2, Navigation, Zap, Merge, MapPin } from 'lucide-react';
+import { Plus, Tag, GitMerge, Loader2, Navigation, Zap, Merge, MapPin, Trash2 } from 'lucide-react';
 import ProcessingFeedback from '@/components/ui/ProcessingFeedback';
 import { AnimatePresence, motion } from 'framer-motion';
 import { useNavigate } from 'react-router-dom';
@@ -268,12 +268,35 @@ export default function Contacts() {
     const filteredIds = new Set(filtered.map(c => c.id));
     const allFilteredSelected = filtered.every(c => selectedIds.has(c.id));
     if (allFilteredSelected) {
-      // Deselect only the currently filtered contacts (preserve any cross-filter selections)
       const newSelected = new Set(selectedIds);
       filteredIds.forEach(id => newSelected.delete(id));
       setSelectedIds(newSelected);
     } else {
       setSelectedIds(filteredIds);
+    }
+  };
+
+  const [bulkDeleting, setBulkDeleting] = useState(false);
+
+  const handleBulkDelete = async () => {
+    if (!confirm(`Permanently delete ${selectedIds.size} contacts? This cannot be undone.`)) return;
+    setBulkDeleting(true);
+    const ids = [...selectedIds];
+    let deleted = 0;
+    for (const id of ids) {
+      try {
+        await base44.entities.Contact.delete(id);
+        auditLog({ action: 'delete', entityType: 'contact', entityId: id });
+        deleted++;
+      } catch (err) {
+        console.error(`Failed to delete contact ${id}:`, err.message);
+      }
+    }
+    setSelectedIds(new Set());
+    setBulkDeleting(false);
+    refetch();
+    if (deleted < ids.length) {
+      alert(`Deleted ${deleted} of ${ids.length} contacts. Some could not be removed.`);
     }
   };
 
@@ -512,8 +535,8 @@ export default function Contacts() {
 
          {/* Bulk Actions Bar */}
          {selectedIds.size > 0 && (
-           <div className="bg-primary/5 border border-primary/20 rounded-lg p-3 flex items-center justify-between">
-             <div className="flex items-center gap-2">
+           <div className="bg-primary/5 border border-primary/20 rounded-lg p-3 flex items-center justify-between gap-2 flex-wrap">
+             <div className="flex items-center gap-3">
                <input
                  type="checkbox"
                  checked={filtered.length > 0 && filtered.every(c => selectedIds.has(c.id))}
@@ -521,16 +544,36 @@ export default function Contacts() {
                  className="w-4 h-4 rounded cursor-pointer"
                />
                <span className="text-sm font-medium">{selectedIds.size} selected</span>
+               {selectedIds.size < filtered.length && (
+                 <button
+                   onClick={handleSelectAll}
+                   className="text-xs text-primary underline hover:no-underline"
+                 >
+                   Select all {filtered.length.toLocaleString()}
+                 </button>
+               )}
              </div>
-             <Button
-               onClick={() => setShowTagDialog(true)}
-               variant="outline"
-               size="sm"
-               className="gap-2"
-             >
-               <Tag className="w-4 h-4" />
-               Apply Tags
-             </Button>
+             <div className="flex items-center gap-2">
+               <Button
+                 onClick={() => setShowTagDialog(true)}
+                 variant="outline"
+                 size="sm"
+                 className="gap-2"
+               >
+                 <Tag className="w-4 h-4" />
+                 Apply Tags
+               </Button>
+               <Button
+                 onClick={handleBulkDelete}
+                 variant="destructive"
+                 size="sm"
+                 className="gap-2"
+                 disabled={bulkDeleting}
+               >
+                 {bulkDeleting ? <Loader2 className="w-4 h-4 animate-spin" /> : <Trash2 className="w-4 h-4" />}
+                 {bulkDeleting ? 'Deleting…' : `Delete ${selectedIds.size}`}
+               </Button>
+             </div>
            </div>
          )}
        </div>
