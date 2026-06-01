@@ -47,15 +47,15 @@ function buildPolyString(ring) {
   return ring.map(([lon, lat]) => `${lat} ${lon}`).join(' ');
 }
 
-// Query Overpass for all residential address nodes inside the ward polygon
-async function fetchAddressesInWard(ring) {
-  const polyStr = buildPolyString(ring);
-  const query = `[out:json][timeout:60];(node["addr:housenumber"]["addr:street"](poly:"${polyStr}");way["addr:housenumber"]["addr:street"](poly:"${polyStr}"););out center tags;`;
-  const url = `${OVERPASS_URL}?data=${encodeURIComponent(query)}`;
-
-  console.log('Querying Overpass for all ward addresses...');
-  const res = await fetch(url, {
-    headers: { 'User-Agent': 'CampaignApp/1.0 (political canvassing)' },
+// POST to Overpass (avoids URL length limit on large poly strings)
+async function overpassPost(query) {
+  const res = await fetch(OVERPASS_URL, {
+    method: 'POST',
+    headers: {
+      'Content-Type': 'application/x-www-form-urlencoded',
+      'User-Agent': 'CampaignApp/1.0 (political canvassing)',
+    },
+    body: `data=${encodeURIComponent(query)}`,
   });
   if (!res.ok) {
     const txt = await res.text();
@@ -66,17 +66,23 @@ async function fetchAddressesInWard(ring) {
   return data.elements || [];
 }
 
+// Query Overpass for all residential address nodes inside the ward polygon
+async function fetchAddressesInWard(ring) {
+  const polyStr = buildPolyString(ring);
+  const query = `[out:json][timeout:60];(node["addr:housenumber"]["addr:street"](poly:"${polyStr}");way["addr:housenumber"]["addr:street"](poly:"${polyStr}"););out center tags;`;
+  console.log('Querying Overpass for ward addresses (POST)...');
+  return overpassPost(query);
+}
+
 // Also fetch street ways for zones that have no individual address nodes
 async function fetchStreetsInWard(ring) {
   const polyStr = buildPolyString(ring);
   const query = `[out:json][timeout:30];(way["highway"~"residential|tertiary|secondary|primary|unclassified"]["name"](poly:"${polyStr}"););out tags center;`;
-  const url = `${OVERPASS_URL}?data=${encodeURIComponent(query)}`;
-  const res = await fetch(url, {
-    headers: { 'User-Agent': 'CampaignApp/1.0 (political canvassing)' },
-  });
-  if (!res.ok) return [];
-  const data = await res.json();
-  return data.elements || [];
+  try {
+    return await overpassPost(query);
+  } catch {
+    return [];
+  }
 }
 
 // Ray-casting point-in-polygon check
