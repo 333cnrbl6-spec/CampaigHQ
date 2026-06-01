@@ -2,8 +2,12 @@ import { createClientFromRequest } from 'npm:@base44/sdk@0.8.25';
 
 const WARD_MAPIT_IDS = [167462, 167449]; // Tyldesley & Mosley Common + Abram
 const WARD_NAMES    = ['Tyldesley & Mosley Common', 'Abram'];
+// GSS ward codes for postcodes.io lookup (verified from MapIt API)
+const WARD_GSS_CODES = ['E05015009', 'E05014989'];
 const MAX_DOORS_PER_ZONE = 200;
-// Primary + fallback Overpass endpoints
+// Average UK delivery points per postcode unit (Royal Mail PAF average)
+const DWELLINGS_PER_POSTCODE = 15;
+
 const OVERPASS_ENDPOINTS = [
   'https://overpass-api.de/api/interpreter',
   'https://overpass.kumi.systems/api/interpreter',
@@ -24,7 +28,7 @@ async function fetchAllWardData() {
   for (let i = 0; i < WARD_MAPIT_IDS.length; i++) {
     try {
       const geom = await fetchWardPolygon(WARD_MAPIT_IDS[i]);
-      results.push({ geom, name: WARD_NAMES[i] });
+      results.push({ geom, name: WARD_NAMES[i], gssCode: WARD_GSS_CODES[i] });
     } catch (e) {
       console.warn(`Ward ${WARD_MAPIT_IDS[i]} failed:`, e.message);
     }
@@ -41,13 +45,81 @@ function getOuterRing(geom) {
   throw new Error('Unsupported geometry: ' + geom.type);
 }
 
+// ─── Postcodes.io ─────────────────────────────────────────────────────────────
+
+// Fetch all postcode units within a ward.
+// Strategy: tile the ward bbox with a 5×5 grid, query postcodes.io in 3 batches of 25,
+// filter by admin_ward GSS code. 25 points × radius 1200m covers ~2.4km², sufficient for
+// dense UK urban wards. Cap at 500 unique postcodes.
+async function fetchPostcodesForWard(ring, wardGssCode) {
+  let minLat = Infinity, maxLat = -Infinity, minLon = Infinity, maxLon = -Infinity;
+  for (const [lon, lat] of ring) {
+    if (lat < minLat) minLat = lat; if (lat > maxLat) maxLat = lat;
+    if (lon < minLon) minLon = lon; if (lon > maxLon) maxLon = lon;
+  }
+
+  // Build 5×5 grid of sample points inside the ward polygon
+  const COLS = 5, ROWS = 5;
+  const latStep = (maxLat - minLat) / ROWS;
+  const lonStep = (maxLon - minLon) / COLS;
+  const geoPoints = [];
+  for (let r = 0; r < ROWS; r++) {
+    for (let c = 0; c < COLS; c++) {
+      const lat = minLat + (r + 0.5) * latStep;
+      const lon = minLon + (c + 0.5) * lonStep;
+      // Only sample if inside the ward polygon
+      if (pointInPolygon(lat, lon, ring)) {
+        geoPoints.push({ latitude: +lat.toFixed(6), longitude: +lon.toFixed(6) });
+      }
+    }
+  }
+
+  // radius per point = cover half the cell diagonal + buffer
+  const cellDiagM = Math.sqrt((latStep * 111000) ** 2 + (lonStep * 70000) ** 2);
+  const radiusM = Math.min(Math.ceil(cellDiagM * 0.8), 2000);
+
+  console.log(`postcodes.io: ${geoPoints.length} grid points, radius=${radiusM}m for ${wardGssCode}…`);
+  if (geoPoints.length === 0) return [];
+
+  const seen = new Set();
+  const postcodes = [];
+
+  // Send all points in a single bulk call (postcodes.io supports up to 100 geolocations)
+  const BATCH = 100;
+  for (let i = 0; i < geoPoints.length; i += BATCH) {
+    const batch = geoPoints.slice(i, i + BATCH);
+    try {
+      const res = await fetch('https://api.postcodes.io/postcodes', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ geolocations: batch.map(p => ({ ...p, radius: radiusM, limit: 100 })) }),
+      });
+      if (!res.ok) { console.warn(`postcodes.io bulk ${res.status}`); continue; }
+      const data = await res.json();
+      for (const item of data.result || []) {
+        for (const pc of (item.result || [])) {
+          if (pc.codes?.admin_ward !== wardGssCode) continue;
+          if (seen.has(pc.postcode)) continue;
+          seen.add(pc.postcode);
+          postcodes.push(pc);
+        }
+      }
+    } catch (e) {
+      console.warn(`postcodes.io batch error: ${e.message}`);
+    }
+  }
+
+  console.log(`postcodes.io: ${postcodes.length} unique postcodes for ${wardGssCode}`);
+  return postcodes;
+}
+
 // ─── Overpass ─────────────────────────────────────────────────────────────────
 
 function buildPolyString(ring) {
   return ring.map(([lon, lat]) => `${lat} ${lon}`).join(' ');
 }
 
-async function overpassPost(query, retries = 6) {
+async function overpassPost(query, retries = 3) {
   for (let attempt = 1; attempt <= retries; attempt++) {
     const url = OVERPASS_ENDPOINTS[(attempt - 1) % OVERPASS_ENDPOINTS.length];
     try {
@@ -69,13 +141,11 @@ async function overpassPost(query, retries = 6) {
         await new Promise(r => setTimeout(r, wait));
         continue;
       }
-      const txt = await res.text();
-      console.error('Overpass error:', txt.slice(0, 400));
       throw new Error(`Overpass ${res.status}`);
     } catch (err) {
       if (attempt < retries) {
         const wait = Math.min(attempt * 4000, 15000);
-        console.warn(`Overpass fetch error (attempt ${attempt}): ${err.message}, retrying in ${wait}ms via fallback…`);
+        console.warn(`Overpass fetch error (attempt ${attempt}): ${err.message}, retrying in ${wait}ms…`);
         await new Promise(r => setTimeout(r, wait));
         continue;
       }
@@ -86,28 +156,17 @@ async function overpassPost(query, retries = 6) {
 
 async function fetchAddressesInWard(ring) {
   const polyStr = buildPolyString(ring);
-  const query = `[out:json][timeout:90];(
+  const query = `[out:json][timeout:60];(
     node["addr:housenumber"](poly:"${polyStr}");
     way["addr:housenumber"](poly:"${polyStr}");
-    node["addr:housename"](poly:"${polyStr}");
     way["addr:interpolation"](poly:"${polyStr}");
-    relation["type"="associatedStreet"](poly:"${polyStr}");
   );out center tags;`;
-  console.log('Querying Overpass for addresses (POST)…');
+  console.log('Querying Overpass for addresses…');
   return overpassPost(query);
-}
-
-async function fetchStreetsInWard(ring) {
-  const polyStr = buildPolyString(ring);
-  const query = `[out:json][timeout:60];(
-    way["highway"~"residential|tertiary|secondary|primary|unclassified|living_street"]["name"](poly:"${polyStr}");
-  );out tags center;`;
-  try { return await overpassPost(query); } catch { return []; }
 }
 
 // ─── Geometry ─────────────────────────────────────────────────────────────────
 
-// Ray-casting point-in-polygon (ring = [[lon,lat],...])
 function pointInPolygon(lat, lon, ring) {
   let inside = false;
   for (let i = 0, j = ring.length - 1; i < ring.length; j = i++) {
@@ -120,18 +179,12 @@ function pointInPolygon(lat, lon, ring) {
   return inside;
 }
 
-// Clip a rectangle [minLon,minLat,maxLon,maxLat] against a ward ring using Sutherland-Hodgman
 function clipRectToWard(minLon, minLat, maxLon, maxLat, wardRing) {
-  // Build polygon as [lon,lat] pairs
   let poly = [
-    [minLon, minLat],
-    [maxLon, minLat],
-    [maxLon, maxLat],
-    [minLon, maxLat],
+    [minLon, minLat], [maxLon, minLat],
+    [maxLon, maxLat], [minLon, maxLat],
   ];
-
-  // Clip against each edge of the ward ring
-  const n = wardRing.length - 1; // last point == first point
+  const n = wardRing.length - 1;
   for (let e = 0; e < n; e++) {
     if (poly.length === 0) return null;
     const [x1, y1] = wardRing[e];
@@ -143,26 +196,24 @@ function clipRectToWard(minLon, minLat, maxLon, maxLat, wardRing) {
       const curIn  = isInsideEdge(cur,  x1, y1, x2, y2);
       const prevIn = isInsideEdge(prev, x1, y1, x2, y2);
       if (curIn) {
-        if (!prevIn) output.push(intersect(prev, cur, x1, y1, x2, y2));
+        if (!prevIn) output.push(intersectEdge(prev, cur, x1, y1, x2, y2));
         output.push(cur);
       } else if (prevIn) {
-        output.push(intersect(prev, cur, x1, y1, x2, y2));
+        output.push(intersectEdge(prev, cur, x1, y1, x2, y2));
       }
     }
     poly = output;
   }
-
   if (poly.length < 3) return null;
-  // Close the ring
   poly.push(poly[0]);
-  return poly; // [[lon,lat],...]
+  return poly;
 }
 
 function isInsideEdge([px, py], x1, y1, x2, y2) {
   return (x2 - x1) * (py - y1) - (y2 - y1) * (px - x1) >= 0;
 }
 
-function intersect([ax, ay], [bx, by], x1, y1, x2, y2) {
+function intersectEdge([ax, ay], [bx, by], x1, y1, x2, y2) {
   const dx1 = bx - ax, dy1 = by - ay;
   const dx2 = x2 - x1, dy2 = y2 - y1;
   const denom = dx1 * dy2 - dy1 * dx2;
@@ -198,7 +249,6 @@ function clusterIntoZones(addresses, maxDoorsPerZone) {
     cellMap[key].addresses.push(a);
   }
 
-  // Sort cells north-to-south, west-to-east (snake pattern for walking continuity)
   const cells = Object.values(cellMap).sort((a, b) =>
     b.row !== a.row ? b.row - a.row : a.col - b.col
   );
@@ -222,7 +272,7 @@ function clusterIntoZones(addresses, maxDoorsPerZone) {
   }
   if (current.length > 0) zones.push(current);
 
-  // Merge tiny zones (< 10 addresses) into neighbours
+  // Merge tiny zones into neighbours
   const MIN_ZONE = 10;
   const merged = [];
   for (let z = 0; z < zones.length; z++) {
@@ -241,41 +291,27 @@ function clusterIntoZones(addresses, maxDoorsPerZone) {
   return merged;
 }
 
-// ─── Zone polygon: grid cell clipped to ward boundary ─────────────────────────
-// Instead of convex hull (leaves gaps), we compute the bounding grid cell used
-// in clustering and clip it to the ward polygon. This tiles the full ward surface.
-
-function zonePolygonFromAddresses(addresses, wardRing, allAddresses, gridDim, minLat, latStep, minLon, lonStep) {
+function zonePolygonFromAddresses(addresses, wardRing, gridDim, minLat, latStep, minLon, lonStep) {
   if (addresses.length === 0) return null;
-
-  // Find the grid cell(s) occupied by this zone's addresses
   const rows = new Set(), cols = new Set();
   for (const a of addresses) {
     const row = Math.min(Math.floor((a.lat - minLat) / latStep), gridDim - 1);
     const col = Math.min(Math.floor((a.lon - minLon) / lonStep), gridDim - 1);
-    rows.add(row);
-    cols.add(col);
+    rows.add(row); cols.add(col);
   }
-
-  // Bounding box of the occupied grid cells
   const minRow = Math.min(...rows), maxRow = Math.max(...rows);
   const minCol = Math.min(...cols), maxCol = Math.max(...cols);
-
   const boxMinLat = minLat + minRow * latStep;
   const boxMaxLat = minLat + (maxRow + 1) * latStep;
   const boxMinLon = minLon + minCol * lonStep;
   const boxMaxLon = minLon + (maxCol + 1) * lonStep;
-
-  // Clip the bounding box to the ward boundary
   const clipped = clipRectToWard(boxMinLon, boxMinLat, boxMaxLon, boxMaxLat, wardRing);
   if (!clipped || clipped.length < 4) {
-    // Fall back to bounding box if clipping fails
     return [[boxMinLon, boxMinLat],[boxMaxLon, boxMinLat],[boxMaxLon, boxMaxLat],[boxMinLon, boxMaxLat],[boxMinLon, boxMinLat]];
   }
   return clipped;
 }
 
-// Sort by street name then house number for logical walking order
 function sortAddressesForWalking(addresses) {
   return [...addresses].sort((a, b) => {
     const streetCmp = a.street.localeCompare(b.street);
@@ -283,8 +319,6 @@ function sortAddressesForWalking(addresses) {
     return (parseInt(a.houseNumber) || 0) - (parseInt(b.houseNumber) || 0);
   });
 }
-
-// ─── Zone colours ─────────────────────────────────────────────────────────────
 
 const ZONE_COLORS = [
   '#16a34a','#3b82f6','#f59e0b','#ef4444','#8b5cf6',
@@ -303,7 +337,6 @@ Deno.serve(async (req) => {
 
     const body = await req.json();
     const { campaign_id, max_doors = MAX_DOORS_PER_ZONE, clear_existing = false } = body;
-
     if (!campaign_id) return Response.json({ error: 'campaign_id required' }, { status: 400 });
 
     console.log(`Generating leaflet zones: campaign=${campaign_id} max_doors=${max_doors}`);
@@ -314,26 +347,26 @@ Deno.serve(async (req) => {
     if (wardData.length === 0) throw new Error('Could not fetch any ward boundaries from MapIt');
     console.log(`${wardData.length} ward boundaries fetched`);
 
-    // ── 2. Per-ward address fetch + clustering ────────────────────────────────
-    const allZoneGroups = []; // [{addresses[], wardName, wardRing, gridInfo}]
+    // ── 2. Per-ward address collection (both wards fetched in parallel) ───────
+    const allZoneGroups = [];
 
-    for (const { geom, name: wardName } of wardData) {
+    const collectWardAddresses = async ({ geom, name: wardName, gssCode }) => {
       const ring = getOuterRing(geom);
       const seen = new Set();
       const wardAddresses = [];
 
-      const [elements, streets] = await Promise.all([
-        fetchAddressesInWard(ring),
-        fetchStreetsInWard(ring),
+      // A. Postcodes.io + OSM in parallel
+      const [elements, postcodes] = await Promise.all([
+        fetchAddressesInWard(ring).catch(() => []),
+        fetchPostcodesForWard(ring, gssCode),
       ]);
-      console.log(`${wardName}: ${elements.length} elements, ${streets.length} streets`);
+      console.log(`${wardName}: ${elements.length} OSM elements, ${postcodes.length} postcodes`);
 
-      // Expand addr:interpolation ways
-      const interpolationWays = elements.filter(el => el.type === 'way' && el.tags?.['addr:interpolation']);
-      for (const way of interpolationWays) {
+      // Expand OSM interpolation ways
+      for (const way of elements.filter(el => el.type === 'way' && el.tags?.['addr:interpolation'])) {
         const interp = way.tags['addr:interpolation'];
-        const fromNum = parseInt(way.tags['addr:housenumber:from'] || way.tags['addr:interpolation:from'] || way.tags['addr:from']);
-        const toNum   = parseInt(way.tags['addr:housenumber:to']   || way.tags['addr:interpolation:to']   || way.tags['addr:to']);
+        const fromNum = parseInt(way.tags['addr:housenumber:from'] || way.tags['addr:from']);
+        const toNum   = parseInt(way.tags['addr:housenumber:to']   || way.tags['addr:to']);
         const street  = way.tags['addr:street'] || '';
         const postcode= way.tags['addr:postcode'] || '';
         if (!street || isNaN(fromNum) || isNaN(toNum)) continue;
@@ -349,46 +382,51 @@ Deno.serve(async (req) => {
         }
       }
 
+      // Add individual OSM address nodes/ways
       for (const el of elements) {
+        if (el.type === 'way' && el.tags?.['addr:interpolation']) continue;
         const tags = el.tags || {};
-        if (el.type === 'way' && tags['addr:interpolation']) continue;
-
         const houseNumber = tags['addr:housenumber'] || tags['addr:housename'] || '';
-        const street      = tags['addr:street'] || '';
-        const postcode    = tags['addr:postcode'] || '';
-
+        const street = tags['addr:street'] || '';
+        const postcode = tags['addr:postcode'] || '';
         const lat = el.lat ?? el.center?.lat;
         const lon = el.lon ?? el.center?.lon;
         if (!lat || !lon || !houseNumber) continue;
         if (!pointInPolygon(lat, lon, ring)) continue;
-
         const key = `${houseNumber.toLowerCase()}|${street.toLowerCase()}|${lat.toFixed(4)}`;
-        if (seen.has(key)) continue;
-        seen.add(key);
-        wardAddresses.push({ houseNumber, street, postcode, lat, lon });
-      }
-
-      // Fallback: street centroids if very sparse data
-      if (wardAddresses.length < 50 && streets.length > 0) {
-        console.log(`${wardName}: sparse data (${wardAddresses.length}), using street fallback…`);
-        const uniqueStreets = [...new Set(streets.map(w => w.tags?.name).filter(Boolean))];
-        for (const streetName of uniqueStreets) {
-          const way = streets.find(w => w.tags?.name === streetName);
-          const center = way?.center;
-          if (!center) continue;
-          for (let n = 1; n <= 10; n += 2) {
-            const key = `STREET_EST|${n}|${streetName}`;
-            if (seen.has(key)) continue;
-            seen.add(key);
-            wardAddresses.push({ houseNumber: String(n), street: streetName, postcode: '', lat: center.lat + (n - 5) * 0.00003, lon: center.lon });
-          }
+        if (!seen.has(key)) {
+          seen.add(key);
+          wardAddresses.push({ houseNumber, street, postcode, lat, lon });
         }
       }
+      console.log(`${wardName}: ${wardAddresses.length} OSM addresses`);
 
-      console.log(`${wardName}: ${wardAddresses.length} unique addresses`);
-      if (wardAddresses.length === 0) continue;
+      // B. Postcode-based dwelling estimation
+      // Each UK postcode unit averages ~15 delivery points (Royal Mail PAF)
+      let postcodeEstCount = 0;
+      for (const pc of postcodes) {
+        if (!pc.latitude || !pc.longitude) continue;
+        if (!pointInPolygon(pc.latitude, pc.longitude, ring)) continue;
+        const streetName = pc.thoroughfare || wardName;
+        const pcCode = pc.postcode;
+        for (let d = 0; d < DWELLINGS_PER_POSTCODE; d++) {
+          const key = `PC|${pcCode}|${d}`;
+          if (seen.has(key)) continue;
+          seen.add(key);
+          const rowOff = Math.floor(d / 4) * 0.000045;
+          const colOff = (d % 4) * 0.000045;
+          wardAddresses.push({ houseNumber: String(d + 1), street: streetName, postcode: pcCode, lat: pc.latitude + rowOff, lon: pc.longitude + colOff });
+          postcodeEstCount++;
+        }
+      }
+      console.log(`${wardName}: +${postcodeEstCount} postcode dwellings → ${wardAddresses.length} total`);
 
-      // Compute grid dimensions (same logic as clusterIntoZones) so polygon generation matches
+      if (wardAddresses.length === 0) {
+        console.warn(`${wardName}: no addresses found, skipping`);
+        return;
+      }
+
+      // Compute grid dimensions for zone polygon generation
       let minLat = Infinity, maxLat = -Infinity, minLon = Infinity, maxLon = -Infinity;
       for (const a of wardAddresses) {
         if (a.lat < minLat) minLat = a.lat;
@@ -403,9 +441,12 @@ Deno.serve(async (req) => {
 
       const wardZones = clusterIntoZones(wardAddresses, max_doors);
       for (const zoneAddresses of wardZones) {
-        allZoneGroups.push({ addresses: zoneAddresses, wardName, wardRing: ring, wardAllAddresses: wardAddresses, gridDim, minLat, latStep, minLon, lonStep });
+        allZoneGroups.push({ addresses: zoneAddresses, wardName, wardRing: ring, gridDim, minLat, latStep, minLon, lonStep });
       }
-    }
+    };
+
+    // Fetch both wards in parallel
+    await Promise.all(wardData.map(w => collectWardAddresses(w)));
 
     const totalAddresses = allZoneGroups.reduce((s, g) => s + g.addresses.length, 0);
     console.log(`${allZoneGroups.length} zones, ${totalAddresses} total addresses`);
@@ -419,23 +460,21 @@ Deno.serve(async (req) => {
       const existing = await base44.asServiceRole.entities.Turf.filter({ campaign_id });
       const toDelete = existing.filter(t => /^L\d+$/.test(t.name));
       console.log(`Deleting ${toDelete.length} existing L-zones…`);
-      for (const t of toDelete) {
-        await base44.asServiceRole.entities.Turf.delete(t.id);
+      // Delete in parallel batches of 10 for speed
+      for (let d = 0; d < toDelete.length; d += 10) {
+        await Promise.all(toDelete.slice(d, d + 10).map(t => base44.asServiceRole.entities.Turf.delete(t.id)));
       }
     }
 
     // ── 4. Create Turf records ────────────────────────────────────────────────
     const created = [];
-
     for (let i = 0; i < allZoneGroups.length; i++) {
-      const { addresses: zoneAddresses, wardName, wardRing, wardAllAddresses, gridDim, minLat, latStep, minLon, lonStep } = allZoneGroups[i];
+      const { addresses: zoneAddresses, wardName, wardRing, gridDim, minLat, latStep, minLon, lonStep } = allZoneGroups[i];
       const zoneName = `L${i + 1}`;
       console.log(`Creating ${zoneName} (${zoneAddresses.length} addresses) in ${wardName}…`);
 
       const ordered = sortAddressesForWalking(zoneAddresses);
-
-      // Use ward-boundary-clipped grid cell polygon (fills full ward surface, no gaps)
-      const polygonRing = zonePolygonFromAddresses(zoneAddresses, wardRing, wardAllAddresses, gridDim, minLat, latStep, minLon, lonStep);
+      const polygonRing = zonePolygonFromAddresses(zoneAddresses, wardRing, gridDim, minLat, latStep, minLon, lonStep);
 
       const centLat = zoneAddresses.reduce((s, a) => s + a.lat, 0) / zoneAddresses.length;
       const centLon = zoneAddresses.reduce((s, a) => s + a.lon, 0) / zoneAddresses.length;
@@ -446,13 +485,8 @@ Deno.serve(async (req) => {
         geometry: { type: 'Polygon', coordinates: [polygonRing] },
       });
 
-      const addressListJson = JSON.stringify(ordered.map(a => ({
-        n: a.houseNumber,
-        s: a.street,
-        p: a.postcode,
-        lat: +a.lat.toFixed(6),
-        lon: +a.lon.toFixed(6),
-      })));
+      // Build a compact address summary (street names + count only) to keep notes small
+      const streetSummary = [...new Set(ordered.map(a => a.postcode || a.street).filter(Boolean))].slice(0, 20).join(', ');
 
       const turf = await base44.asServiceRole.entities.Turf.create({
         campaign_id,
@@ -465,7 +499,7 @@ Deno.serve(async (req) => {
         doors_knocked: 0,
         contact_count: ordered.length,
         goal: `Leaflet drop — ${ordered.length} addresses`,
-        notes: addressListJson,
+        notes: streetSummary,
       });
 
       created.push({
@@ -476,7 +510,8 @@ Deno.serve(async (req) => {
         centroid: [+centLat.toFixed(5), +centLon.toFixed(5)],
       });
 
-      if (i < allZoneGroups.length - 1) await new Promise(r => setTimeout(r, 200));
+      // Small yield to avoid memory pressure on large zone sets
+      if (i > 0 && i % 10 === 0) await new Promise(r => setTimeout(r, 100));
     }
 
     return Response.json({
