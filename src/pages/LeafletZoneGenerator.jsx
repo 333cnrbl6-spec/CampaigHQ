@@ -116,7 +116,7 @@ export default function LeafletZoneGenerator() {
             <h1 className="font-heading font-bold text-lg">Leaflet Zone Generator</h1>
           </div>
           <p className="text-xs text-muted-foreground">
-            AI-generated zones of max 200 doors each for the Tyldesley & Mosley Common ward
+            Auto-generated delivery zones across Tyldesley & Mosley Common and Abram wards
           </p>
         </div>
 
@@ -155,7 +155,7 @@ export default function LeafletZoneGenerator() {
             <div className="flex items-start gap-2">
               <Info className="w-3.5 h-3.5 text-blue-500 mt-0.5 flex-shrink-0" />
               <p className="text-[10px] text-blue-700 leading-relaxed">
-                Queries OpenStreetMap for every residential address in the ward, clusters them geographically, then uses AI to optimise the walking order within each zone. Addresses are saved as contacts ready for geocoding.
+                Queries OpenStreetMap for every address in both wards, clusters them into geographically compact zones respecting ward boundaries, and sorts each zone by street for logical walking order. Takes 2–4 minutes.
               </p>
             </div>
           </div>
@@ -318,7 +318,7 @@ export default function LeafletZoneGenerator() {
               <Sparkles className="w-10 h-10 text-primary mx-auto mb-3 opacity-60" />
               <p className="font-semibold text-sm">Generate AI leaflet zones</p>
               <p className="text-xs text-muted-foreground mt-1">
-                The ward boundary is shown above. Click <strong>Generate</strong> in the sidebar to automatically create optimised L1, L2, L3… zones covering all addresses.
+                Both ward boundaries are shown. Click <strong>Generate</strong> in the sidebar to create L1, L2, L3… delivery zones covering all addresses in both wards.
               </p>
             </div>
           </div>
@@ -331,7 +331,7 @@ export default function LeafletZoneGenerator() {
               <Loader2 className="w-8 h-8 text-primary mx-auto mb-3 animate-spin" />
               <p className="font-semibold text-sm">Generating zones…</p>
               <p className="text-xs text-muted-foreground mt-1">
-                Fetching all addresses from OpenStreetMap, clustering into {maxDoors}-door zones, and AI-optimising walking routes.
+                Fetching addresses from OpenStreetMap for both wards, clustering into {maxDoors}-door zones sorted by street. This takes 2–4 minutes.
               </p>
             </div>
           </div>
