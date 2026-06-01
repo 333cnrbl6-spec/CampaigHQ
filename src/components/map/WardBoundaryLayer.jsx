@@ -1,58 +1,61 @@
-import { useEffect, useState } from 'react';
+import { useEffect } from 'react';
 import { useMap } from 'react-leaflet';
 import L from 'leaflet';
-import { fetchWardBoundary, WARD_NAME } from '@/lib/wardBoundary';
+import { fetchAllWardBoundaries } from '@/lib/wardBoundary';
 
 /**
- * Renders the official Tyldesley & Mosley Common ward boundary
- * as a dashed dark-green polygon overlay on a Leaflet map.
- * 
+ * Renders ALL campaign ward boundaries (Tyldesley & Mosley Common + Abram)
+ * as dashed dark-green polygon overlays on a Leaflet map.
+ *
  * Props:
- *   fitBounds {boolean} — if true, auto-fits the map to the boundary on load
+ *   fitBounds {boolean} — auto-fit map to the combined bounds on load
  *   opacity   {number}  — fill opacity (default 0)
- *   showLabel {boolean} — show a tooltip with the ward name
+ *   showLabel {boolean} — show a tooltip with each ward name
  */
 export default function WardBoundaryLayer({ fitBounds = false, opacity = 0, showLabel = false }) {
   const map = useMap();
-  const [loaded, setLoaded] = useState(false);
 
   useEffect(() => {
-    let layer = null;
+    const layers = [];
 
-    fetchWardBoundary().then((feature) => {
-      if (!feature) return;
+    fetchAllWardBoundaries().then((features) => {
+      const validFeatures = features.filter(Boolean);
+      if (validFeatures.length === 0) return;
 
-      layer = L.geoJSON(feature, {
-        style: {
-          color: '#00612B',
-          weight: 3,
-          dashArray: '10 6',
-          fillColor: '#00612B',
-          fillOpacity: opacity,
-          opacity: 0.9,
-        },
-      });
-
-      if (showLabel) {
-        layer.bindTooltip(WARD_NAME, {
-          permanent: false,
-          sticky: true,
-          className: 'text-xs font-semibold',
+      for (const feature of validFeatures) {
+        const layer = L.geoJSON(feature, {
+          style: {
+            color: '#00612B',
+            weight: 3,
+            dashArray: '10 6',
+            fillColor: '#00612B',
+            fillOpacity: opacity,
+            opacity: 0.9,
+          },
         });
+
+        if (showLabel) {
+          layer.bindTooltip(feature.properties.name, {
+            permanent: false,
+            sticky: true,
+            className: 'text-xs font-semibold',
+          });
+        }
+
+        layer.addTo(map);
+        layers.push(layer);
       }
 
-      layer.addTo(map);
-      setLoaded(true);
-
-      if (fitBounds) {
+      if (fitBounds && layers.length > 0) {
         try {
-          map.fitBounds(layer.getBounds(), { padding: [20, 20] });
+          const group = L.featureGroup(layers);
+          map.fitBounds(group.getBounds(), { padding: [20, 20] });
         } catch {}
       }
     });
 
     return () => {
-      if (layer) try { map.removeLayer(layer); } catch {}
+      layers.forEach(l => { try { map.removeLayer(l); } catch {} });
     };
   }, [map, fitBounds, opacity, showLabel]);
 

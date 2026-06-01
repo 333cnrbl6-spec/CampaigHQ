@@ -1,18 +1,30 @@
 import { createClientFromRequest } from 'npm:@base44/sdk@0.8.25';
 
-const WARD_MAPIT_ID = 167462;
+const WARD_MAPIT_IDS = [167462, 167449]; // Tyldesley & Mosley Common + Abram
 const MAX_DOORS_PER_ZONE = 200;
 const OVERPASS_URL = 'https://overpass-api.de/api/interpreter';
 
-// Fetch the ward boundary polygon from MapIt
-async function fetchWardPolygon() {
-  const res = await fetch(`https://mapit.mysociety.org/area/${WARD_MAPIT_ID}.geojson`, {
+// Fetch a ward boundary polygon from MapIt
+async function fetchWardPolygon(mapit_id) {
+  const res = await fetch(`https://mapit.mysociety.org/area/${mapit_id}.geojson`, {
     headers: { Accept: 'application/json' },
   });
-  if (!res.ok) throw new Error(`MapIt returned ${res.status}`);
-  const geom = await res.json();
-  // geom is a raw geometry object (Polygon or MultiPolygon)
-  return geom;
+  if (!res.ok) throw new Error(`MapIt returned ${res.status} for area ${mapit_id}`);
+  return await res.json();
+}
+
+// Fetch all ward polygons and return their outer rings
+async function fetchAllWardRings() {
+  const rings = [];
+  for (const id of WARD_MAPIT_IDS) {
+    try {
+      const geom = await fetchWardPolygon(id);
+      rings.push(getOuterRing(geom));
+    } catch (e) {
+      console.warn(`Failed to fetch ward ${id}:`, e.message);
+    }
+  }
+  return rings;
 }
 
 // Extract the outer ring of coordinates from a Polygon or MultiPolygon geometry
@@ -244,58 +256,55 @@ Deno.serve(async (req) => {
 
     console.log(`Generating leaflet zones for campaign ${campaign_id}, max ${max_doors} doors/zone`);
 
-    // 1. Fetch ward boundary
-    console.log('Fetching ward boundary from MapIt...');
-    const wardGeom = await fetchWardPolygon();
-    const outerRing = getOuterRing(wardGeom);
-    console.log(`Ward boundary fetched, ${outerRing.length} coordinate points`);
+    // 1. Fetch both ward boundaries
+    console.log('Fetching ward boundaries from MapIt...');
+    const wardRings = await fetchAllWardRings();
+    if (wardRings.length === 0) throw new Error('Could not fetch any ward boundaries');
+    console.log(`Fetched ${wardRings.length} ward boundaries`);
 
-    // 2. Fetch all addresses in the ward from Overpass
-    console.log('Fetching addresses from Overpass API...');
-    const [elements, streets] = await Promise.all([
-      fetchAddressesInWard(outerRing),
-      fetchStreetsInWard(outerRing),
-    ]);
-    console.log(`Overpass returned ${elements.length} address elements, ${streets.length} streets`);
-
-    // 3. Parse & deduplicate addresses
+    // 2. Fetch addresses for each ward and merge
+    console.log('Fetching addresses from Overpass API for all wards...');
     const seen = new Set();
     const addresses = [];
 
-    for (const el of elements) {
-      const tags = el.tags || {};
-      const houseNumber = tags['addr:housenumber'] || '';
-      const street = tags['addr:street'] || '';
-      const postcode = tags['addr:postcode'] || '';
-      if (!street || !houseNumber) continue;
+    for (const outerRing of wardRings) {
+      const [elements, streets] = await Promise.all([
+        fetchAddressesInWard(outerRing),
+        fetchStreetsInWard(outerRing),
+      ]);
+      console.log(`Ward ring: ${elements.length} address elements, ${streets.length} streets`);
 
-      // Get lat/lon from node or way center
-      const lat = el.lat ?? el.center?.lat;
-      const lon = el.lon ?? el.center?.lon;
-      if (!lat || !lon) continue;
+      for (const el of elements) {
+        const tags = el.tags || {};
+        const houseNumber = tags['addr:housenumber'] || '';
+        const street = tags['addr:street'] || '';
+        const postcode = tags['addr:postcode'] || '';
+        if (!street || !houseNumber) continue;
 
-      // Point-in-polygon check (outerRing is [lon, lat])
-      if (!pointInPolygon(lat, lon, outerRing)) continue;
+        const lat = el.lat ?? el.center?.lat;
+        const lon = el.lon ?? el.center?.lon;
+        if (!lat || !lon) continue;
 
-      const key = `${houseNumber.toLowerCase()}_${street.toLowerCase()}`;
-      if (seen.has(key)) continue;
-      seen.add(key);
+        if (!pointInPolygon(lat, lon, outerRing)) continue;
 
-      addresses.push({ houseNumber, street, postcode, lat, lon });
-    }
-
-    // If very few address nodes, supplement with streets
-    if (addresses.length < 50 && streets.length > 0) {
-      console.log(`Only ${addresses.length} addressed found, supplementing with ${streets.length} street centroids`);
-      const uniqueStreets = [...new Set(streets.map(w => w.tags?.name).filter(Boolean))];
-      for (const streetName of uniqueStreets) {
-        const way = streets.find(w => w.tags?.name === streetName);
-        const center = way?.center;
-        if (!center) continue;
-        const key = `STREET_${streetName}`;
+        const key = `${houseNumber.toLowerCase()}_${street.toLowerCase()}`;
         if (seen.has(key)) continue;
         seen.add(key);
-        addresses.push({ houseNumber: '', street: streetName, postcode: way?.tags?.['addr:postcode'] || '', lat: center.lat, lon: center.lon });
+        addresses.push({ houseNumber, street, postcode, lat, lon });
+      }
+
+      // Supplement with streets if very few address nodes
+      if (addresses.length < 50 && streets.length > 0) {
+        const uniqueStreets = [...new Set(streets.map(w => w.tags?.name).filter(Boolean))];
+        for (const streetName of uniqueStreets) {
+          const way = streets.find(w => w.tags?.name === streetName);
+          const center = way?.center;
+          if (!center) continue;
+          const key = `STREET_${streetName}`;
+          if (seen.has(key)) continue;
+          seen.add(key);
+          addresses.push({ houseNumber: '', street: streetName, postcode: way?.tags?.['addr:postcode'] || '', lat: center.lat, lon: center.lon });
+        }
       }
     }
 

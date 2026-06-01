@@ -1,42 +1,66 @@
-// Official ward boundary for Tyldesley & Mosley Common
-// Source: MySociety MapIt, area ID 167462, GSS E05015009
-// Wigan Borough Council — Metropolitan district ward
+// Official ward boundaries for the campaign area
+// Source: MySociety MapIt
 
-export const WARD_MAPIT_ID = 167462;
-export const WARD_GSS = 'E05015009';
-export const WARD_NAME = 'Tyldesley & Mosley Common';
+export const WARDS = [
+  {
+    mapit_id: 167462,
+    gss: 'E05015009',
+    name: 'Tyldesley & Mosley Common',
+    center: [53.5163, -2.4474],
+  },
+  {
+    mapit_id: 167449,
+    gss: 'E05014989',
+    name: 'Abram',
+    center: [53.5100, -2.5900],
+  },
+];
 
-// Geographic centre from MapIt geometry endpoint
-export const WARD_CENTER = [53.5163, -2.4474];
+// Primary ward (kept for backward compatibility)
+export const WARD_MAPIT_ID = WARDS[0].mapit_id;
+export const WARD_GSS = WARDS[0].gss;
+export const WARD_NAME = WARDS[0].name;
+export const WARD_CENTER = WARDS[0].center;
 
-// Bounding box (from MapIt)
+// Bounding box (union of both wards, approximate)
 export const WARD_BOUNDS = {
-  north: 53.5287,
-  south: 53.5021,
-  east: -2.4145,
-  west: -2.4899,
+  north: 53.5350,
+  south: 53.4900,
+  east: -2.3900,
+  west: -2.6200,
 };
 
-// Fetch the real ward boundary GeoJSON from MapIt (returns a GeoJSON Feature)
-let _cachedBoundary = null;
+// Per-ward boundary cache
+const _cache = {};
 
-export async function fetchWardBoundary() {
-  if (_cachedBoundary) return _cachedBoundary;
+export async function fetchWardBoundaryById(mapit_id) {
+  if (_cache[mapit_id]) return _cache[mapit_id];
   try {
+    const ward = WARDS.find(w => w.mapit_id === mapit_id);
     const res = await fetch(
-      `https://mapit.mysociety.org/area/${WARD_MAPIT_ID}.geojson`,
-      { headers: { 'Accept': 'application/json' } }
+      `https://mapit.mysociety.org/area/${mapit_id}.geojson`,
+      { headers: { Accept: 'application/json' } }
     );
     if (!res.ok) throw new Error(`MapIt returned ${res.status}`);
     const geom = await res.json();
-    _cachedBoundary = {
+    _cache[mapit_id] = {
       type: 'Feature',
-      properties: { name: WARD_NAME, gss: WARD_GSS, mapit_id: WARD_MAPIT_ID },
+      properties: { name: ward?.name || String(mapit_id), gss: ward?.gss, mapit_id },
       geometry: geom,
     };
-    return _cachedBoundary;
+    return _cache[mapit_id];
   } catch (e) {
-    console.warn('Ward boundary fetch failed:', e.message);
+    console.warn(`Ward boundary fetch failed for ${mapit_id}:`, e.message);
     return null;
   }
+}
+
+// Backward-compatible single fetch (Tyldesley & Mosley Common)
+export async function fetchWardBoundary() {
+  return fetchWardBoundaryById(WARD_MAPIT_ID);
+}
+
+// Fetch all ward boundaries
+export async function fetchAllWardBoundaries() {
+  return Promise.all(WARDS.map(w => fetchWardBoundaryById(w.mapit_id)));
 }
