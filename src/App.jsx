@@ -96,6 +96,7 @@ import FieldHub from './pages/FieldHub';
 import LeafletFieldMode from './pages/LeafletFieldMode';
 import LeafletPrintSheets from './pages/LeafletPrintSheets';
 import WeeklyReportDashboard from './pages/WeeklyReportDashboard';
+import LeafletZoneGenerator from './pages/LeafletZoneGenerator';
 
 const AuthenticatedApp = () => {
   const { isLoadingAuth, isLoadingPublicSettings, authError, navigateToLogin } = useAuth();
@@ -205,6 +206,7 @@ const AuthenticatedApp = () => {
         <Route path="/leaflet-field" element={<LeafletFieldMode />} />
         <Route path="/leaflet-sheets" element={<LeafletPrintSheets />} />
         <Route path="/weekly-report" element={<WeeklyReportDashboard />} />
+        <Route path="/leaflet-zones" element={<LeafletZoneGenerator />} />
       </Route>
       <Route path="*" element={<PageNotFound />} />
     </Routes>

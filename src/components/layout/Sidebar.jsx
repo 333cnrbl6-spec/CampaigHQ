@@ -3,7 +3,7 @@ import { Link, useLocation } from 'react-router-dom';
 import { 
   LayoutDashboard, Users, Calendar, Leaf, ClipboardList, 
   MapPin, ChevronLeft, ChevronRight, LogOut, BarChart3, MessageSquare,
-  History, Zap, Printer, Send, Trophy, Target, Radio, Share2, Globe, Upload, Route, Wand2, FileText, Shield, BookOpen, ListChecks, Shuffle, UserCircle
+  History, Zap, Printer, Send, Trophy, Target, Radio, Share2, Globe, Upload, Route, Wand2, FileText, Shield, BookOpen, ListChecks, Shuffle, UserCircle, Layers
 } from 'lucide-react';
 import { base44 } from '@/api/base44Client';
 import { cn } from '@/lib/utils';
@@ -27,6 +27,7 @@ const navSections = [
       { path: '/turf', label: 'Turf Management', icon: MapPin },
       { path: '/route', label: 'Route Optimizer', icon: Route },
       { path: '/leaflets', label: 'Leaflet Tracker', icon: Printer },
+      { path: '/leaflet-zones', label: 'Leaflet Zone Generator', icon: Layers },
       { path: '/gotv', label: 'GOTV Tracker', icon: Target },
       { path: '/scripts', label: 'Canvassing Scripts', icon: Wand2 },
     ],
