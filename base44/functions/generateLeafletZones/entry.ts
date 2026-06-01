@@ -135,14 +135,24 @@ function clusterIntoZones(addresses, maxDoorsPerZone) {
   );
 
   // Greedy merge into zones of ≤ maxDoorsPerZone
+  // Split any cell that by itself exceeds the limit
   const zones = [];
   let current = [];
   for (const cell of cells) {
-    if (current.length + cell.addresses.length > maxDoorsPerZone && current.length > 0) {
+    const cellAddrs = cell.addresses;
+    // If this cell alone exceeds the limit, split it into chunks first
+    if (cellAddrs.length > maxDoorsPerZone) {
+      if (current.length > 0) { zones.push([...current]); current = []; }
+      for (let ci = 0; ci < cellAddrs.length; ci += maxDoorsPerZone) {
+        zones.push(cellAddrs.slice(ci, ci + maxDoorsPerZone));
+      }
+      continue;
+    }
+    if (current.length + cellAddrs.length > maxDoorsPerZone && current.length > 0) {
       zones.push([...current]);
       current = [];
     }
-    current.push(...cell.addresses);
+    current.push(...cellAddrs);
   }
   if (current.length > 0) zones.push(current);
 
@@ -198,42 +208,8 @@ function convexHull(points) {
   return ring;
 }
 
-// Use InvokeLLM to optimise the walking order for a zone's addresses
-async function optimiseWalkingOrder(base44, addresses, zoneName) {
-  if (addresses.length <= 3) return addresses;
-  try {
-    const addressList = addresses.slice(0, 100).map((a, i) => ({
-      idx: i,
-      street: a.street,
-      number: a.houseNumber,
-      lat: a.lat,
-      lon: a.lon,
-    }));
-
-    const result = await base44.asServiceRole.integrations.Core.InvokeLLM({
-      prompt: `You are a route planning assistant for political canvassing in the UK.
-Given these ${addressList.length} addresses in zone ${zoneName}, return an optimised walking order that:
-1. Groups addresses by street name
-2. Within each street, walks odd numbers then even numbers (or sequential if mixed)
-3. Minimises backtracking between streets
-4. Returns only a JSON array of the original idx values in optimal visit order.
-
-Addresses: ${JSON.stringify(addressList)}
-
-Return ONLY a JSON array of idx integers like: [0, 5, 3, 1, ...]`,
-      response_json_schema: {
-        type: 'array',
-        items: { type: 'number' },
-      },
-    });
-
-    if (Array.isArray(result) && result.length === addresses.length) {
-      return result.map(idx => addresses[idx]).filter(Boolean);
-    }
-  } catch (e) {
-    console.warn('AI optimisation failed for zone', zoneName, e.message);
-  }
-  // Fallback: sort by street then house number
+// Sort addresses by street then house number (fast, no AI needed)
+function sortAddressesForWalking(addresses) {
   return [...addresses].sort((a, b) => {
     if (a.street < b.street) return -1;
     if (a.street > b.street) return 1;
@@ -262,23 +238,30 @@ Deno.serve(async (req) => {
 
     console.log(`Generating leaflet zones for campaign ${campaign_id}, max ${max_doors} doors/zone`);
 
-    // 1. Fetch both ward boundaries
+    // 1. Fetch all ward boundaries (each ward processed separately to respect boundaries)
     console.log('Fetching ward boundaries from MapIt...');
     const wardRings = await fetchAllWardRings();
     if (wardRings.length === 0) throw new Error('Could not fetch any ward boundaries');
     console.log(`Fetched ${wardRings.length} ward boundaries`);
 
-    // 2. Fetch addresses for each ward and merge
-    console.log('Fetching addresses from Overpass API for all wards...');
-    const seen = new Set();
-    const addresses = [];
+    // 2. Fetch addresses per ward and cluster each ward independently
+    console.log('Fetching addresses from Overpass API for each ward separately...');
 
-    for (const outerRing of wardRings) {
+    // Ward names for labelling
+    const wardNames = ['Tyldesley & Mosley Common', 'Abram'];
+    const allZoneGroups = []; // [{addresses, wardName}, ...]
+
+    for (let wi = 0; wi < wardRings.length; wi++) {
+      const outerRing = wardRings[wi];
+      const wardName = wardNames[wi] || `Ward ${wi + 1}`;
+      const seen = new Set();
+      const wardAddresses = [];
+
       const [elements, streets] = await Promise.all([
         fetchAddressesInWard(outerRing),
         fetchStreetsInWard(outerRing),
       ]);
-      console.log(`Ward ring: ${elements.length} address elements, ${streets.length} streets`);
+      console.log(`${wardName}: ${elements.length} address elements, ${streets.length} streets`);
 
       for (const el of elements) {
         const tags = el.tags || {};
@@ -296,11 +279,11 @@ Deno.serve(async (req) => {
         const key = `${houseNumber.toLowerCase()}_${street.toLowerCase()}`;
         if (seen.has(key)) continue;
         seen.add(key);
-        addresses.push({ houseNumber, street, postcode, lat, lon });
+        wardAddresses.push({ houseNumber, street, postcode, lat, lon });
       }
 
-      // Supplement with streets if very few address nodes
-      if (addresses.length < 50 && streets.length > 0) {
+      // Supplement with street centroids if very few address nodes
+      if (wardAddresses.length < 20 && streets.length > 0) {
         const uniqueStreets = [...new Set(streets.map(w => w.tags?.name).filter(Boolean))];
         for (const streetName of uniqueStreets) {
           const way = streets.find(w => w.tags?.name === streetName);
@@ -309,22 +292,29 @@ Deno.serve(async (req) => {
           const key = `STREET_${streetName}`;
           if (seen.has(key)) continue;
           seen.add(key);
-          addresses.push({ houseNumber: '', street: streetName, postcode: way?.tags?.['addr:postcode'] || '', lat: center.lat, lon: center.lon });
+          wardAddresses.push({ houseNumber: '', street: streetName, postcode: way?.tags?.['addr:postcode'] || '', lat: center.lat, lon: center.lon });
+        }
+      }
+
+      console.log(`${wardName}: ${wardAddresses.length} unique addresses`);
+
+      if (wardAddresses.length > 0) {
+        // Cluster this ward's addresses into zones — each zone stays within the ward
+        const wardZones = clusterIntoZones(wardAddresses, max_doors);
+        for (const zoneAddresses of wardZones) {
+          allZoneGroups.push({ addresses: zoneAddresses, wardName });
         }
       }
     }
 
-    console.log(`${addresses.length} unique addresses to zone`);
+    const totalAddresses = allZoneGroups.reduce((s, g) => s + g.addresses.length, 0);
+    console.log(`${allZoneGroups.length} zones across all wards, ${totalAddresses} total addresses`);
 
-    if (addresses.length === 0) {
-      return Response.json({ error: 'No addresses found in the ward area. The area may not have enough OpenStreetMap data.' }, { status: 422 });
+    if (allZoneGroups.length === 0) {
+      return Response.json({ error: 'No addresses found in any ward area. The area may not have enough OpenStreetMap data.' }, { status: 422 });
     }
 
-    // 4. Cluster into zones
-    const zones = clusterIntoZones(addresses, max_doors);
-    console.log(`Clustered into ${zones.length} zones`);
-
-    // 5. Clear existing L-zones if requested
+    // 4. Clear existing L-zones if requested
     if (clear_existing) {
       const existing = await base44.asServiceRole.entities.Turf.filter({ campaign_id });
       const leafletZones = existing.filter(t => /^L\d+$/.test(t.name));
@@ -334,15 +324,15 @@ Deno.serve(async (req) => {
       }
     }
 
-    // 6. For each zone: optimise walking order, build GeoJSON, create Turf + Contacts
+    // 5. For each zone: sort walking order, build GeoJSON, create Turf + Contacts
     const created = [];
-    for (let i = 0; i < zones.length; i++) {
+    for (let i = 0; i < allZoneGroups.length; i++) {
+      const { addresses: zoneAddresses, wardName } = allZoneGroups[i];
       const zoneName = `L${i + 1}`;
-      const zoneAddresses = zones[i];
-      console.log(`Processing zone ${zoneName} (${zoneAddresses.length} addresses)...`);
+      console.log(`Processing zone ${zoneName} (${zoneAddresses.length} addresses) in ${wardName}...`);
 
-      // Optimise walking order with AI
-      const ordered = await optimiseWalkingOrder(base44, zoneAddresses, zoneName);
+      // Sort by street then house number for natural walking order
+      const ordered = sortAddressesForWalking(zoneAddresses);
 
       // Build convex hull GeoJSON polygon for the zone
       const hullRing = convexHull(zoneAddresses);
@@ -368,7 +358,7 @@ Deno.serve(async (req) => {
         doors_knocked: 0,
         contact_count: ordered.length,
         goal: `Leaflet drop — ${ordered.length} addresses`,
-        notes: `AI-generated leaflet zone. ${ordered.length} addresses in optimised walking order.`,
+        notes: `Leaflet zone within ${wardName} ward. ${ordered.length} addresses sorted by street walking order.`,
       });
 
       // Create Contact records for each address in the zone
@@ -388,10 +378,10 @@ Deno.serve(async (req) => {
         notes: `Leaflet zone ${zoneName} — stop ${idx + 1} of ${ordered.length}. Centre: ${centLat.toFixed(5)},${centLon.toFixed(5)}`,
       }));
 
-      // Batch create in groups of 50
-      for (let b = 0; b < contacts.length; b += 50) {
-        await base44.asServiceRole.entities.Contact.bulkCreate(contacts.slice(b, b + 50));
-        if (b + 50 < contacts.length) await new Promise(r => setTimeout(r, 200));
+      // Batch create in groups of 25 with delay to avoid rate limits
+      for (let b = 0; b < contacts.length; b += 25) {
+        await base44.asServiceRole.entities.Contact.bulkCreate(contacts.slice(b, b + 25));
+        await new Promise(r => setTimeout(r, 300));
       }
 
       created.push({
@@ -405,9 +395,9 @@ Deno.serve(async (req) => {
     return Response.json({
       success: true,
       zones_created: created.length,
-      total_addresses: addresses.length,
+      total_addresses: totalAddresses,
       zones: created,
-      message: `Successfully created ${created.length} leaflet zones (L1–L${created.length}) covering ${addresses.length} addresses across the Tyldesley & Mosley Common ward.`,
+      message: `Successfully created ${created.length} leaflet zones (L1–L${created.length}) covering ${totalAddresses} addresses. Zones respect ward boundaries.`,
     });
 
   } catch (error) {
