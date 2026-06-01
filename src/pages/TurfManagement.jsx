@@ -14,7 +14,7 @@ import BulkAssignDialog from '../components/turf/BulkAssignDialog';
 import TurfBoundaryMap from '../components/map/TurfBoundaryMap';
 import UnassignedStreetsOverlay from '../components/map/UnassignedStreetsOverlay';
 import { Button } from '@/components/ui/button';
-import { Pencil, Trash2, Layers, Route, Wand2, Map, Eye, EyeOff, Database, Flame } from 'lucide-react';
+import { Pencil, Trash2, Layers, Route, Wand2, Map, Eye, EyeOff, Database, Flame, Sparkles, Loader2, CheckCircle } from 'lucide-react';
 import GeocodePanel from '../components/turf/GeocodePanel';
 import LeafletDistributionHeatmap from '../components/turf/LeafletDistributionHeatmap';
 import WalkingPathOptimizer from '../components/turf/WalkingPathOptimizer';
@@ -196,6 +196,8 @@ export default function TurfManagement() {
   const [showGeocodePanel, setShowGeocodePanel] = useState(false);
   const [showHeatmap, setShowHeatmap] = useState(false);
   const [showPathOptimizer, setShowPathOptimizer] = useState(false);
+  const [populatingTurf, setPopulatingTurf] = useState(false);
+  const [populateResult, setPopulateResult] = useState(null);
 
   const { data: turfs = [], error: turfError, refetch: refetchTurfs } = useQuery({
     queryKey: ['turfs', campaignId],
@@ -211,6 +213,7 @@ export default function TurfManagement() {
     staleTime: 180000,
   });
 
+  // createTurf kept for any other callers but main flow now uses direct call in handleConfirmCreate
   const createTurf = useMutation({
     mutationFn: (data) => base44.entities.Turf.create({ ...data, campaign_id: campaignId }),
     onSuccess: () => refetchTurfs(),
@@ -232,16 +235,40 @@ export default function TurfManagement() {
     setNewName(`Zone ${turfs.length + 1}`);
   };
 
-  const handleConfirmCreate = () => {
+  const handleConfirmCreate = async (autoPopulate = false) => {
     const colorIdx = turfs.length % COLORS.length;
-    createTurf.mutate({
-      name: newName || `Zone ${turfs.length + 1}`,
+    const turfName = newName || `Zone ${turfs.length + 1}`;
+    
+    const result = await base44.entities.Turf.create({
+      name: turfName,
       geojson: pendingGeoJSON,
       status: 'unassigned',
       priority: 'normal',
       color: COLORS[colorIdx],
+      campaign_id: campaignId,
     });
+    
+    refetchTurfs();
     setNamePrompt(false);
+
+    if (autoPopulate && pendingGeoJSON) {
+      setPopulatingTurf(true);
+      setPopulateResult(null);
+      try {
+        const res = await base44.functions.invoke('populateTurfContacts', {
+          geojson: pendingGeoJSON,
+          turf_id: result?.id,
+          campaign_id: campaignId,
+          turf_name: turfName,
+        });
+        setPopulateResult(res.data);
+        refetchContacts();
+      } catch (err) {
+        setPopulateResult({ error: err.message });
+      }
+      setPopulatingTurf(false);
+    }
+
     setPendingGeoJSON(null);
   };
 
@@ -406,7 +433,7 @@ export default function TurfManagement() {
         {/* Name prompt overlay */}
         {namePrompt && (
           <div className="absolute inset-0 z-[2000] bg-black/40 flex items-center justify-center">
-            <div className="bg-card rounded-xl shadow-xl p-6 w-80 space-y-4">
+            <div className="bg-card rounded-xl shadow-xl p-6 w-96 space-y-4">
               <h3 className="font-heading font-bold text-lg flex items-center gap-2">
                 <Layers className="w-5 h-5 text-primary" /> Name this zone
               </h3>
@@ -414,14 +441,59 @@ export default function TurfManagement() {
                 className="w-full border rounded-md px-3 py-2 text-sm focus:outline-none focus:ring-1 focus:ring-primary"
                 value={newName}
                 onChange={e => setNewName(e.target.value)}
-                onKeyDown={e => e.key === 'Enter' && handleConfirmCreate()}
+                onKeyDown={e => e.key === 'Enter' && handleConfirmCreate(false)}
                 autoFocus
               />
-              <div className="flex gap-2">
-                <Button className="flex-1" onClick={handleConfirmCreate}>Create Zone</Button>
-                <Button variant="outline" className="flex-1" onClick={() => { setNamePrompt(false); setPendingGeoJSON(null); }}>Cancel</Button>
+              <div className="bg-purple-50 border border-purple-200 rounded-lg p-3 space-y-1">
+                <div className="flex items-center gap-2">
+                  <Sparkles className="w-4 h-4 text-purple-600" />
+                  <span className="text-xs font-semibold text-purple-900">AI Auto-Populate</span>
+                </div>
+                <p className="text-xs text-purple-700">Automatically find all street addresses inside this polygon using OpenStreetMap and add them as contacts.</p>
+              </div>
+              <div className="flex flex-col gap-2">
+                <Button className="w-full gap-2 bg-purple-600 hover:bg-purple-700" onClick={() => handleConfirmCreate(true)}>
+                  <Sparkles className="w-4 h-4" /> Create Zone + AI Populate Addresses
+                </Button>
+                <Button className="w-full" variant="outline" onClick={() => handleConfirmCreate(false)}>
+                  Create Zone Only
+                </Button>
+                <Button variant="ghost" className="w-full" onClick={() => { setNamePrompt(false); setPendingGeoJSON(null); }}>Cancel</Button>
               </div>
             </div>
+          </div>
+        )}
+
+        {/* AI Populate status overlay */}
+        {(populatingTurf || populateResult) && (
+          <div className="absolute bottom-6 left-1/2 -translate-x-1/2 z-[2000] bg-card border border-border rounded-xl shadow-xl px-5 py-4 flex items-center gap-3 min-w-[320px]">
+            {populatingTurf ? (
+              <>
+                <Loader2 className="w-5 h-5 text-purple-600 animate-spin flex-shrink-0" />
+                <div>
+                  <p className="text-sm font-semibold">AI populating addresses…</p>
+                  <p className="text-xs text-muted-foreground">Querying OpenStreetMap for streets & postcodes inside the polygon</p>
+                </div>
+              </>
+            ) : populateResult?.error ? (
+              <>
+                <span className="text-red-500 text-lg">⚠️</span>
+                <div className="flex-1">
+                  <p className="text-sm font-semibold text-red-600">Population failed</p>
+                  <p className="text-xs text-muted-foreground">{populateResult.error}</p>
+                </div>
+                <Button size="sm" variant="ghost" onClick={() => setPopulateResult(null)}>✕</Button>
+              </>
+            ) : (
+              <>
+                <CheckCircle className="w-5 h-5 text-green-600 flex-shrink-0" />
+                <div className="flex-1">
+                  <p className="text-sm font-semibold text-green-700">{populateResult?.created || 0} addresses imported!</p>
+                  <p className="text-xs text-muted-foreground">{populateResult?.message}</p>
+                </div>
+                <Button size="sm" variant="ghost" onClick={() => setPopulateResult(null)}>✕</Button>
+              </>
+            )}
           </div>
         )}
 

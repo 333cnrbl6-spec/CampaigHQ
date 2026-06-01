@@ -28,6 +28,43 @@
     {
       "function_name": "generateDataAccessReport",
       "description": "Create audit and compliance reports for customer audits"
+    },
+    {
+      "entity_name": "Subscription",
+      "allowed_operations": [
+        "read",
+        "update"
+      ]
+    },
+    {
+      "entity_name": "UsageMetrics",
+      "allowed_operations": [
+        "read"
+      ]
+    },
+    {
+      "function_name": "generateInvoicePDF",
+      "description": "Generate PDF invoices for customers"
+    },
+    {
+      "function_name": "sendTrialExpiringEmail",
+      "description": "Send trial expiring notifications"
+    },
+    {
+      "function_name": "sendPaymentFailedEmail",
+      "description": "Notify customers of payment failures"
+    },
+    {
+      "function_name": "generateInvoiceEmail",
+      "description": "Email invoices to customers"
+    },
+    {
+      "function_name": "manageSubscriptionChange",
+      "description": "Process upgrades and downgrades"
+    },
+    {
+      "function_name": "checkPlanLimits",
+      "description": "Verify customer plan compliance"
     }
   ],
   "app_user_connector_configs": [],

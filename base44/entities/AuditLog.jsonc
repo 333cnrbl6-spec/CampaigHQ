@@ -1,0 +1,71 @@
+{
+  "name": "AuditLog",
+  "type": "object",
+  "properties": {
+    "campaign_id": {
+      "type": "string",
+      "description": "ID of the Campaign this audit log belongs to"
+    },
+    "user_email": {
+      "type": "string",
+      "description": "Email of the user who triggered the action"
+    },
+    "action": {
+      "type": "string",
+      "enum": [
+        "create",
+        "update",
+        "delete",
+        "export",
+        "gdpr_request",
+        "login_success",
+        "login_failed"
+      ],
+      "description": "Type of action performed"
+    },
+    "entity_type": {
+      "type": "string",
+      "description": "Entity type affected (e.g., 'contact', 'volunteer_location', 'user')"
+    },
+    "entity_id": {
+      "type": "string",
+      "description": "ID of the affected entity"
+    },
+    "old_values": {
+      "type": "object",
+      "description": "Previous values before update"
+    },
+    "new_values": {
+      "type": "object",
+      "description": "New values after update"
+    },
+    "ip_address": {
+      "type": "string",
+      "description": "IP address of the request"
+    },
+    "user_agent": {
+      "type": "string",
+      "description": "User agent string from request"
+    },
+    "status": {
+      "type": "string",
+      "enum": [
+        "success",
+        "failed",
+        "denied"
+      ],
+      "default": "success",
+      "description": "Status of the action"
+    },
+    "notes": {
+      "type": "string",
+      "description": "Additional notes or error details"
+    }
+  },
+  "required": [
+    "campaign_id",
+    "user_email",
+    "action",
+    "entity_type"
+  ]
+}
