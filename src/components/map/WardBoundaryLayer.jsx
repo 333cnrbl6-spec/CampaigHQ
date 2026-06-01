@@ -26,13 +26,17 @@ export default function WardBoundaryLayer({ fitBounds = false, opacity = 0, show
         const layer = L.geoJSON(feature, {
           style: {
             color: '#00612B',
-            weight: 3,
-            dashArray: '10 6',
+            weight: 4,
+            dashArray: '12 6',
             fillColor: '#00612B',
             fillOpacity: opacity,
-            opacity: 0.9,
+            opacity: 1,
+            zIndex: 1000,
+            pane: 'overlayPane',
           },
         });
+        // Bring boundary to front so it's always visible over zone fills
+        layer.bringToFront();
 
         if (showLabel) {
           layer.bindTooltip(feature.properties.name, {
@@ -54,7 +58,12 @@ export default function WardBoundaryLayer({ fitBounds = false, opacity = 0, show
       }
     });
 
+    // Keep boundary on top when other layers are added
+    const bringToFront = () => layers.forEach(l => { try { l.bringToFront(); } catch {} });
+    map.on('layeradd', bringToFront);
+
     return () => {
+      map.off('layeradd', bringToFront);
       layers.forEach(l => { try { map.removeLayer(l); } catch {} });
     };
   }, [map, fitBounds, opacity, showLabel]);
