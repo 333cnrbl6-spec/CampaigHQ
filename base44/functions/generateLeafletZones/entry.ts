@@ -466,52 +466,42 @@ Deno.serve(async (req) => {
       }
     }
 
-    // ── 4. Create Turf records ────────────────────────────────────────────────
-    const created = [];
-    for (let i = 0; i < allZoneGroups.length; i++) {
-      const { addresses: zoneAddresses, wardName, wardRing, gridDim, minLat, latStep, minLon, lonStep } = allZoneGroups[i];
+    // ── 4. Create Turf records (parallel batches of 5) ───────────────────────
+    // Pre-compute all zone data synchronously first (no I/O, just CPU)
+    const zoneData = allZoneGroups.map((group, i) => {
+      const { addresses: zoneAddresses, wardName, wardRing, gridDim, minLat, latStep, minLon, lonStep } = group;
       const zoneName = `L${i + 1}`;
-      console.log(`Creating ${zoneName} (${zoneAddresses.length} addresses) in ${wardName}…`);
-
       const ordered = sortAddressesForWalking(zoneAddresses);
       const polygonRing = zonePolygonFromAddresses(zoneAddresses, wardRing, gridDim, minLat, latStep, minLon, lonStep);
-
       const centLat = zoneAddresses.reduce((s, a) => s + a.lat, 0) / zoneAddresses.length;
       const centLon = zoneAddresses.reduce((s, a) => s + a.lon, 0) / zoneAddresses.length;
-
       const geojson = JSON.stringify({
         type: 'Feature',
         properties: { name: zoneName, ward: wardName, address_count: ordered.length },
         geometry: { type: 'Polygon', coordinates: [polygonRing] },
       });
-
-      // Build a compact address summary (street names + count only) to keep notes small
       const streetSummary = [...new Set(ordered.map(a => a.postcode || a.street).filter(Boolean))].slice(0, 20).join(', ');
+      return { zoneName, wardName, ordered, geojson, streetSummary, centLat, centLon, color: ZONE_COLORS[i % ZONE_COLORS.length] };
+    });
 
-      const turf = await base44.asServiceRole.entities.Turf.create({
-        campaign_id,
-        name: zoneName,
-        geojson,
-        color: ZONE_COLORS[i % ZONE_COLORS.length],
-        status: 'unassigned',
-        priority: 'normal',
-        target_doors: ordered.length,
-        doors_knocked: 0,
-        contact_count: ordered.length,
-        goal: `Leaflet drop — ${ordered.length} addresses`,
-        notes: streetSummary,
-      });
-
-      created.push({
-        zone: zoneName,
-        turf_id: turf.id,
-        ward: wardName,
-        address_count: ordered.length,
-        centroid: [+centLat.toFixed(5), +centLon.toFixed(5)],
-      });
-
-      // Small yield to avoid memory pressure on large zone sets
-      if (i > 0 && i % 10 === 0) await new Promise(r => setTimeout(r, 100));
+    console.log(`Creating ${zoneData.length} turf records in parallel batches…`);
+    const created = [];
+    const BATCH = 5;
+    for (let b = 0; b < zoneData.length; b += BATCH) {
+      const batch = zoneData.slice(b, b + BATCH);
+      const results = await Promise.all(batch.map(async ({ zoneName, wardName, ordered, geojson, streetSummary, centLat, centLon, color }) => {
+        const turf = await base44.asServiceRole.entities.Turf.create({
+          campaign_id, name: zoneName, geojson, color,
+          status: 'unassigned', priority: 'normal',
+          target_doors: ordered.length, doors_knocked: 0,
+          contact_count: ordered.length,
+          goal: `Leaflet drop — ${ordered.length} addresses`,
+          notes: streetSummary,
+        });
+        return { zone: zoneName, turf_id: turf.id, ward: wardName, address_count: ordered.length, centroid: [+centLat.toFixed(5), +centLon.toFixed(5)] };
+      }));
+      created.push(...results);
+      console.log(`Batch ${Math.floor(b / BATCH) + 1}: created zones ${b + 1}–${b + results.length}`);
     }
 
     return Response.json({
