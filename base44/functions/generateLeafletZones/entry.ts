@@ -378,10 +378,24 @@ Deno.serve(async (req) => {
         notes: `Leaflet zone ${zoneName} — stop ${idx + 1} of ${ordered.length}. Centre: ${centLat.toFixed(5)},${centLon.toFixed(5)}`,
       }));
 
-      // Batch create in groups of 25 with delay to avoid rate limits
-      for (let b = 0; b < contacts.length; b += 25) {
-        await base44.asServiceRole.entities.Contact.bulkCreate(contacts.slice(b, b + 25));
-        await new Promise(r => setTimeout(r, 300));
+      // Batch create in groups of 10 with delay + retry on 429
+      for (let b = 0; b < contacts.length; b += 10) {
+        const batch = contacts.slice(b, b + 10);
+        let retries = 3;
+        while (retries > 0) {
+          try {
+            await base44.asServiceRole.entities.Contact.bulkCreate(batch);
+            break;
+          } catch (err) {
+            if (err.status === 429 && retries > 1) {
+              retries--;
+              await new Promise(r => setTimeout(r, 2000));
+            } else {
+              throw err;
+            }
+          }
+        }
+        await new Promise(r => setTimeout(r, 600));
       }
 
       created.push({
