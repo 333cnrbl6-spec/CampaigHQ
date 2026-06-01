@@ -18,6 +18,7 @@ import { Pencil, Trash2, Layers, Route, Wand2, Map, Eye, EyeOff, Database, Flame
 import GeocodePanel from '../components/turf/GeocodePanel';
 import LeafletDistributionHeatmap from '../components/turf/LeafletDistributionHeatmap';
 import WalkingPathOptimizer from '../components/turf/WalkingPathOptimizer';
+import WardBoundaryLayer from '../components/map/WardBoundaryLayer';
 
 // Fix leaflet default marker icons
 delete L.Icon.Default.prototype._getIconUrl;
@@ -507,6 +508,7 @@ export default function TurfManagement() {
             attribution='&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a> &copy; <a href="https://carto.com/attributions">CartoDB</a>'
             url="https://{s}.basemaps.cartocdn.com/light_all/{z}/{x}/{y}{r}.png"
           />
+          <WardBoundaryLayer showLabel />
           <DrawControl onCreated={handleShapeCreated} drawing={drawing} setDrawing={setDrawing} />
           <TurfLayers turfs={turfs} selectedId={selectedId} onSelect={(id) => { setSelectedId(id); setShowRoute(false); setRouteCoords([]); setShowHeatmap(false); }} />
           {showHeatmap && selectedId && (

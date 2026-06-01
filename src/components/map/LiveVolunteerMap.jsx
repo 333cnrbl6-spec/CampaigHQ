@@ -1,5 +1,6 @@
 import React, { useState, useEffect, useMemo } from 'react';
 import { MapContainer, TileLayer, Marker, Popup, CircleMarker } from 'react-leaflet';
+import WardBoundaryLayer from './WardBoundaryLayer';
 import L from 'leaflet';
 import { base44 } from '@/api/base44Client';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
@@ -164,6 +165,7 @@ export default function LiveVolunteerMap() {
                   url="https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png"
                   attribution="&copy; OpenStreetMap contributors"
                 />
+                <WardBoundaryLayer showLabel />
                 {filtered.map((volunteer) => (
                   <Marker
                     key={volunteer.id}

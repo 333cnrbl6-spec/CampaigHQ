@@ -5,6 +5,7 @@ import { base44 } from '@/api/base44Client';
 import 'leaflet/dist/leaflet.css';
 import L from 'leaflet';
 import TurfDensityOverlay from '@/components/turf/TurfDensityOverlay';
+import WardBoundaryLayer from '@/components/map/WardBoundaryLayer';
 import TurfDetailPanel from '@/components/turf/TurfDetailPanel';
 import { Users, MapPin, MailCheck, Info } from 'lucide-react';
 
@@ -109,6 +110,7 @@ export default function TurfDensityMap() {
               attribution='&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a> &copy; <a href="https://carto.com/attributions">CartoDB</a>'
               url="https://{s}.basemaps.cartocdn.com/light_all/{z}/{x}/{y}{r}.png"
             />
+            <WardBoundaryLayer showLabel />
             <TurfDensityOverlay
               turfs={turfs}
               contacts={contacts}
