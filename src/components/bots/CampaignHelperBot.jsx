@@ -89,25 +89,29 @@ export default function CampaignHelperBot() {
 
   const currentPageSuggestions = PAGE_SUGGESTIONS[location.pathname];
 
-  // Initialize conversation on mount
+  // Initialize conversation lazily when the chat is first opened
   useEffect(() => {
+    if (!isOpen || conversationId) return;
     const initConversation = async () => {
-      const conv = await base44.agents.createConversation({
-        agent_name: AGENT_NAME,
-        metadata: {
-          name: 'Chat with Olive',
-          description: 'Campaign support and guidance',
-        },
-      });
-      setConversationId(conv.id);
-      // Add greeting message
-      setMessages([{
-        role: 'assistant',
-        content: "Hi! 👋 I'm **Olive**, your Green Party campaign assistant. I'm here to help with volunteer coordination, voter outreach, event planning, and keeping our campaign running smoothly. What can I help you with today?"
-      }]);
+      try {
+        const conv = await base44.agents.createConversation({
+          agent_name: AGENT_NAME,
+          metadata: {
+            name: 'Chat with Olive',
+            description: 'Campaign support and guidance',
+          },
+        });
+        setConversationId(conv.id);
+        setMessages([{
+          role: 'assistant',
+          content: "Hi! 👋 I'm **Olive**, your Green Party campaign assistant. I'm here to help with volunteer coordination, voter outreach, event planning, and keeping our campaign running smoothly. What can I help you with today?"
+        }]);
+      } catch (error) {
+        console.error('Failed to init Olive conversation:', error);
+      }
     };
     initConversation();
-  }, []);
+  }, [isOpen, conversationId]);
 
   // Subscribe to conversation updates
   useEffect(() => {
